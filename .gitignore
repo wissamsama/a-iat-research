@@ -1,0 +1,16 @@
+﻿# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local/editor files
+.vscode/
+.idea/
+
+# Local datasets
+data/
+
+# Generated files
+*.png
+*.jpg
+*.jpeg
