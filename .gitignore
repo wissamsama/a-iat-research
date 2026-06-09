@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 .venv/
 __pycache__/
 *.py[cod]
@@ -9,6 +9,15 @@ __pycache__/
 
 # Local datasets
 data/
+
+# Training outputs
+train_runs/
+attack_runs/
+trained_models/
+reports/
+checkpoints/
+*.pth
+*.pt
 
 # Generated files
 *.png
