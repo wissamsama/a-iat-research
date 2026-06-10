@@ -1,0 +1,9 @@
+﻿attack: fgsm
+epsilon: 0.03
+split: test
+batch_size: 128
+max_samples: null
+seed: 42
+model_path: trained_models\09-06-2026_12-28-15_simple_cnn_gtsrb_acc0.8651.pth
+attack_runs_dir: attack_runs
+trained_models_dir: trained_models

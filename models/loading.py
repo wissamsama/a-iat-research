@@ -17,7 +17,9 @@ def load_checkpoint(path, map_location="cpu"):
 
 def load_trained_model(path, map_location="cpu", eval_mode=True):
     checkpoint = load_checkpoint(path, map_location=map_location)
-    model = build_model(checkpoint["model_name"], checkpoint["num_classes"])
+    input_shape = checkpoint.get("input_shape") or [3, 32, 32]
+    input_size = int(input_shape[1])
+    model = build_model(checkpoint["model_name"], checkpoint["num_classes"], input_size=input_size)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(map_location if isinstance(map_location, torch.device) else torch.device(map_location))
     if eval_mode:

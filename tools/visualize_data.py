@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import csv
 import pickle
 import sys
@@ -10,42 +10,34 @@ from PIL import Image
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
+from tools.datasets import DATASET_ALIASES, DATASET_SPECS, normalize_dataset_name
+
 DEFAULT_DATA_ROOT = PROJECT_DIR / "data"
-DATASETS = {
-    "cifar10": {
-        "display_name": "CIFAR-10",
-        "folder": "CIFAR-10",
-        "kind": "cifar",
-        "meta_file": "batches.meta",
-        "label_key": "label_names",
-        "label_field": "labels",
-        "train_files": [f"data_batch_{index}" for index in range(1, 6)],
-        "test_files": ["test_batch"],
-    },
-    "cifar100": {
-        "display_name": "CIFAR-100",
-        "folder": "CIFAR-100",
-        "kind": "cifar",
-        "meta_file": "meta",
-        "label_key": "fine_label_names",
-        "label_field": "fine_labels",
-        "train_files": ["train"],
-        "test_files": ["test"],
-    },
-    "gtsrb": {
-        "display_name": "GTSRB",
-        "folder": "GTSRB",
-        "kind": "gtsrb",
-        "num_classes": 43,
-    },
-}
-DATASET_ALIASES = {"gtrsb": "gtsrb"}
+
+
+def visualizer_dataset_config(name, spec):
+    config = {
+        "display_name": spec["display_name"],
+        "folder": spec["folder"],
+        "kind": "gtsrb" if spec["kind"] == "gtsrb_folder" else "cifar",
+        "num_classes": spec["num_classes"],
+    }
+    if spec["kind"] == "cifar_batch":
+        config.update({
+            "meta_file": spec["meta_file"],
+            "label_key": spec["label_names_key"],
+            "label_field": spec["label_field"],
+            "train_files": spec["train_files"],
+            "test_files": spec["test_files"],
+        })
+    return config
+
+
+DATASETS = {name: visualizer_dataset_config(name, spec) for name, spec in DATASET_SPECS.items()}
 DATASET_CHOICES = sorted([*DATASETS.keys(), *DATASET_ALIASES.keys()])
-
-
-def normalize_dataset_name(dataset):
-    return DATASET_ALIASES.get(dataset.lower(), dataset.lower())
-
 
 def load_pickle(path):
     with path.open("rb") as file:
@@ -359,3 +351,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

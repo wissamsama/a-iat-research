@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import sys
 import time
 from pathlib import Path
@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from tqdm import tqdm
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -15,12 +14,9 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 from models.registry import build_model as build_registered_model, save_checkpoint
+from tools.datasets import build_dataset, build_transforms, dataset_name_from_config, num_classes_for_dataset
 from training.experiment import append_metrics, create_run_dir, load_config, save_config, save_json, write_metrics_header
-from training.utils import CIFAR10BatchDataset, get_device, set_seed
-
-
-CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
-CIFAR10_STD = (0.2470, 0.2435, 0.2616)
+from training.utils import get_device, set_seed
 
 
 def train_one_epoch(model, train_loader, criterion, optimizer, device):
@@ -72,7 +68,7 @@ def evaluate(model, test_loader, criterion, device):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train SimpleCNN on local CIFAR-10 batches and log a research run.")
+    parser = argparse.ArgumentParser(description="Train a configured model on a local dataset and log a research run.")
     parser.add_argument("--config", type=Path, default=Path("configs/simple_cnn.yaml"), help="YAML experiment config.")
     parser.add_argument("--experiment-name", help="Override experiment name.")
     parser.add_argument("--epochs", type=int, help="Override number of epochs.")
@@ -99,20 +95,11 @@ def apply_overrides(config, args):
 
 
 def build_dataloaders(config, device):
-    transform_train = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(32, padding=4),
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+    transform_train = build_transforms(config, train=True)
+    transform_test = build_transforms(config, train=False)
 
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
-
-    train_dataset = CIFAR10BatchDataset(config["data_dir"], train=True, transform=transform_train)
-    test_dataset = CIFAR10BatchDataset(config["data_dir"], train=False, transform=transform_test)
+    train_dataset = build_dataset(config, train=True, transform=transform_train)
+    test_dataset = build_dataset(config, train=False, transform=transform_test)
 
     train_loader = DataLoader(
         train_dataset,
@@ -134,9 +121,10 @@ def build_dataloaders(config, device):
 
 
 def build_model(config):
-    if config.get("dataset") != "cifar10":
-        raise ValueError("training.train currently supports only dataset: cifar10")
-    return build_registered_model(config.get("model"), num_classes=10)
+    dataset_name = dataset_name_from_config(config)
+    num_classes = num_classes_for_dataset(dataset_name, config)
+    input_size = int(config.get("input_size", 32))
+    return build_registered_model(config.get("model"), num_classes=num_classes, input_size=input_size)
 
 
 def get_early_stopping_patience(config):
@@ -154,6 +142,7 @@ def main():
     config = apply_overrides(load_config(args.config), args)
     set_seed(int(config["seed"]))
     device = get_device()
+    config["device"] = str(device)
     early_stopping_patience = get_early_stopping_patience(config)
 
     run_dir = create_run_dir(config["train_runs_dir"], config["experiment_name"])
@@ -167,7 +156,6 @@ def main():
     print(f"Run id: {run_id}")
     print(f"Run directory: {run_dir}")
     print(f"Best checkpoint path: {best_checkpoint_path}")
-    print(f"Using device: {device}")
     if early_stopping_patience is None:
         print("Early stopping: disabled")
     else:
@@ -240,6 +228,7 @@ def main():
         "run_id": run_id,
         "run_dir": str(run_dir),
         "config": config,
+        "device": str(device),
         "epochs_requested": int(config["epochs"]),
         "epochs_completed": completed_epochs,
         "best_epoch": best_epoch,
@@ -258,7 +247,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
 

@@ -1,10 +1,11 @@
-experiment_name: simplecnn_cifar10
+experiment_name: simplecnn_gtsrb
 model: simple_cnn
-dataset: cifar10
-data_dir: data/CIFAR-10
+dataset: gtsrb
+data_dir: data\GTSRB
+input_size: 32
 train_runs_dir: train_runs
 seed: 42
-epochs: 100
+epochs: 10
 batch_size: 128
 learning_rate: 0.001
 num_workers: 0

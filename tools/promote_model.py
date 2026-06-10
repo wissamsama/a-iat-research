@@ -1,12 +1,18 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import torch
 
-PROJECT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_TRAIN_RUNS_DIR = PROJECT_DIR / "train_runs"
-DEFAULT_TRAINED_MODELS_DIR = PROJECT_DIR / "trained_models"
+PROJECT_DIR_FOR_IMPORTS = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR_FOR_IMPORTS) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR_FOR_IMPORTS))
+
+from project_paths import PROJECT_DIR, TRAIN_RUNS_DIR, TRAINED_MODELS_DIR, project_relative
+
+DEFAULT_TRAIN_RUNS_DIR = TRAIN_RUNS_DIR
+DEFAULT_TRAINED_MODELS_DIR = TRAINED_MODELS_DIR
 
 
 def load_checkpoint(path):
@@ -23,13 +29,6 @@ def load_summary_for_checkpoint(checkpoint_path):
     with summary_path.open("r", encoding="utf-8-sig") as file:
         return json.load(file)
 
-
-def project_relative(path):
-    path = Path(path)
-    try:
-        return path.resolve().relative_to(PROJECT_DIR).as_posix()
-    except ValueError:
-        return path.as_posix()
 
 
 def normalized_checkpoint_id(path):

@@ -1,7 +1,14 @@
 import argparse
+import sys
 import csv
 import json
 from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
+from project_paths import TRAIN_RUNS_DIR
 
 
 def load_summary(run_dir):
@@ -51,7 +58,7 @@ def completed_epochs(summary):
 
 def main():
     parser = argparse.ArgumentParser(description="Compare training runs saved in train_runs/.")
-    parser.add_argument("--train-runs-dir", type=Path, default=Path("train_runs"), help="Folder containing train run directories.")
+    parser.add_argument("--train-runs-dir", type=Path, default=TRAIN_RUNS_DIR, help="Folder containing train run directories.")
     args = parser.parse_args()
 
     if not args.train_runs_dir.exists():
