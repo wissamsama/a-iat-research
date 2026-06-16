@@ -1,9 +1,9 @@
-﻿attack: fgsm
-epsilon: 0.03
+attack: fgsm
+model_path: trained_models\10-06-2026_12-15-39_simple_cnn_cifar10_acc0.8095.pth
+trained_models_dir: trained_models
+attack_runs_dir: attack_runs
 split: test
+epsilon: 0.03
 batch_size: 128
 max_samples: null
 seed: 42
-model_path: trained_models\09-06-2026_12-28-15_simple_cnn_gtsrb_acc0.8651.pth
-attack_runs_dir: attack_runs
-trained_models_dir: trained_models

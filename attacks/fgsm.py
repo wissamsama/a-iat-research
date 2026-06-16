@@ -24,6 +24,7 @@ def fgsm_attack(model, images, labels, epsilon, mean, std):
     epsilon is expressed in pixel space [0, 1]. The returned tensor is normalized
     with the same mean/std as the input model expects.
     """
+    was_training = model.training
     model.eval()
     attack_images = images.detach().clone().requires_grad_(True)
 
@@ -36,4 +37,6 @@ def fgsm_attack(model, images, labels, epsilon, mean, std):
     pixel_images = denormalize(attack_images.detach(), mean, std)
     perturbation = epsilon * attack_images.grad.detach().sign()
     adversarial_pixels = torch.clamp(pixel_images + perturbation, 0.0, 1.0)
+    if was_training:
+        model.train()
     return normalize(adversarial_pixels, mean, std).detach()

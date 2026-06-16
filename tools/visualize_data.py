@@ -13,16 +13,23 @@ PROJECT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-from tools.datasets import DATASET_ALIASES, DATASET_SPECS, normalize_dataset_name
+from tools.datasets import DATASET_ALIASES, DATASET_SPECS, SEN1FLOODS11_SOURCES, class_names_for_dataset, normalize_dataset_name
 
 DEFAULT_DATA_ROOT = PROJECT_DIR / "data"
 
 
 def visualizer_dataset_config(name, spec):
+    kind = "cifar"
+    if spec["kind"] == "gtsrb_folder":
+        kind = "gtsrb"
+    elif spec["kind"] == "sturm_flood":
+        kind = "sturm_flood"
+    elif spec["kind"] == "sen1floods11":
+        kind = "sen1floods11"
     config = {
         "display_name": spec["display_name"],
         "folder": spec["folder"],
-        "kind": "gtsrb" if spec["kind"] == "gtsrb_folder" else "cifar",
+        "kind": kind,
         "num_classes": spec["num_classes"],
     }
     if spec["kind"] == "cifar_batch":
@@ -56,8 +63,8 @@ def available_datasets(data_root):
 def load_label_names(data_dir, dataset):
     dataset = normalize_dataset_name(dataset)
     config = DATASETS[dataset]
-    if config["kind"] == "gtsrb":
-        return [f"class_{class_id:05d}" for class_id in range(config["num_classes"])]
+    if config["kind"] in {"sturm_flood", "sen1floods11", "gtsrb"}:
+        return class_names_for_dataset(dataset, data_dir)
 
     metadata = load_pickle(data_dir / config["meta_file"])
     return metadata[config["label_key"]]
@@ -157,9 +164,120 @@ def load_gtsrb_split(data_dir, split):
     return train_images + test_images, np.concatenate([train_labels, test_labels]), train_filenames + test_filenames
 
 
+def sturm_dataset_dir(data_dir):
+    dataset_dir_path = data_dir / "dataset"
+    if not dataset_dir_path.exists():
+        raise SystemExit(f"Missing STURM-Flood dataset folder: {dataset_dir_path}")
+    return dataset_dir_path
+
+
+def load_sturm_sensor_split(data_dir, sensor_name, label):
+    root = sturm_dataset_dir(data_dir) / sensor_name
+    source_dir = root / ("S1" if sensor_name == "Sentinel1" else "S2")
+    mask_dir = root / "Floodmaps"
+
+    if not source_dir.exists():
+        raise SystemExit(f"Missing STURM-Flood source folder: {source_dir}")
+    if not mask_dir.exists():
+        raise SystemExit(f"Missing STURM-Flood floodmap folder: {mask_dir}")
+
+    samples = []
+    labels = []
+    filenames = []
+    for source_path in sorted(source_dir.glob("*.tif")):
+        mask_path = mask_dir / source_path.name
+        if not mask_path.exists():
+            continue
+        samples.append((source_path, mask_path, sensor_name))
+        labels.append(label)
+        filenames.append(str(source_path.relative_to(data_dir)))
+    return samples, np.array(labels), filenames
+
+
+def load_sturm_split(data_dir, split):
+    if split in {"sentinel1", "train"}:
+        return load_sturm_sensor_split(data_dir, "Sentinel1", 0)
+    if split in {"sentinel2", "test"}:
+        return load_sturm_sensor_split(data_dir, "Sentinel2", 1)
+    if split != "all":
+        raise SystemExit("For STURM-Flood, --split must be sentinel1, sentinel2, or all.")
+
+    s1_images, s1_labels, s1_filenames = load_sturm_sensor_split(data_dir, "Sentinel1", 0)
+    s2_images, s2_labels, s2_filenames = load_sturm_sensor_split(data_dir, "Sentinel2", 1)
+    return s1_images + s2_images, np.concatenate([s1_labels, s2_labels]), s1_filenames + s2_filenames
+
+
+
+def sen1_dataset_dir(data_dir):
+    data_path = data_dir / "dataset" / "v1.1" / "data"
+    if not data_path.exists():
+        raise SystemExit(f"Missing Sen1Floods11 data folder: {data_path}")
+    return data_path
+
+
+def sen1_source_options(split):
+    if split == "all":
+        return list(SEN1FLOODS11_SOURCES)
+    if split not in SEN1FLOODS11_SOURCES:
+        available = ", ".join([*SEN1FLOODS11_SOURCES, "all"])
+        raise SystemExit(f"For Sen1Floods11, --split must be one of: {available}.")
+    return [split]
+
+
+def sen1_mask_name(source_name, config):
+    if "source_suffix" in config:
+        return source_name.replace(config["source_suffix"], config["mask_suffix"])
+    if "source_prefix" in config:
+        return source_name.replace(config["source_prefix"], config["mask_prefix"], 1)
+    return source_name
+
+
+def load_sen1_source(data_dir, source_name):
+    data_path = sen1_dataset_dir(data_dir)
+    config = SEN1FLOODS11_SOURCES[source_name]
+    source_dir = data_path.joinpath(*config["source_folder"])
+    mask_dir = data_path.joinpath(*config["mask_folder"])
+    if not source_dir.exists():
+        raise SystemExit(f"Missing Sen1Floods11 source folder: {source_dir}")
+    if not mask_dir.exists():
+        raise SystemExit(f"Missing Sen1Floods11 mask folder: {mask_dir}")
+
+    samples = []
+    labels = []
+    filenames = []
+    for source_path in sorted(source_dir.glob("*.tif")):
+        mask_path = mask_dir / sen1_mask_name(source_path.name, config)
+        if not mask_path.exists():
+            continue
+        samples.append((source_path, mask_path, source_name))
+        labels.append(config["label"])
+        filenames.append(str(source_path.relative_to(data_dir)))
+    return samples, np.array(labels), filenames
+
+
+def load_sen1_split(data_dir, split):
+    all_images = []
+    all_labels = []
+    all_filenames = []
+    for source_name in sen1_source_options(split):
+        images, labels, filenames = load_sen1_source(data_dir, source_name)
+        all_images.extend(images)
+        all_labels.append(labels)
+        all_filenames.extend(filenames)
+    if not all_labels:
+        return [], np.array([], dtype=int), []
+    return all_images, np.concatenate(all_labels), all_filenames
+
+
 def load_split(data_dir, dataset, split):
     dataset = normalize_dataset_name(dataset)
     config = DATASETS[dataset]
+    if config["kind"] == "sturm_flood":
+        return load_sturm_split(data_dir, split)
+    if config["kind"] == "sen1floods11":
+        return load_sen1_split(data_dir, split)
+    if split not in {"train", "test", "all"}:
+        raise SystemExit(f"For {dataset}, --split must be train, test, or all.")
     if config["kind"] == "gtsrb":
         return load_gtsrb_split(data_dir, split)
     return load_cifar_split(data_dir, dataset, split)
@@ -198,10 +316,70 @@ def resolve_class_id(class_name, label_names):
 
 
 def load_image_for_display(image):
+    if isinstance(image, tuple):
+        return load_geotiff_pair_for_display(image)
     if isinstance(image, Path):
         with Image.open(image) as opened_image:
             return np.asarray(opened_image.convert("RGB"))
     return image
+
+
+def read_geotiff(path):
+    try:
+        import rasterio
+    except ImportError as error:
+        raise SystemExit(
+            "GeoTIFF datasets use rasterio. Install it with: "
+            "python -m pip install -r requirements.txt"
+        ) from error
+
+    with rasterio.open(path) as source:
+        return source.read()
+
+
+def stretch_to_uint8(array):
+    array = np.asarray(array, dtype=np.float32)
+    valid = np.isfinite(array)
+    if not valid.any():
+        return np.zeros(array.shape, dtype=np.uint8)
+    low, high = np.percentile(array[valid], [2, 98])
+    if high <= low:
+        high = low + 1.0
+    scaled = np.clip((array - low) / (high - low), 0.0, 1.0)
+    return (scaled * 255).astype(np.uint8)
+
+
+def geotiff_source_to_rgb(path):
+    data = read_geotiff(path)
+    if data.ndim != 3:
+        raise SystemExit(f"Unexpected GeoTIFF shape for {path}: {data.shape}")
+
+    if data.shape[0] >= 4:
+        rgb = np.stack([data[3], data[2], data[1]], axis=-1)
+    elif data.shape[0] >= 3:
+        rgb = np.moveaxis(data[:3], 0, -1)
+    elif data.shape[0] == 2:
+        mean_band = (data[0] + data[1]) / 2.0
+        rgb = np.stack([data[0], data[1], mean_band], axis=-1)
+    else:
+        rgb = np.repeat(data[0][..., None], 3, axis=-1)
+    return stretch_to_uint8(rgb)
+
+
+def geotiff_mask_to_rgb(path):
+    data = read_geotiff(path)[0]
+    mask = data > 0
+    rgb = np.full((*data.shape, 3), 245, dtype=np.uint8)
+    rgb[mask] = np.array([30, 120, 220], dtype=np.uint8)
+    return rgb
+
+
+def load_geotiff_pair_for_display(sample):
+    source_path, mask_path, _ = sample
+    source_rgb = geotiff_source_to_rgb(source_path)
+    mask_rgb = geotiff_mask_to_rgb(mask_path)
+    separator = np.full((source_rgb.shape[0], 4, 3), 255, dtype=np.uint8)
+    return np.concatenate([source_rgb, separator, mask_rgb], axis=1)
 
 
 def plot_examples(images, labels, label_names, indices, columns):
@@ -282,8 +460,19 @@ def interactive_args():
     data_dir = dataset_dir(data_root, dataset)
     label_names = load_label_names(data_dir, dataset)
 
-    split = ["train", "test", "all"][ask_choice("Split a visualiser", ["train", "test", "all"])]
-    class_id = ask_optional_class(label_names)
+    if DATASETS[dataset]["kind"] == "sturm_flood":
+        split = ["sentinel1", "sentinel2", "all"][
+            ask_choice("Source a visualiser", ["Sentinel-1", "Sentinel-2", "Les deux"])
+        ]
+        class_id = None
+    elif DATASETS[dataset]["kind"] == "sen1floods11":
+        source_keys = [*SEN1FLOODS11_SOURCES, "all"]
+        source_labels = [config["display_name"] for config in SEN1FLOODS11_SOURCES.values()] + ["Toutes"]
+        split = source_keys[ask_choice("Source a visualiser", source_labels)]
+        class_id = None
+    else:
+        split = ["train", "test", "all"][ask_choice("Split a visualiser", ["train", "test", "all"])]
+        class_id = ask_optional_class(label_names)
     samples_per_class = ask_int("Images par classe", 8, minimum=1, maximum=100)
 
     max_classes = None
@@ -307,10 +496,15 @@ def interactive_args():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Visualize CIFAR-10, CIFAR-100, or GTSRB samples from the local data folder.")
-    parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Folder containing CIFAR-10, CIFAR-100, and/or GTSRB folders.")
-    parser.add_argument("--dataset", choices=DATASET_CHOICES, default="cifar10", help="Dataset to visualize. The typo alias 'gtrsb' is accepted for GTSRB.")
-    parser.add_argument("--split", choices=["train", "test", "all"], default="train", help="Data split to visualize.")
+    parser = argparse.ArgumentParser(description="Visualize CIFAR-10, CIFAR-100, GTSRB, STURM-Flood, or Sen1Floods11 samples from the local data folder.")
+    parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Folder containing CIFAR-10, CIFAR-100, GTSRB, STURM-Flood, and/or Sen1Floods11 folders.")
+    parser.add_argument("--dataset", choices=DATASET_CHOICES, default="cifar10", help="Dataset to visualize. Use sturm_flood for STURM-Flood or sen1floods11 for Sen1Floods11. The typo alias 'gtrsb' is accepted for GTSRB.")
+    parser.add_argument(
+        "--split",
+        choices=["train", "test", "sentinel1", "sentinel2", "hand_s1", "hand_s2", "weak_s1", "weak_s2", "perm_water_s1", "all"],
+        default="train",
+        help="Data split/source to visualize. Use sentinel1/sentinel2 for STURM-Flood or hand_s1/hand_s2/weak_s1/weak_s2/perm_water_s1 for Sen1Floods11.",
+    )
     parser.add_argument("--samples-per-class", type=int, default=8, help="Number of examples per class.")
     parser.add_argument("--class-name", help="Optional class name or class id to visualize, for example: cat, dog, truck, apple, 14, class_00014.")
     parser.add_argument("--max-classes", type=int, help="Limit the number of classes shown, useful for CIFAR-100 and GTSRB.")

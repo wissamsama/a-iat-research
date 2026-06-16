@@ -10,7 +10,56 @@ from torchvision import transforms
 
 DATASET_ALIASES = {
     "gtrsb": "gtsrb",
+    "sturm": "sturm_flood",
+    "sturm-flood": "sturm_flood",
+    "sen1": "sen1floods11",
+    "sen1floods": "sen1floods11",
+    "sen1-floods11": "sen1floods11",
 }
+
+SEN1FLOODS11_SOURCES = {
+    "hand_s1": {
+        "display_name": "Hand labeled S1",
+        "label": 0,
+        "source_folder": ("flood_events", "HandLabeled", "S1Hand"),
+        "source_suffix": "_S1Hand.tif",
+        "mask_folder": ("flood_events", "HandLabeled", "LabelHand"),
+        "mask_suffix": "_LabelHand.tif",
+    },
+    "hand_s2": {
+        "display_name": "Hand labeled S2",
+        "label": 1,
+        "source_folder": ("flood_events", "HandLabeled", "S2Hand"),
+        "source_suffix": "_S2Hand.tif",
+        "mask_folder": ("flood_events", "HandLabeled", "LabelHand"),
+        "mask_suffix": "_LabelHand.tif",
+    },
+    "weak_s1": {
+        "display_name": "Weak labeled S1",
+        "label": 2,
+        "source_folder": ("flood_events", "WeaklyLabeled", "S1Weak"),
+        "source_suffix": "_S1Weak.tif",
+        "mask_folder": ("flood_events", "WeaklyLabeled", "S1OtsuLabelWeak"),
+        "mask_suffix": "_S1OtsuLabelWeak.tif",
+    },
+    "weak_s2": {
+        "display_name": "Weak labeled S2",
+        "label": 3,
+        "source_folder": ("flood_events", "WeaklyLabeled", "S2Weak"),
+        "source_suffix": "_S2Weak.tif",
+        "mask_folder": ("flood_events", "WeaklyLabeled", "S2IndexLabelWeak"),
+        "mask_suffix": "_S2IndexLabelWeak.tif",
+    },
+    "perm_water_s1": {
+        "display_name": "Permanent water S1",
+        "label": 4,
+        "source_folder": ("perm_water", "S1Perm"),
+        "source_prefix": "sentinel_",
+        "mask_folder": ("perm_water", "JRCPerm"),
+        "mask_prefix": "water_",
+    },
+}
+
 
 DATASET_SPECS = {
     "cifar10": {
@@ -59,6 +108,30 @@ DATASET_SPECS = {
         },
         "train_augmentation": "resize_only",
     },
+    "sturm_flood": {
+        "display_name": "STURM-Flood",
+        "folder": "STURM-Flood",
+        "kind": "sturm_flood",
+        "num_classes": 2,
+        "input_shape": "GeoTIFF 128x128",
+        "normalization": {
+            "mean": [],
+            "std": [],
+        },
+        "sources": ["sentinel1", "sentinel2"],
+    },
+    "sen1floods11": {
+        "display_name": "Sen1Floods11",
+        "folder": "Sen1Floods11",
+        "kind": "sen1floods11",
+        "num_classes": len(SEN1FLOODS11_SOURCES),
+        "input_shape": "GeoTIFF 512x512",
+        "normalization": {
+            "mean": [],
+            "std": [],
+        },
+        "sources": list(SEN1FLOODS11_SOURCES),
+    },
 }
 
 
@@ -95,6 +168,8 @@ def num_classes_for_dataset(dataset, config=None):
 
 def input_shape_for_dataset(dataset, config=None):
     spec = dataset_spec(dataset)
+    if spec["kind"] in {"sturm_flood", "sen1floods11"}:
+        return spec["input_shape"]
     if config and config.get("input_size"):
         input_size = int(config["input_size"])
         return [3, input_size, input_size]
@@ -117,6 +192,10 @@ def normalization_for_dataset(dataset, config=None):
 
 def class_names_for_dataset(dataset, data_dir=None):
     spec = dataset_spec(dataset)
+    if spec["kind"] == "sturm_flood":
+        return ["sentinel1", "sentinel2"]
+    if spec["kind"] == "sen1floods11":
+        return list(SEN1FLOODS11_SOURCES)
     if spec["kind"] == "cifar_batch" and data_dir is not None:
         metadata_path = Path(data_dir) / spec["meta_file"]
         if metadata_path.exists():
@@ -263,6 +342,10 @@ def build_dataset(config, train=True, transform=None):
         return CifarBatchDataset(data_dir, dataset_name, train=train, transform=transform)
     if spec["kind"] == "gtsrb_folder":
         return GTSRBDataset(data_dir, train=train, transform=transform)
+    if spec["kind"] == "sturm_flood":
+        raise ValueError("STURM-Flood is available for visualization only; training loaders are not implemented yet.")
+    if spec["kind"] == "sen1floods11":
+        raise ValueError("Sen1Floods11 is available for visualization only; training loaders are not implemented yet.")
     raise ValueError(f"Unsupported dataset kind: {spec['kind']}")
 
 
@@ -334,6 +417,89 @@ def _size_range(image_paths, max_images=500):
     return f"w {min(widths)}..{max(widths)}, h {min(heights)}..{max(heights)}{suffix}"
 
 
+def _sen1_mask_name(source_name, config):
+    if "source_suffix" in config:
+        return source_name.replace(config["source_suffix"], config["mask_suffix"])
+    if "source_prefix" in config:
+        return source_name.replace(config["source_prefix"], config["mask_prefix"], 1)
+    return source_name
+
+
+def _count_sen1floods11(data_dir):
+    data_path = Path(data_dir) / "dataset" / "v1.1" / "data"
+    required = []
+    source_counts = []
+    labels = set()
+    status_messages = []
+
+    for source_name, config in SEN1FLOODS11_SOURCES.items():
+        source_dir = data_path.joinpath(*config["source_folder"])
+        mask_dir = data_path.joinpath(*config["mask_folder"])
+        if not source_dir.exists():
+            required.append(source_dir)
+            continue
+        if not mask_dir.exists():
+            required.append(mask_dir)
+            continue
+
+        source_files = sorted(source_dir.glob("*.tif"))
+        paired_count = 0
+        missing_masks = 0
+        for source_path in source_files:
+            mask_path = mask_dir / _sen1_mask_name(source_path.name, config)
+            if mask_path.exists():
+                paired_count += 1
+            else:
+                missing_masks += 1
+
+        source_counts.append(paired_count)
+        if paired_count:
+            labels.add(config["label"])
+        if missing_masks:
+            status_messages.append(f"{source_name}: {missing_masks} missing masks")
+
+    if required:
+        return None, set(), "-", "missing " + ", ".join(str(path) for path in required)
+
+    status = "; ".join(status_messages) if status_messages else None
+    return sum(source_counts), labels, "512x512 GeoTIFF source+mask", status
+
+
+def _count_sturm_flood(data_dir):
+    dataset_dir_path = Path(data_dir) / "dataset"
+    sentinel1_source = dataset_dir_path / "Sentinel1" / "S1"
+    sentinel1_masks = dataset_dir_path / "Sentinel1" / "Floodmaps"
+    sentinel2_source = dataset_dir_path / "Sentinel2" / "S2"
+    sentinel2_masks = dataset_dir_path / "Sentinel2" / "Floodmaps"
+
+    required = [sentinel1_source, sentinel1_masks, sentinel2_source, sentinel2_masks]
+    missing = [path for path in required if not path.exists()]
+    if missing:
+        return None, None, set(), set(), "-", "-", "missing " + ", ".join(str(path) for path in missing)
+
+    sentinel1_files = sorted(sentinel1_source.glob("*.tif"))
+    sentinel2_files = sorted(sentinel2_source.glob("*.tif"))
+    sentinel1_mask_count = len(list(sentinel1_masks.glob("*.tif")))
+    sentinel2_mask_count = len(list(sentinel2_masks.glob("*.tif")))
+
+    status = None
+    if len(sentinel1_files) != sentinel1_mask_count or len(sentinel2_files) != sentinel2_mask_count:
+        status = (
+            f"source/mask mismatch: sentinel1 {len(sentinel1_files)}/{sentinel1_mask_count}, "
+            f"sentinel2 {len(sentinel2_files)}/{sentinel2_mask_count}"
+        )
+
+    return (
+        len(sentinel1_files),
+        len(sentinel2_files),
+        {0} if sentinel1_files else set(),
+        {1} if sentinel2_files else set(),
+        "128x128 GeoTIFF source+mask",
+        "128x128 GeoTIFF source+mask",
+        status,
+    )
+
+
 def _count_gtsrb(data_dir):
     data_dir = Path(data_dir)
     train_dir = data_dir / "train"
@@ -393,6 +559,7 @@ def dataset_local_summary(dataset, data_root=Path("data")):
         "test_classes": None,
         "native_train_dimensions": "-",
         "native_test_dimensions": "-",
+        "total_samples": None,
         "status": "ok",
     }
 
@@ -404,6 +571,7 @@ def dataset_local_summary(dataset, data_root=Path("data")):
         train_count, train_labels, train_error = _count_cifar_split(data_dir, spec, train=True)
         test_count, test_labels, test_error = _count_cifar_split(data_dir, spec, train=False)
         summary.update({
+            "total_samples": None if train_count is None or test_count is None else train_count + test_count,
             "train_samples": train_count,
             "test_samples": test_count,
             "train_classes": len(train_labels),
@@ -419,12 +587,44 @@ def dataset_local_summary(dataset, data_root=Path("data")):
     if spec["kind"] == "gtsrb_folder":
         train_count, test_count, train_labels, test_labels, train_dims, test_dims, error = _count_gtsrb(data_dir)
         summary.update({
+            "total_samples": None if train_count is None or test_count is None else train_count + test_count,
             "train_samples": train_count,
             "test_samples": test_count,
             "train_classes": len(train_labels),
             "test_classes": len(test_labels),
             "native_train_dimensions": train_dims,
             "native_test_dimensions": test_dims,
+        })
+        if error:
+            summary["status"] = error
+        return summary
+
+    if spec["kind"] == "sturm_flood":
+        train_count, test_count, train_labels, test_labels, train_dims, test_dims, error = _count_sturm_flood(data_dir)
+        total_count = None if train_count is None or test_count is None else train_count + test_count
+        summary.update({
+            "total_samples": total_count,
+            "train_samples": "/",
+            "test_samples": "/",
+            "train_classes": len(train_labels | test_labels),
+            "test_classes": "/",
+            "native_train_dimensions": train_dims,
+            "native_test_dimensions": test_dims,
+        })
+        if error:
+            summary["status"] = error
+        return summary
+
+    if spec["kind"] == "sen1floods11":
+        total_count, labels, dims, error = _count_sen1floods11(data_dir)
+        summary.update({
+            "total_samples": total_count,
+            "train_samples": "/",
+            "test_samples": "/",
+            "train_classes": len(labels),
+            "test_classes": "/",
+            "native_train_dimensions": dims,
+            "native_test_dimensions": "/",
         })
         if error:
             summary["status"] = error
@@ -445,27 +645,48 @@ def _format_value(value):
 def print_datasets_summary(data_root=Path("data"), datasets=None):
     datasets = datasets or sorted(DATASET_SPECS)
     rows = [dataset_local_summary(dataset, data_root=data_root) for dataset in datasets]
-    dim_width = 40
-    header = (
-        f"{'dataset':10} | {'data_dir':18} | {'train':>7} | {'test':>7} | "
-        f"{'classes':>9} | {'input':>8} | {'native train dims':{dim_width}} | "
-        f"{'native test dims':{dim_width}} | status"
-    )
+    columns = [
+        ("dataset", "dataset", "left"),
+        ("data_dir", "data_dir", "left"),
+        ("total", "total_samples", "right"),
+        ("train", "train_samples", "right"),
+        ("test", "test_samples", "right"),
+        ("classes", "classes", "right"),
+        ("input", "configured_input_shape", "left"),
+        ("train dims", "native_train_dimensions", "left"),
+        ("test dims", "native_test_dimensions", "left"),
+        ("status", "status", "left"),
+    ]
+
+    display_rows = []
+    for row in rows:
+        display_row = dict(row)
+        display_row["data_dir"] = Path(row["data_dir"]).as_posix()
+        if row["test_classes"] == "/":
+            display_row["classes"] = _format_value(row["train_classes"])
+        else:
+            display_row["classes"] = f"{_format_value(row['train_classes'])}/{_format_value(row['test_classes'])}"
+        display_row["configured_input_shape"] = _format_value(row["configured_input_shape"])
+        display_row["total_samples"] = _format_value(row["total_samples"])
+        display_row["train_samples"] = _format_value(row["train_samples"])
+        display_row["test_samples"] = _format_value(row["test_samples"])
+        display_rows.append(display_row)
+
+    widths = {}
+    for title, key, _ in columns:
+        widths[key] = max(len(title), *(len(str(row[key])) for row in display_rows))
+
+    def cell(value, key, align):
+        value = str(value)
+        if align == "right":
+            return value.rjust(widths[key])
+        return value.ljust(widths[key])
+
+    header = " | ".join(cell(title, key, align) for title, key, align in columns)
     print(header)
     print("-" * len(header))
-    for row in rows:
-        classes = f"{_format_value(row['train_classes'])}/{_format_value(row['test_classes'])}"
-        print(
-            f"{row['dataset'][:10]:10} | "
-            f"{Path(row['data_dir']).as_posix()[:18]:18} | "
-            f"{_format_value(row['train_samples']):>7} | "
-            f"{_format_value(row['test_samples']):>7} | "
-            f"{classes:>9} | "
-            f"{_format_value(row['configured_input_shape']):>8} | "
-            f"{row['native_train_dimensions']:{dim_width}} | "
-            f"{row['native_test_dimensions']:{dim_width}} | "
-            f"{row['status']}"
-        )
+    for row in display_rows:
+        print(" | ".join(cell(row[key], key, align) for _, key, align in columns))
 
     print("\nNormalization:")
     for row in rows:

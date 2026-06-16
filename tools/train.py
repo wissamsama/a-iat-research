@@ -13,17 +13,45 @@ PROJECT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
+from attacks.fgsm import fgsm_attack
 from models.registry import build_model as build_registered_model, save_checkpoint
-from tools.datasets import build_dataset, build_transforms, dataset_name_from_config, num_classes_for_dataset
+from tools.datasets import build_dataset, build_transforms, dataset_name_from_config, normalization_for_dataset, num_classes_for_dataset
 from training.experiment import append_metrics, create_run_dir, load_config, save_config, save_json, write_metrics_header
 from training.utils import get_device, set_seed
 
 
-def train_one_epoch(model, train_loader, criterion, optimizer, device):
+def training_mode_from_config(config):
+    mode = str(config.get("training_mode", "classic")).lower()
+    if mode not in {"classic", "adversarial"}:
+        raise ValueError("training_mode must be 'classic' or 'adversarial'")
+    return mode
+
+
+def adversarial_config_from_config(config):
+    attack = str(config.get("adv_training_attack", "fgsm")).lower()
+    if attack != "fgsm":
+        raise ValueError("adv_training_attack currently supports only 'fgsm'")
+    clean_lambda = float(config.get("clean_loss_lambda", 0.5))
+    if not 0.0 <= clean_lambda <= 1.0:
+        raise ValueError("clean_loss_lambda must be between 0 and 1")
+    epsilon = float(config.get("adv_training_epsilon", 0.03))
+    if epsilon < 0.0:
+        raise ValueError("adv_training_epsilon must be >= 0")
+    return clean_lambda, epsilon
+
+
+def train_one_epoch(model, train_loader, criterion, optimizer, device, config):
     model.train()
 
+    training_mode = training_mode_from_config(config)
+    clean_lambda, adv_epsilon = adversarial_config_from_config(config)
+    normalization = normalization_for_dataset(dataset_name_from_config(config), config)
+
     total_loss = 0.0
+    total_clean_loss = 0.0
+    total_adv_loss = 0.0
     correct = 0
+    adv_correct = 0
     total = 0
 
     for images, labels in tqdm(train_loader, desc="Training", leave=False):
@@ -32,16 +60,50 @@ def train_one_epoch(model, train_loader, criterion, optimizer, device):
 
         optimizer.zero_grad()
         outputs = model(images)
-        loss = criterion(outputs, labels)
+        clean_loss = criterion(outputs, labels)
+        loss = clean_loss
+        adv_loss = None
+        adv_outputs = None
+
+        if training_mode == "adversarial":
+            adversarial_images = fgsm_attack(
+                model,
+                images,
+                labels,
+                epsilon=adv_epsilon,
+                mean=normalization["mean"],
+                std=normalization["std"],
+            )
+            model.train()
+            optimizer.zero_grad()
+            outputs = model(images)
+            clean_loss = criterion(outputs, labels)
+            adv_outputs = model(adversarial_images)
+            adv_loss = criterion(adv_outputs, labels)
+            loss = clean_lambda * clean_loss + (1.0 - clean_lambda) * adv_loss
+
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item() * images.size(0)
+        batch_size = images.size(0)
+        total_loss += loss.item() * batch_size
+        total_clean_loss += clean_loss.item() * batch_size
+        if adv_loss is not None:
+            total_adv_loss += adv_loss.item() * batch_size
+            adv_preds = adv_outputs.argmax(dim=1)
+            adv_correct += (adv_preds == labels).sum().item()
         preds = outputs.argmax(dim=1)
         correct += (preds == labels).sum().item()
         total += labels.size(0)
 
-    return total_loss / total, correct / total
+    metrics = {
+        "loss": total_loss / total,
+        "acc": correct / total,
+        "clean_loss": total_clean_loss / total,
+        "adv_loss": total_adv_loss / total if training_mode == "adversarial" else None,
+        "adv_acc": adv_correct / total if training_mode == "adversarial" else None,
+    }
+    return metrics
 
 
 def evaluate(model, test_loader, criterion, device):
@@ -76,6 +138,9 @@ def parse_args():
     parser.add_argument("--lr", type=float, help="Override learning rate.")
     parser.add_argument("--seed", type=int, help="Override random seed.")
     parser.add_argument("--early-stopping-patience", type=int, help="Stop after this many epochs without test_acc improvement. Use 0 to disable.")
+    parser.add_argument("--training-mode", choices=["classic", "adversarial"], help="Override training mode.")
+    parser.add_argument("--clean-loss-lambda", type=float, help="Clean loss weight in adversarial training. Adv weight is 1-lambda.")
+    parser.add_argument("--adv-training-epsilon", type=float, help="FGSM epsilon for adversarial training in pixel space [0, 1].")
     return parser.parse_args()
 
 
@@ -87,6 +152,9 @@ def apply_overrides(config, args):
         "learning_rate": args.lr,
         "seed": args.seed,
         "early_stopping_patience": args.early_stopping_patience,
+        "training_mode": args.training_mode,
+        "clean_loss_lambda": args.clean_loss_lambda,
+        "adv_training_epsilon": args.adv_training_epsilon,
     }
     for key, value in overrides.items():
         if value is not None:
@@ -127,6 +195,15 @@ def build_model(config):
     return build_registered_model(config.get("model"), num_classes=num_classes, input_size=input_size)
 
 
+def summary_config(config):
+    data = dict(config)
+    if data.get("training_mode") == "classic":
+        data.pop("clean_loss_lambda", None)
+        data.pop("adv_training_epsilon", None)
+        data.pop("adv_training_attack", None)
+    return data
+
+
 def get_early_stopping_patience(config):
     patience = config.get("early_stopping_patience")
     if patience in (None, "", 0, "0"):
@@ -143,6 +220,9 @@ def main():
     set_seed(int(config["seed"]))
     device = get_device()
     config["device"] = str(device)
+    config["training_mode"] = training_mode_from_config(config)
+    config["clean_loss_lambda"], config["adv_training_epsilon"] = adversarial_config_from_config(config)
+    config["adv_training_attack"] = "fgsm"
     early_stopping_patience = get_early_stopping_patience(config)
 
     run_dir = create_run_dir(config["train_runs_dir"], config["experiment_name"])
@@ -156,6 +236,13 @@ def main():
     print(f"Run id: {run_id}")
     print(f"Run directory: {run_dir}")
     print(f"Best checkpoint path: {best_checkpoint_path}")
+    print(f"Training mode: {config['training_mode']}")
+    if config["training_mode"] == "adversarial":
+        print(
+            f"Adversarial training: attack={config['adv_training_attack']} "
+            f"epsilon={config['adv_training_epsilon']} clean_lambda={config['clean_loss_lambda']} "
+            f"adv_weight={1.0 - config['clean_loss_lambda']:.4f}"
+        )
     if early_stopping_patience is None:
         print("Early stopping: disabled")
     else:
@@ -180,7 +267,9 @@ def main():
         print(f"\nEpoch {epoch}/{config['epochs']}")
         epoch_start = time.perf_counter()
 
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device, config)
+        train_loss = train_metrics["loss"]
+        train_acc = train_metrics["acc"]
         test_loss, test_acc = evaluate(model, test_loader, criterion, device)
         epoch_time = time.perf_counter() - epoch_start
         min_test_loss = min(min_test_loss, test_loss)
@@ -189,6 +278,9 @@ def main():
             "epoch": epoch,
             "train_loss": f"{train_loss:.6f}",
             "train_acc": f"{train_acc:.6f}",
+            "train_clean_loss": f"{train_metrics['clean_loss']:.6f}",
+            "train_adv_loss": "" if train_metrics["adv_loss"] is None else f"{train_metrics['adv_loss']:.6f}",
+            "train_adv_acc": "" if train_metrics["adv_acc"] is None else f"{train_metrics['adv_acc']:.6f}",
             "test_loss": f"{test_loss:.6f}",
             "test_acc": f"{test_acc:.6f}",
             "epoch_time_sec": f"{epoch_time:.3f}",
@@ -196,6 +288,8 @@ def main():
         append_metrics(metrics_path, row)
 
         print(f"Train loss: {train_loss:.4f} | Train acc: {train_acc:.4f}")
+        if train_metrics["adv_loss"] is not None:
+            print(f"Train adv loss: {train_metrics['adv_loss']:.4f} | Train adv acc: {train_metrics['adv_acc']:.4f}")
         print(f"Test loss : {test_loss:.4f} | Test acc : {test_acc:.4f}")
         print(f"Epoch time: {epoch_time:.1f}s")
 
@@ -227,8 +321,8 @@ def main():
     summary = {
         "run_id": run_id,
         "run_dir": str(run_dir),
-        "config": config,
         "device": str(device),
+        "config": summary_config(config),
         "epochs_requested": int(config["epochs"]),
         "epochs_completed": completed_epochs,
         "best_epoch": best_epoch,

@@ -14,7 +14,7 @@ Projet local pour explorer CIFAR-10 / CIFAR-100 / GTSRB et iterer proprement sur
 - `training/experiment.py`: creation de train runs, logs CSV, configs et summaries
 - `attacks/fgsm.py`: implementation de l'attaque FGSM
 - `evaluation/attack_evaluator.py`: boucle d'evaluation clean/adversarial
-- `tools/visualize_data.py`: outil utilisateur pour visualiser CIFAR-10 / CIFAR-100 / GTSRB
+- `tools/visualize_data.py`: outil utilisateur pour visualiser CIFAR-10 / CIFAR-100 / GTSRB / STURM-Flood / Sen1Floods11
 - `tools/compare_train_runs.py`: outil utilisateur pour comparer les entrainements termines
 - `tools/promote_model.py`: outil utilisateur pour promouvoir un checkpoint de train run vers `trained_models/`
 - `configs/fgsm.yaml`: configuration d'attaque FGSM par defaut
@@ -33,7 +33,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Dependances principales : `numpy`, `matplotlib`, `Pillow`, `torch`, `torchvision`, `tqdm`, `PyYAML`.
+Dependances principales : `numpy`, `matplotlib`, `Pillow`, `torch`, `torchvision`, `tqdm`, `PyYAML`, `rasterio`.
 
 ## Visualiser les donnees
 
@@ -51,9 +51,15 @@ python .\tools\visualize_data.py --dataset cifar10 --class-name cat --samples-pe
 python .\tools\visualize_data.py --dataset cifar100 --samples-per-class 2 --max-classes 12 --columns 6
 python .\tools\visualize_data.py --dataset gtsrb --split train --samples-per-class 4 --max-classes 12 --columns 6
 python .\tools\visualize_data.py --dataset gtsrb --split test --class-name 14 --samples-per-class 8 --columns 4
+python .\tools\visualize_data.py --dataset sturm_flood --split sentinel1 --samples-per-class 4 --columns 4
+python .\tools\visualize_data.py --dataset sturm_flood --split sentinel2 --samples-per-class 4 --columns 4
+python .\tools\visualize_data.py --dataset sen1floods11 --split hand_s1 --samples-per-class 4 --columns 4
+python .\tools\visualize_data.py --dataset sen1floods11 --split weak_s1 --samples-per-class 4 --columns 4
+python .\tools\visualize_data.py --dataset sen1floods11 --split weak_s2 --samples-per-class 4 --columns 4
+python .\tools\visualize_data.py --dataset sen1floods11 --split perm_water_s1 --samples-per-class 4 --columns 4
 ```
 
-Aucune image n'est enregistree sur disque. L'affichage se fait dans une fenetre Matplotlib. Pour GTSRB, les classes sont numerotees de `class_00000` a `class_00042`; tu peux aussi utiliser directement un numero comme `14`. L'alias `gtrsb` est accepte.
+Aucune image n'est enregistree sur disque. L'affichage se fait dans une fenetre Matplotlib. Pour GTSRB, les classes sont numerotees de `class_00000` a `class_00042`; tu peux aussi utiliser directement un numero comme `14`. L'alias `gtrsb` est accepte. Pour STURM-Flood, `--split sentinel1` affiche Sentinel-1, `--split sentinel2` affiche Sentinel-2, et chaque exemple montre l'image source a gauche et le masque d'inondation a droite. Pour Sen1Floods11, `--split hand_s1`, `hand_s2`, `weak_s1`, `weak_s2` ou `perm_water_s1` affiche les paires GeoTIFF source + masque disponibles localement; les fichiers temporaires du telechargement ne sont pas utilises.
 
 ## Entrainer une experience
 
@@ -100,6 +106,9 @@ Options disponibles :
 - `--lr`: learning rate
 - `--seed`: seed aleatoire
 - `--early-stopping-patience`: nombre d'epochs sans amelioration de `test_acc` avant arret anticipe, `0` pour desactiver
+- `--training-mode`: `classic` ou `adversarial`
+- `--clean-loss-lambda`: poids de la loss clean en adversarial training
+- `--adv-training-epsilon`: epsilon FGSM utilise pendant l'adversarial training
 
 Parametres dataset importants dans les configs :
 
@@ -110,6 +119,22 @@ Parametres dataset importants dans les configs :
 - `normalization`: optionnel, les valeurs par defaut viennent de la registry dataset
 
 La registry dataset est la source de verite pour `num_classes`, `input_shape`, `normalization`, les transforms et les loaders. `input_size` est un parametre experimental: CIFAR peut etre redimensionne depuis `32x32`, et GTSRB est toujours redimensionne vers cette taille car ses images natives ont des dimensions variables.
+
+Parametres training importants :
+
+- `training_mode`: `classic` pour l'entrainement standard, `adversarial` pour la loss mixte clean + FGSM
+- `clean_loss_lambda`: poids de la loss clean dans `lambda * L(clean) + (1 - lambda) * L(adversarial)`; ignore en mode `classic`
+- `adv_training_epsilon`: intensite FGSM en espace pixel `[0, 1]`; ignore en mode `classic`
+- `adv_training_attack`: attaque utilisee pour l'adversarial training, actuellement `fgsm`
+
+Exemple adversarial training :
+
+```yaml
+training_mode: adversarial
+clean_loss_lambda: 0.5
+adv_training_epsilon: 0.03
+adv_training_attack: fgsm
+```
 
 Afficher l'etat des datasets locaux :
 

@@ -73,9 +73,13 @@ def main():
 
         config = summary.get("config", {}) if summary else {}
         artifact_path = best_artifact_path(summary)
+        mode = config.get("training_mode", summary.get("training_mode", "classic"))
         rows.append({
             "run": summary.get("run_id", run_dir.name) if summary else run_dir.name,
             "model": config.get("model", "-"),
+            "mode": mode,
+            "lambda": config.get("clean_loss_lambda", summary.get("clean_loss_lambda", "-")) if mode == "adversarial" else "-",
+            "adv_eps": config.get("adv_training_epsilon", summary.get("adv_training_epsilon", "-")) if mode == "adversarial" else "-",
             "trained_ep": completed_epochs(summary),
             "best_ep": summary.get("best_epoch", "-") if summary else "-",
             "lr": config.get("learning_rate", "-"),
@@ -92,8 +96,9 @@ def main():
 
     rows.sort(key=lambda row: float(row["best_acc"] or 0.0), reverse=True)
     header = (
-        f"{'run':45} | {'model':12} | {'trained':>7} | {'best_ep':>7} | {'lr':>10} | "
-        f"{'batch':>7} | {'best_acc':>8} | {'min_loss':>8} | {'time(s)':>9} | {'checkpoint':>10}"
+        f"{'run':45} | {'model':12} | {'mode':11} | {'lambda':>6} | {'adv_eps':>7} | "
+        f"{'trained':>7} | {'best_ep':>7} | {'lr':>10} | {'batch':>7} | "
+        f"{'best_acc':>8} | {'min_loss':>8} | {'time(s)':>9} | {'checkpoint':>10}"
     )
     print(header)
     print("-" * len(header))
@@ -101,6 +106,9 @@ def main():
         print(
             f"{row['run'][:45]:45} | "
             f"{str(row['model'])[:12]:12} | "
+            f"{str(row['mode'])[:11]:11} | "
+            f"{str(row['lambda']):>6} | "
+            f"{str(row['adv_eps']):>7} | "
             f"{str(row['trained_ep']):>7} | "
             f"{str(row['best_ep']):>7} | "
             f"{str(row['lr']):>10} | "

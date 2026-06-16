@@ -143,22 +143,22 @@ def main():
 
     saved_config = {
         "attack": config.get("attack", "fgsm"),
-        "epsilon": float(config.get("epsilon", 0.03)),
-        "batch_size": int(config.get("batch_size", 128)),
-        "split": config.get("split", "test"),
-        "max_samples": config.get("max_samples"),
-        "seed": int(config.get("seed", 42)),
         "model_path": str(model_path),
         "source_checkpoint_path": source_checkpoint_path(model_path, metadata),
         "trained_models_dir": str(trained_models_dir),
         "attack_runs_dir": str(attack_runs_dir),
+        "split": config.get("split", "test"),
+        "epsilon": float(config.get("epsilon", 0.03)),
+        "batch_size": int(config.get("batch_size", 128)),
+        "max_samples": config.get("max_samples"),
+        "seed": int(config.get("seed", 42)),
         "device": str(device),
     }
     summary = {
         "attack_run_id": run_id,
         "attack_run_dir": str(run_dir),
-        "config": saved_config,
         "device": str(device),
+        "config": saved_config,
         "model": {
             "model_name": metadata.get("model_name"),
             "dataset": metadata.get("dataset"),

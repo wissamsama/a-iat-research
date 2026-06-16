@@ -8,7 +8,6 @@ DATA_DIR = PROJECT_DIR / "data"
 TRAIN_RUNS_DIR = PROJECT_DIR / "train_runs"
 ATTACK_RUNS_DIR = PROJECT_DIR / "attack_runs"
 TRAINED_MODELS_DIR = PROJECT_DIR / "trained_models"
-REPORTS_DIR = PROJECT_DIR / "reports"
 
 
 def as_project_path(value, default=None):
