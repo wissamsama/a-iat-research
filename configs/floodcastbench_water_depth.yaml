@@ -1,0 +1,20 @@
+dataset:
+  name: floodcastbench
+  task: water_depth_forecasting
+  root: data/FloodCastBench
+  event: Australia flood
+  fidelity: high
+  resolution: 30m
+  input_window: 5
+  horizon: 20
+  split: train
+  split_ratios:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+  normalization: none
+
+loader:
+  batch_size: 1
+  num_workers: 0
+  pin_memory: false

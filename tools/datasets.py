@@ -15,6 +15,113 @@ DATASET_ALIASES = {
     "sen1": "sen1floods11",
     "sen1floods": "sen1floods11",
     "sen1-floods11": "sen1floods11",
+    "floodcast": "floodcastbench",
+    "floodcastbench": "floodcastbench",
+    "flood-cast-bench": "floodcastbench",
+}
+
+FLOODCASTBENCH_SOURCES = {
+    "low_mozambique_480m": {
+        "display_name": "Low fidelity 480m - Mozambique",
+        "label": 0,
+        "folder": ("Low-fidelity flood forecasting", "480m", "Mozambique"),
+        "category": "forecast",
+    },
+    "low_pakistan_480m": {
+        "display_name": "Low fidelity 480m - Pakistan",
+        "label": 1,
+        "folder": ("Low-fidelity flood forecasting", "480m", "Pakistan"),
+        "category": "forecast",
+    },
+    "high_australia_30m": {
+        "display_name": "High fidelity 30m - Australia",
+        "label": 2,
+        "folder": ("High-fidelity flood forecasting", "30m", "Australia"),
+        "category": "forecast",
+    },
+    "high_uk_30m": {
+        "display_name": "High fidelity 30m - UK",
+        "label": 3,
+        "folder": ("High-fidelity flood forecasting", "30m", "UK"),
+        "category": "forecast",
+    },
+    "high_australia_60m": {
+        "display_name": "High fidelity 60m - Australia",
+        "label": 4,
+        "folder": ("High-fidelity flood forecasting", "60m", "Australia"),
+        "category": "forecast",
+    },
+    "high_uk_60m": {
+        "display_name": "High fidelity 60m - UK",
+        "label": 5,
+        "folder": ("High-fidelity flood forecasting", "60m", "UK"),
+        "category": "forecast",
+    },
+    "dem": {
+        "display_name": "DEM",
+        "label": 6,
+        "folder": ("Relevant data", "DEM"),
+        "category": "relevant",
+    },
+    "land_cover": {
+        "display_name": "Land use / land cover",
+        "label": 7,
+        "folder": ("Relevant data", "Land use and land cover"),
+        "category": "relevant",
+    },
+    "rainfall_australia": {
+        "display_name": "Rainfall - Australia flood",
+        "label": 8,
+        "folder": ("Relevant data", "Rainfall", "Australia flood"),
+        "category": "rainfall",
+    },
+    "rainfall_mozambique": {
+        "display_name": "Rainfall - Mozambique flood",
+        "label": 9,
+        "folder": ("Relevant data", "Rainfall", "Mozambique flood"),
+        "category": "rainfall",
+    },
+    "rainfall_pakistan": {
+        "display_name": "Rainfall - Pakistan flood",
+        "label": 10,
+        "folder": ("Relevant data", "Rainfall", "Pakistan flood"),
+        "category": "rainfall",
+    },
+    "rainfall_uk": {
+        "display_name": "Rainfall - UK flood",
+        "label": 11,
+        "folder": ("Relevant data", "Rainfall", "UK flood"),
+        "category": "rainfall",
+    },
+    "initial_high": {
+        "display_name": "Initial conditions - high fidelity",
+        "label": 12,
+        "folder": ("Relevant data", "Initial conditions", "High-fidelity flood forecasting"),
+        "category": "initial_conditions",
+    },
+    "initial_low": {
+        "display_name": "Initial conditions - low fidelity",
+        "label": 13,
+        "folder": ("Relevant data", "Initial conditions", "Low-fidelity flood forecasting"),
+        "category": "initial_conditions",
+    },
+}
+
+STURM_FLOOD_SOURCES = {
+    "sentinel1": {
+        "display_name": "Sentinel-1",
+        "label": 0,
+        "sensor_folder": "Sentinel1",
+        "source_folder": "S1",
+        "mask_folder": "Floodmaps",
+    },
+    "sentinel2": {
+        "display_name": "Sentinel-2",
+        "label": 1,
+        "sensor_folder": "Sentinel2",
+        "source_folder": "S2",
+        "mask_folder": "Floodmaps",
+    },
 }
 
 SEN1FLOODS11_SOURCES = {
@@ -118,7 +225,7 @@ DATASET_SPECS = {
             "mean": [],
             "std": [],
         },
-        "sources": ["sentinel1", "sentinel2"],
+        "sources": list(STURM_FLOOD_SOURCES),
     },
     "sen1floods11": {
         "display_name": "Sen1Floods11",
@@ -131,6 +238,18 @@ DATASET_SPECS = {
             "std": [],
         },
         "sources": list(SEN1FLOODS11_SOURCES),
+    },
+    "floodcastbench": {
+        "display_name": "FloodCastBench",
+        "folder": "FloodCastBench",
+        "kind": "floodcastbench",
+        "num_classes": len(FLOODCASTBENCH_SOURCES),
+        "input_shape": "GeoTIFF variable",
+        "normalization": {
+            "mean": [],
+            "std": [],
+        },
+        "sources": list(FLOODCASTBENCH_SOURCES),
     },
 }
 
@@ -168,7 +287,7 @@ def num_classes_for_dataset(dataset, config=None):
 
 def input_shape_for_dataset(dataset, config=None):
     spec = dataset_spec(dataset)
-    if spec["kind"] in {"sturm_flood", "sen1floods11"}:
+    if spec["kind"] in {"sturm_flood", "sen1floods11", "floodcastbench"}:
         return spec["input_shape"]
     if config and config.get("input_size"):
         input_size = int(config["input_size"])
@@ -193,9 +312,11 @@ def normalization_for_dataset(dataset, config=None):
 def class_names_for_dataset(dataset, data_dir=None):
     spec = dataset_spec(dataset)
     if spec["kind"] == "sturm_flood":
-        return ["sentinel1", "sentinel2"]
+        return [config["display_name"] for config in STURM_FLOOD_SOURCES.values()]
     if spec["kind"] == "sen1floods11":
-        return list(SEN1FLOODS11_SOURCES)
+        return [config["display_name"] for config in SEN1FLOODS11_SOURCES.values()]
+    if spec["kind"] == "floodcastbench":
+        return [config["display_name"] for config in FLOODCASTBENCH_SOURCES.values()]
     if spec["kind"] == "cifar_batch" and data_dir is not None:
         metadata_path = Path(data_dir) / spec["meta_file"]
         if metadata_path.exists():
@@ -346,6 +467,8 @@ def build_dataset(config, train=True, transform=None):
         raise ValueError("STURM-Flood is available for visualization only; training loaders are not implemented yet.")
     if spec["kind"] == "sen1floods11":
         raise ValueError("Sen1Floods11 is available for visualization only; training loaders are not implemented yet.")
+    if spec["kind"] == "floodcastbench":
+        raise ValueError("FloodCastBench is available for visualization only; training loaders are not implemented yet.")
     raise ValueError(f"Unsupported dataset kind: {spec['kind']}")
 
 
@@ -465,39 +588,86 @@ def _count_sen1floods11(data_dir):
     return sum(source_counts), labels, "512x512 GeoTIFF source+mask", status
 
 
+
+def _count_tiff_files(path):
+    path = Path(path)
+    if not path.exists():
+        return 0
+    return sum(1 for file_path in path.rglob("*.tif") if file_path.is_file()) + sum(
+        1 for file_path in path.rglob("*.tiff") if file_path.is_file()
+    )
+
+
+def _count_floodcastbench(data_dir):
+    data_dir = Path(data_dir)
+    required = []
+    counts = []
+    labels = set()
+    status_messages = []
+
+    for source_name, config in FLOODCASTBENCH_SOURCES.items():
+        source_dir = data_dir.joinpath(*config["folder"])
+        if not source_dir.exists():
+            required.append(source_dir)
+            continue
+        count = _count_tiff_files(source_dir)
+        counts.append(count)
+        if count:
+            labels.add(config["label"])
+        else:
+            status_messages.append(f"{source_name}: no TIFF files")
+
+    if required:
+        return None, set(), "-", "missing " + ", ".join(str(path) for path in required)
+
+    status = "; ".join(status_messages) if status_messages else None
+    return sum(counts), labels, "GeoTIFF variable", status
+
+
 def _count_sturm_flood(data_dir):
     dataset_dir_path = Path(data_dir) / "dataset"
-    sentinel1_source = dataset_dir_path / "Sentinel1" / "S1"
-    sentinel1_masks = dataset_dir_path / "Sentinel1" / "Floodmaps"
-    sentinel2_source = dataset_dir_path / "Sentinel2" / "S2"
-    sentinel2_masks = dataset_dir_path / "Sentinel2" / "Floodmaps"
+    required = []
+    counts = []
+    labels = set()
+    dims = []
+    status_messages = []
 
-    required = [sentinel1_source, sentinel1_masks, sentinel2_source, sentinel2_masks]
-    missing = [path for path in required if not path.exists()]
-    if missing:
-        return None, None, set(), set(), "-", "-", "missing " + ", ".join(str(path) for path in missing)
+    for source_name, config in STURM_FLOOD_SOURCES.items():
+        source_dir = dataset_dir_path / config["sensor_folder"] / config["source_folder"]
+        mask_dir = dataset_dir_path / config["sensor_folder"] / config["mask_folder"]
+        if not source_dir.exists():
+            required.append(source_dir)
+            continue
+        if not mask_dir.exists():
+            required.append(mask_dir)
+            continue
 
-    sentinel1_files = sorted(sentinel1_source.glob("*.tif"))
-    sentinel2_files = sorted(sentinel2_source.glob("*.tif"))
-    sentinel1_mask_count = len(list(sentinel1_masks.glob("*.tif")))
-    sentinel2_mask_count = len(list(sentinel2_masks.glob("*.tif")))
+        source_files = sorted(source_dir.glob("*.tif"))
+        mask_count = len(list(mask_dir.glob("*.tif")))
+        paired_count = 0
+        missing_masks = 0
+        for source_path in source_files:
+            if (mask_dir / source_path.name).exists():
+                paired_count += 1
+            else:
+                missing_masks += 1
 
-    status = None
-    if len(sentinel1_files) != sentinel1_mask_count or len(sentinel2_files) != sentinel2_mask_count:
-        status = (
-            f"source/mask mismatch: sentinel1 {len(sentinel1_files)}/{sentinel1_mask_count}, "
-            f"sentinel2 {len(sentinel2_files)}/{sentinel2_mask_count}"
-        )
+        counts.append(paired_count)
+        dims.append("128x128 GeoTIFF source+mask")
+        if paired_count:
+            labels.add(config["label"])
+        if missing_masks or len(source_files) != mask_count:
+            status_messages.append(
+                f"{source_name}: source/mask mismatch {len(source_files)}/{mask_count}, {missing_masks} missing masks"
+            )
 
-    return (
-        len(sentinel1_files),
-        len(sentinel2_files),
-        {0} if sentinel1_files else set(),
-        {1} if sentinel2_files else set(),
-        "128x128 GeoTIFF source+mask",
-        "128x128 GeoTIFF source+mask",
-        status,
-    )
+    if required:
+        return None, set(), "-", "-", "missing " + ", ".join(str(path) for path in required)
+
+    status = "; ".join(status_messages) if status_messages else None
+    train_dims = dims[0] if dims else "-"
+    test_dims = dims[1] if len(dims) > 1 else "-"
+    return sum(counts), labels, train_dims, test_dims, status
 
 
 def _count_gtsrb(data_dir):
@@ -600,13 +770,12 @@ def dataset_local_summary(dataset, data_root=Path("data")):
         return summary
 
     if spec["kind"] == "sturm_flood":
-        train_count, test_count, train_labels, test_labels, train_dims, test_dims, error = _count_sturm_flood(data_dir)
-        total_count = None if train_count is None or test_count is None else train_count + test_count
+        total_count, labels, train_dims, test_dims, error = _count_sturm_flood(data_dir)
         summary.update({
             "total_samples": total_count,
             "train_samples": "/",
             "test_samples": "/",
-            "train_classes": len(train_labels | test_labels),
+            "train_classes": len(labels),
             "test_classes": "/",
             "native_train_dimensions": train_dims,
             "native_test_dimensions": test_dims,
@@ -617,6 +786,21 @@ def dataset_local_summary(dataset, data_root=Path("data")):
 
     if spec["kind"] == "sen1floods11":
         total_count, labels, dims, error = _count_sen1floods11(data_dir)
+        summary.update({
+            "total_samples": total_count,
+            "train_samples": "/",
+            "test_samples": "/",
+            "train_classes": len(labels),
+            "test_classes": "/",
+            "native_train_dimensions": dims,
+            "native_test_dimensions": "/",
+        })
+        if error:
+            summary["status"] = error
+        return summary
+
+    if spec["kind"] == "floodcastbench":
+        total_count, labels, dims, error = _count_floodcastbench(data_dir)
         summary.update({
             "total_samples": total_count,
             "train_samples": "/",

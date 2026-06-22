@@ -43,6 +43,8 @@ Mode interactif :
 python .\tools\visualize_data.py
 ```
 
+Le menu s'adapte au dataset choisi : CIFAR/GTSRB proposent split et classes, STURM-Flood propose Sentinel-1/Sentinel-2, et Sen1Floods11 propose ses sources hand/weak/permanent-water.
+
 Exemples avec arguments :
 
 ```powershell
@@ -278,6 +280,33 @@ Le tableau est trie par meilleure accuracy test.
 
 `best_acc` et `min_loss` ne classent pas toujours les runs de la meme facon : l'accuracy mesure les predictions correctes, alors que la loss mesure aussi la confiance du modele.
 
+
+
+## Profilage factuel de FloodCastBench
+
+Les scripts suivants inspectent les fichiers locaux reels dans `data/FloodCastBench/` et generent un profil exploitable avant d'implementer les modeles spatio-temporels.
+
+```powershell
+python .\scripts\inspect_floodcastbench_structure.py --data_dir data\FloodCastBench --output_dir outputs\dataset_profile
+python .\scripts\build_floodcastbench_manifest.py --data_dir data\FloodCastBench --output_dir outputs\dataset_profile
+python .\scripts\profile_floodcastbench_rasters.py --data_dir data\FloodCastBench --output_dir outputs\dataset_profile --max_files_per_group 5
+python .\scripts\check_floodcastbench_temporal_windows.py --data_dir data\FloodCastBench --output_dir outputs\dataset_profile --input_window 5 --horizons 20 72 144
+python .\scripts\visualize_floodcastbench_samples.py --data_dir data\FloodCastBench --output_dir outputs\dataset_profile --threshold 0.01
+```
+
+Sorties principales :
+
+- `outputs/dataset_profile/floodcastbench_structure.md`
+- `outputs/dataset_profile/floodcastbench_manifest.csv`
+- `outputs/dataset_profile/events_summary.csv`
+- `outputs/dataset_profile/variables_summary.csv`
+- `outputs/dataset_profile/raster_statistics.csv`
+- `outputs/dataset_profile/temporal_index_summary.csv`
+- `outputs/dataset_profile/supervised_learning_samples_preview.csv`
+- `outputs/dataset_profile/dataset_questions_answered.md`
+- `outputs/dataset_profile/figures/`
+
+Le rapport separe les faits verifies depuis les fichiers locaux des points encore inconnus ou a verifier dans la documentation officielle.
 
 ## Verification rapide
 

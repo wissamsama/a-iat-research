@@ -23,3 +23,8 @@ checkpoints/
 *.png
 *.jpg
 *.jpeg
+
+# Generated experiment outputs
+outputs/*
+!outputs/floodcastbench_normalization/
+!outputs/floodcastbench_normalization/*.json

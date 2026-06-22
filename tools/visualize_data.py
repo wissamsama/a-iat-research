@@ -13,7 +13,15 @@ PROJECT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-from tools.datasets import DATASET_ALIASES, DATASET_SPECS, SEN1FLOODS11_SOURCES, class_names_for_dataset, normalize_dataset_name
+from tools.datasets import (
+    DATASET_ALIASES,
+    DATASET_SPECS,
+    FLOODCASTBENCH_SOURCES,
+    SEN1FLOODS11_SOURCES,
+    STURM_FLOOD_SOURCES,
+    class_names_for_dataset,
+    normalize_dataset_name,
+)
 
 DEFAULT_DATA_ROOT = PROJECT_DIR / "data"
 
@@ -26,6 +34,8 @@ def visualizer_dataset_config(name, spec):
         kind = "sturm_flood"
     elif spec["kind"] == "sen1floods11":
         kind = "sen1floods11"
+    elif spec["kind"] == "floodcastbench":
+        kind = "floodcastbench"
     config = {
         "display_name": spec["display_name"],
         "folder": spec["folder"],
@@ -44,7 +54,7 @@ def visualizer_dataset_config(name, spec):
 
 
 DATASETS = {name: visualizer_dataset_config(name, spec) for name, spec in DATASET_SPECS.items()}
-DATASET_CHOICES = sorted([*DATASETS.keys(), *DATASET_ALIASES.keys()])
+DATASET_CHOICES = sorted({*DATASETS.keys(), *DATASET_ALIASES.keys()})
 
 def load_pickle(path):
     with path.open("rb") as file:
@@ -63,7 +73,7 @@ def available_datasets(data_root):
 def load_label_names(data_dir, dataset):
     dataset = normalize_dataset_name(dataset)
     config = DATASETS[dataset]
-    if config["kind"] in {"sturm_flood", "sen1floods11", "gtsrb"}:
+    if config["kind"] in {"sturm_flood", "sen1floods11", "floodcastbench", "gtsrb"}:
         return class_names_for_dataset(dataset, data_dir)
 
     metadata = load_pickle(data_dir / config["meta_file"])
@@ -171,10 +181,22 @@ def sturm_dataset_dir(data_dir):
     return dataset_dir_path
 
 
-def load_sturm_sensor_split(data_dir, sensor_name, label):
-    root = sturm_dataset_dir(data_dir) / sensor_name
-    source_dir = root / ("S1" if sensor_name == "Sentinel1" else "S2")
-    mask_dir = root / "Floodmaps"
+def sturm_source_key(source):
+    aliases = {"Sentinel1": "sentinel1", "Sentinel2": "sentinel2", "train": "sentinel1", "test": "sentinel2"}
+    return aliases.get(source, source)
+
+
+def load_sturm_sensor_split(data_dir, source, label=None):
+    source_key = sturm_source_key(source)
+    if source_key not in STURM_FLOOD_SOURCES:
+        available = ", ".join([*STURM_FLOOD_SOURCES, "all"])
+        raise SystemExit(f"For STURM-Flood, --split must be one of: {available}.")
+
+    config = STURM_FLOOD_SOURCES[source_key]
+    root = sturm_dataset_dir(data_dir) / config["sensor_folder"]
+    source_dir = root / config["source_folder"]
+    mask_dir = root / config["mask_folder"]
+    label = config["label"] if label is None else label
 
     if not source_dir.exists():
         raise SystemExit(f"Missing STURM-Flood source folder: {source_dir}")
@@ -188,24 +210,34 @@ def load_sturm_sensor_split(data_dir, sensor_name, label):
         mask_path = mask_dir / source_path.name
         if not mask_path.exists():
             continue
-        samples.append((source_path, mask_path, sensor_name))
+        samples.append((source_path, mask_path, source_key))
         labels.append(label)
         filenames.append(str(source_path.relative_to(data_dir)))
     return samples, np.array(labels), filenames
 
 
+def sturm_source_options(split):
+    if split == "all":
+        return list(STURM_FLOOD_SOURCES)
+    source_key = sturm_source_key(split)
+    if source_key not in STURM_FLOOD_SOURCES:
+        available = ", ".join([*STURM_FLOOD_SOURCES, "all"])
+        raise SystemExit(f"For STURM-Flood, --split must be one of: {available}.")
+    return [source_key]
+
+
 def load_sturm_split(data_dir, split):
-    if split in {"sentinel1", "train"}:
-        return load_sturm_sensor_split(data_dir, "Sentinel1", 0)
-    if split in {"sentinel2", "test"}:
-        return load_sturm_sensor_split(data_dir, "Sentinel2", 1)
-    if split != "all":
-        raise SystemExit("For STURM-Flood, --split must be sentinel1, sentinel2, or all.")
-
-    s1_images, s1_labels, s1_filenames = load_sturm_sensor_split(data_dir, "Sentinel1", 0)
-    s2_images, s2_labels, s2_filenames = load_sturm_sensor_split(data_dir, "Sentinel2", 1)
-    return s1_images + s2_images, np.concatenate([s1_labels, s2_labels]), s1_filenames + s2_filenames
-
+    all_images = []
+    all_labels = []
+    all_filenames = []
+    for source_key in sturm_source_options(split):
+        images, labels, filenames = load_sturm_sensor_split(data_dir, source_key)
+        all_images.extend(images)
+        all_labels.append(labels)
+        all_filenames.extend(filenames)
+    if not all_labels:
+        return [], np.array([], dtype=int), []
+    return all_images, np.concatenate(all_labels), all_filenames
 
 
 def sen1_dataset_dir(data_dir):
@@ -269,6 +301,51 @@ def load_sen1_split(data_dir, split):
     return all_images, np.concatenate(all_labels), all_filenames
 
 
+def floodcast_source_options(split):
+    if split == "all":
+        return list(FLOODCASTBENCH_SOURCES)
+    if split not in FLOODCASTBENCH_SOURCES:
+        available = ", ".join([*FLOODCASTBENCH_SOURCES, "all"])
+        raise SystemExit(f"For FloodCastBench, --split must be one of: {available}.")
+    return [split]
+
+
+def floodcast_sort_key(path):
+    stem = path.stem
+    if stem.isdigit():
+        return (0, int(stem))
+    return (1, stem.lower())
+
+
+def load_floodcast_source(data_dir, source_name):
+    config = FLOODCASTBENCH_SOURCES[source_name]
+    source_dir = data_dir.joinpath(*config["folder"])
+    if not source_dir.exists():
+        raise SystemExit(f"Missing FloodCastBench folder: {source_dir}")
+
+    image_paths = sorted(
+        [*source_dir.rglob("*.tif"), *source_dir.rglob("*.tiff")],
+        key=floodcast_sort_key,
+    )
+    labels = np.full(len(image_paths), config["label"], dtype=int)
+    filenames = [str(image_path.relative_to(data_dir)) for image_path in image_paths]
+    return image_paths, labels, filenames
+
+
+def load_floodcast_split(data_dir, split):
+    all_images = []
+    all_labels = []
+    all_filenames = []
+    for source_name in floodcast_source_options(split):
+        images, labels, filenames = load_floodcast_source(data_dir, source_name)
+        all_images.extend(images)
+        all_labels.append(labels)
+        all_filenames.extend(filenames)
+    if not all_labels:
+        return [], np.array([], dtype=int), []
+    return all_images, np.concatenate(all_labels), all_filenames
+
+
 def load_split(data_dir, dataset, split):
     dataset = normalize_dataset_name(dataset)
     config = DATASETS[dataset]
@@ -276,6 +353,8 @@ def load_split(data_dir, dataset, split):
         return load_sturm_split(data_dir, split)
     if config["kind"] == "sen1floods11":
         return load_sen1_split(data_dir, split)
+    if config["kind"] == "floodcastbench":
+        return load_floodcast_split(data_dir, split)
     if split not in {"train", "test", "all"}:
         raise SystemExit(f"For {dataset}, --split must be train, test, or all.")
     if config["kind"] == "gtsrb":
@@ -294,6 +373,32 @@ def select_examples(labels, samples_per_class, seed, class_id=None):
         if count:
             selected_indices.extend(rng.choice(matches, size=count, replace=False))
 
+    return np.array(selected_indices)
+
+
+def temporal_indices(matches, count, mode, rng):
+    if count <= 0:
+        return []
+    if mode == "first":
+        return matches[:count]
+    if mode == "middle":
+        start = max(0, (len(matches) - count) // 2)
+        return matches[start:start + count]
+    if mode == "last":
+        return matches[-count:]
+    if mode == "evenly_spaced":
+        positions = np.linspace(0, len(matches) - 1, num=count, dtype=int)
+        return matches[positions]
+    return rng.choice(matches, size=count, replace=False)
+
+
+def select_floodcast_examples(labels, samples_per_class, seed, mode):
+    rng = np.random.default_rng(seed)
+    selected_indices = []
+    for current_label in sorted(np.unique(labels)):
+        matches = np.flatnonzero(labels == current_label)
+        count = min(samples_per_class, len(matches))
+        selected_indices.extend(temporal_indices(matches, count, mode, rng))
     return np.array(selected_indices)
 
 
@@ -319,6 +424,8 @@ def load_image_for_display(image):
     if isinstance(image, tuple):
         return load_geotiff_pair_for_display(image)
     if isinstance(image, Path):
+        if image.suffix.lower() in {".tif", ".tiff"}:
+            return geotiff_source_to_rgb(image)
         with Image.open(image) as opened_image:
             return np.asarray(opened_image.convert("RGB"))
     return image
@@ -404,6 +511,57 @@ def plot_examples(images, labels, label_names, indices, columns):
     plt.show()
 
 
+def is_floodcast_temporal_source(split):
+    if split not in FLOODCASTBENCH_SOURCES:
+        return False
+    return FLOODCASTBENCH_SOURCES[split]["category"] in {"forecast", "rainfall"}
+
+
+def is_floodcast_video_source(split):
+    return is_floodcast_temporal_source(split)
+
+
+def plot_floodcast_video(images, label_names, label_id, split, step, interval):
+    if not is_floodcast_video_source(split):
+        raise SystemExit("Le mode video est disponible seulement pour forecast/rainfall FloodCastBench.")
+
+    frame_paths = list(images)[::max(1, step)]
+    if not frame_paths:
+        raise SystemExit("No frame found for FloodCastBench video mode.")
+
+    fig, axis = plt.subplots(figsize=(6, 5))
+    first_frame = load_image_for_display(frame_paths[0])
+    image_artist = axis.imshow(first_frame)
+    axis.axis("off")
+    title = axis.set_title("", fontsize=9)
+
+    def update(frame_index):
+        frame_path = frame_paths[frame_index]
+        image_artist.set_data(load_image_for_display(frame_path))
+        title.set_text(
+            f"{label_names[label_id]} | frame {frame_index + 1}/{len(frame_paths)} | {frame_path.stem}"
+        )
+        return image_artist, title
+
+    from matplotlib.animation import FuncAnimation
+
+    animation = FuncAnimation(
+        fig,
+        update,
+        frames=len(frame_paths),
+        interval=max(1, interval),
+        repeat=True,
+        blit=False,
+    )
+    update(0)
+    fig.tight_layout()
+    # Mark as drawn to avoid a false-positive warning in non-interactive test backends.
+    animation._draw_was_started = True
+    plot_floodcast_video._animation = animation
+    plt.show()
+    return animation
+
+
 def ask_choice(title, options, default_index=0):
     print(f"\n{title}")
     for index, option in enumerate(options, start=1):
@@ -449,6 +607,127 @@ def ask_optional_class(label_names):
             print(error)
 
 
+
+def dataset_kind(dataset):
+    return DATASETS[normalize_dataset_name(dataset)]["kind"]
+
+
+def is_classification_dataset(dataset):
+    return dataset_kind(dataset) in {"cifar", "gtsrb"}
+
+
+def default_split_for_dataset(dataset):
+    kind = dataset_kind(dataset)
+    if kind in {"cifar", "gtsrb"}:
+        return "train"
+    if kind == "sturm_flood":
+        return "sentinel1"
+    if kind == "sen1floods11":
+        return "hand_s1"
+    if kind == "floodcastbench":
+        return "low_mozambique_480m"
+    return "all"
+
+
+def split_choices_for_dataset(dataset):
+    kind = dataset_kind(dataset)
+    if kind in {"cifar", "gtsrb"}:
+        return ["train", "test", "all"]
+    if kind == "sturm_flood":
+        return [*STURM_FLOOD_SOURCES, "all"]
+    if kind == "sen1floods11":
+        return [*SEN1FLOODS11_SOURCES, "all"]
+    if kind == "floodcastbench":
+        return [*FLOODCASTBENCH_SOURCES, "all"]
+    return ["all"]
+
+
+def validate_split_for_dataset(dataset, split):
+    choices = split_choices_for_dataset(dataset)
+    if split not in choices:
+        available = ", ".join(choices)
+        raise SystemExit(f"For {dataset}, --split must be one of: {available}.")
+    return split
+
+
+def floodcast_menu():
+    category_options = [
+        ("low", "Low-fidelity flood forecasting"),
+        ("high", "High-fidelity flood forecasting"),
+        ("rainfall", "Rainfall"),
+        ("dem", "DEM"),
+        ("land_cover", "Land use / land cover"),
+        ("initial", "Initial conditions"),
+        ("all", "Toutes les donnees FloodCastBench"),
+    ]
+    category = category_options[ask_choice("Type de donnees FloodCastBench", [label for _, label in category_options])][0]
+
+    if category == "all":
+        return "all"
+    if category == "dem":
+        return "dem"
+    if category == "land_cover":
+        return "land_cover"
+
+    if category == "low":
+        options = [
+            ("low_mozambique_480m", "Mozambique - 480m"),
+            ("low_pakistan_480m", "Pakistan - 480m"),
+        ]
+    elif category == "high":
+        options = [
+            ("high_australia_30m", "Australia - 30m"),
+            ("high_australia_60m", "Australia - 60m"),
+            ("high_uk_30m", "UK - 30m"),
+            ("high_uk_60m", "UK - 60m"),
+        ]
+    elif category == "rainfall":
+        options = [
+            ("rainfall_australia", "Australia flood"),
+            ("rainfall_mozambique", "Mozambique flood"),
+            ("rainfall_pakistan", "Pakistan flood"),
+            ("rainfall_uk", "UK flood"),
+        ]
+    else:
+        options = [
+            ("initial_high", "High-fidelity initial conditions"),
+            ("initial_low", "Low-fidelity initial conditions"),
+        ]
+
+    return options[ask_choice("Evenement / resolution", [label for _, label in options])][0]
+
+
+def ask_floodcast_time_mode(split):
+    if not is_floodcast_temporal_source(split):
+        return "random"
+
+    options = [
+        ("evenly_spaced", "Reparties sur toute la sequence"),
+        ("video", "Video interactive"),
+        ("first", "Debut de sequence"),
+        ("middle", "Milieu de sequence"),
+        ("last", "Fin de sequence"),
+        ("random", "Aleatoire"),
+    ]
+    return options[ask_choice("Selection temporelle", [label for _, label in options])][0]
+
+
+def source_menu(dataset):
+    kind = dataset_kind(dataset)
+    if kind == "sturm_flood":
+        keys = [*STURM_FLOOD_SOURCES, "all"]
+        labels = [config["display_name"] for config in STURM_FLOOD_SOURCES.values()] + ["Toutes"]
+        return "Source a visualiser", keys, labels
+    if kind == "sen1floods11":
+        keys = [*SEN1FLOODS11_SOURCES, "all"]
+        labels = [config["display_name"] for config in SEN1FLOODS11_SOURCES.values()] + ["Toutes"]
+        return "Source a visualiser", keys, labels
+    if kind == "floodcastbench":
+        keys = [*FLOODCASTBENCH_SOURCES, "all"]
+        labels = [config["display_name"] for config in FLOODCASTBENCH_SOURCES.values()] + ["Toutes"]
+        return "Bloc a visualiser", keys, labels
+    return "Split a visualiser", ["train", "test", "all"], ["train", "test", "all"]
+
 def interactive_args():
     data_root = DEFAULT_DATA_ROOT
     datasets = available_datasets(data_root)
@@ -460,28 +739,58 @@ def interactive_args():
     data_dir = dataset_dir(data_root, dataset)
     label_names = load_label_names(data_dir, dataset)
 
-    if DATASETS[dataset]["kind"] == "sturm_flood":
-        split = ["sentinel1", "sentinel2", "all"][
-            ask_choice("Source a visualiser", ["Sentinel-1", "Sentinel-2", "Les deux"])
-        ]
-        class_id = None
-    elif DATASETS[dataset]["kind"] == "sen1floods11":
-        source_keys = [*SEN1FLOODS11_SOURCES, "all"]
-        source_labels = [config["display_name"] for config in SEN1FLOODS11_SOURCES.values()] + ["Toutes"]
-        split = source_keys[ask_choice("Source a visualiser", source_labels)]
-        class_id = None
+    if dataset_kind(dataset) == "floodcastbench":
+        split = floodcast_menu()
+        time_mode = ask_floodcast_time_mode(split)
     else:
-        split = ["train", "test", "all"][ask_choice("Split a visualiser", ["train", "test", "all"])]
-        class_id = ask_optional_class(label_names)
-    samples_per_class = ask_int("Images par classe", 8, minimum=1, maximum=100)
+        split_title, split_keys, split_labels = source_menu(dataset)
+        split = split_keys[ask_choice(split_title, split_labels)]
+        time_mode = "random"
 
+    class_id = None
     max_classes = None
-    if class_id is None:
-        max_classes = ask_int("Nombre maximum de classes", len(label_names), minimum=1, maximum=len(label_names), default_label="max")
+    video_step = 10
+    video_interval = 120
 
-    default_columns = samples_per_class if class_id is None else min(samples_per_class, 8)
-    columns = ask_int("Nombre de colonnes", default_columns, minimum=1, maximum=20)
-    seed = ask_int("Seed aleatoire", 7, minimum=0)
+    if dataset_kind(dataset) == "floodcastbench" and time_mode == "video":
+        if not is_floodcast_video_source(split):
+            raise SystemExit("Le mode video est disponible seulement pour forecast/rainfall FloodCastBench.")
+        samples_per_class = 1
+        columns = 1
+        seed = 7
+        video_step = ask_int("Afficher une frame toutes les N images", 10, minimum=1, maximum=10000)
+        video_interval = ask_int("Delai entre frames en ms", 120, minimum=1, maximum=10000)
+    else:
+        if is_classification_dataset(dataset):
+            class_id = ask_optional_class(label_names)
+            sample_prompt = "Images par classe"
+            default_samples = 8
+            default_columns = min(default_samples, 8)
+        else:
+            if dataset_kind(dataset) == "floodcastbench":
+                sample_prompt = "Images par bloc"
+                default_samples = 4
+                default_columns = 2
+            else:
+                sample_prompt = "Paires source/masque par source"
+                default_samples = 4
+                default_columns = 1
+
+        samples_per_class = ask_int(sample_prompt, default_samples, minimum=1, maximum=100)
+
+        if is_classification_dataset(dataset) and class_id is None:
+            max_classes = ask_int(
+                "Nombre maximum de classes",
+                len(label_names),
+                minimum=1,
+                maximum=len(label_names),
+                default_label="max",
+            )
+
+        if is_classification_dataset(dataset):
+            default_columns = samples_per_class if class_id is None else min(samples_per_class, 8)
+        columns = ask_int("Nombre de colonnes", default_columns, minimum=1, maximum=20)
+        seed = ask_int("Seed aleatoire", 7, minimum=0)
 
     return argparse.Namespace(
         data_root=data_root,
@@ -492,24 +801,47 @@ def interactive_args():
         max_classes=max_classes,
         columns=columns,
         seed=seed,
+        time_mode=time_mode,
+        video_step=video_step,
+        video_interval=video_interval,
     )
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Visualize CIFAR-10, CIFAR-100, GTSRB, STURM-Flood, or Sen1Floods11 samples from the local data folder.")
-    parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Folder containing CIFAR-10, CIFAR-100, GTSRB, STURM-Flood, and/or Sen1Floods11 folders.")
-    parser.add_argument("--dataset", choices=DATASET_CHOICES, default="cifar10", help="Dataset to visualize. Use sturm_flood for STURM-Flood or sen1floods11 for Sen1Floods11. The typo alias 'gtrsb' is accepted for GTSRB.")
+    parser = argparse.ArgumentParser(description="Visualize local image and GeoTIFF datasets.")
+    parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT, help="Folder containing supported dataset folders.")
+    parser.add_argument("--dataset", choices=DATASET_CHOICES, default="cifar10", help="Dataset to visualize. Aliases include gtrsb, sturm, sen1, and floodcast.")
     parser.add_argument(
         "--split",
-        choices=["train", "test", "sentinel1", "sentinel2", "hand_s1", "hand_s2", "weak_s1", "weak_s2", "perm_water_s1", "all"],
-        default="train",
-        help="Data split/source to visualize. Use sentinel1/sentinel2 for STURM-Flood or hand_s1/hand_s2/weak_s1/weak_s2/perm_water_s1 for Sen1Floods11.",
+        choices=[
+            "train",
+            "test",
+            "sentinel1",
+            "sentinel2",
+            "hand_s1",
+            "hand_s2",
+            "weak_s1",
+            "weak_s2",
+            "perm_water_s1",
+            *FLOODCASTBENCH_SOURCES,
+            "all",
+        ],
+        default=None,
+        help="Data split/source/block to visualize. For FloodCastBench, use one of its block keys or all.",
     )
     parser.add_argument("--samples-per-class", type=int, default=8, help="Number of examples per class.")
-    parser.add_argument("--class-name", help="Optional class name or class id to visualize, for example: cat, dog, truck, apple, 14, class_00014.")
+    parser.add_argument("--class-name", help="Optional class name or class id to visualize for CIFAR/GTSRB datasets.")
     parser.add_argument("--max-classes", type=int, help="Limit the number of classes shown, useful for CIFAR-100 and GTSRB.")
     parser.add_argument("--columns", type=int, help="Number of image columns in the output grid.")
     parser.add_argument("--seed", type=int, default=7, help="Random seed used to pick samples.")
+    parser.add_argument(
+        "--time-mode",
+        choices=["evenly_spaced", "video", "first", "middle", "last", "random"],
+        default=None,
+        help="FloodCastBench temporal selection mode. Defaults to evenly_spaced for temporal data and random for fixed data.",
+    )
+    parser.add_argument("--video-step", type=int, default=10, help="FloodCastBench video mode: display one frame every N files.")
+    parser.add_argument("--video-interval", type=int, default=120, help="FloodCastBench video mode: delay between frames in milliseconds.")
     return parser.parse_args()
 
 
@@ -521,6 +853,24 @@ def build_args():
     args.dataset = normalize_dataset_name(args.dataset)
     data_dir = dataset_dir(args.data_root, args.dataset)
     label_names = load_label_names(data_dir, args.dataset) if data_dir.exists() else []
+    args.split = validate_split_for_dataset(args.dataset, args.split or default_split_for_dataset(args.dataset))
+
+    if args.class_name and not is_classification_dataset(args.dataset):
+        raise SystemExit("--class-name is only available for CIFAR/GTSRB classification datasets.")
+
+    if dataset_kind(args.dataset) == "floodcastbench":
+        is_temporal = is_floodcast_temporal_source(args.split)
+        if args.time_mode is None:
+            args.time_mode = "evenly_spaced" if is_temporal else "random"
+        elif not is_temporal and args.time_mode in {"video", "first", "middle", "last"}:
+            raise SystemExit("This FloodCastBench block is fixed in time; use no --time-mode or --time-mode random.")
+        elif args.time_mode == "video" and not is_floodcast_video_source(args.split):
+            raise SystemExit("--time-mode video is available only for FloodCastBench forecast/rainfall splits.")
+    elif args.time_mode == "video":
+        raise SystemExit("--time-mode video is only available for FloodCastBench.")
+    elif args.time_mode is None:
+        args.time_mode = "random"
+
     args.class_id = resolve_class_id(args.class_name, label_names) if args.class_name else None
     return args
 
@@ -533,13 +883,22 @@ def main():
 
     label_names = load_label_names(data_dir, args.dataset)
     images, labels, _ = load_split(data_dir, args.dataset, args.split)
-    indices = select_examples(labels, args.samples_per_class, args.seed, args.class_id)
+
+    if dataset_kind(args.dataset) == "floodcastbench" and args.time_mode == "video":
+        label_id = int(labels[0]) if len(labels) else 0
+        plot_floodcast_video(images, label_names, label_id, args.split, args.video_step, args.video_interval)
+        return
+
+    if dataset_kind(args.dataset) == "floodcastbench":
+        indices = select_floodcast_examples(labels, args.samples_per_class, args.seed, args.time_mode)
+    else:
+        indices = select_examples(labels, args.samples_per_class, args.seed, args.class_id)
 
     if args.max_classes and args.class_id is None:
         max_images = args.max_classes * args.samples_per_class
         indices = indices[:max_images]
 
-    columns = args.columns or args.samples_per_class
+    columns = args.columns or (args.samples_per_class if is_classification_dataset(args.dataset) else 1)
     plot_examples(images, labels, label_names, indices, columns)
 
 
