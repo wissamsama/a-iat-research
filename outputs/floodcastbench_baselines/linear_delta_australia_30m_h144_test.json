@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "baseline": "linear_delta",
+    "dataset": "FloodCastBench",
+    "event": "Australia flood",
+    "fidelity": "high",
+    "resolution": "30m",
+    "split": "test",
+    "input_window": 5,
+    "horizon": 144,
+    "num_samples": 285,
+    "num_available_samples": 285,
+    "prediction_rule": "prediction = clamp(last + horizon * (last - previous), min=0)",
+    "elapsed_seconds": 33.89811929999996,
+    "raw_root_mtime_unchanged": true
+  },
+  "water_depth": {
+    "mae": 0.002139599630054078,
+    "mse": 7.43083815766384e-05,
+    "rmse": 0.00862023094682726,
+    "nse": 0.9998255442723992,
+    "pearson_r": 0.999913878770753
+  },
+  "mask": {
+    "0.001": {
+      "csi": 0.9050697427661202,
+      "iou": 0.9050697427661202,
+      "f1": 0.9501696682788929,
+      "precision": 0.9331314520051678,
+      "recall": 0.9678416646144444
+    },
+    "0.01": {
+      "csi": 0.9940896167567812,
+      "iou": 0.9940896167567812,
+      "f1": 0.9970360493362221,
+      "precision": 0.998850616170534,
+      "recall": 0.9952280634299812
+    }
+  },
+  "propagation_path": {
+    "0.001": {
+      "csi": 0.010508052092557002,
+      "iou": 0.010508052092557002,
+      "f1": 0.020797562316889926,
+      "precision": 0.011993925672337832,
+      "recall": 0.07818865764890338
+    },
+    "0.01": {
+      "csi": 0.22581514214941592,
+      "iou": 0.22581514214941592,
+      "f1": 0.3684326198703313,
+      "precision": 0.46021451258059476,
+      "recall": 0.3071723600864256
+    }
+  }
+}
