@@ -1,0 +1,17 @@
+experiment_name: simplecnn_gtsrb
+model: simple_cnn
+dataset: gtsrb
+data_dir: data\GTSRB
+train_runs_dir: train_runs
+input_size: 32
+training_mode: classic
+clean_loss_lambda: 0.5
+adv_training_epsilon: 0.03
+adv_training_attack: fgsm
+epochs: 10
+batch_size: 128
+learning_rate: 0.001
+early_stopping_patience: 15
+seed: 42
+num_workers: 0
+device: cpu

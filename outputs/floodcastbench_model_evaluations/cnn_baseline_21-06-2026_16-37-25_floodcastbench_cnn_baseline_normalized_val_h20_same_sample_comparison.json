@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "checkpoint": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\train_runs\\21-06-2026_16-37-25_floodcastbench_cnn_baseline_normalized\\checkpoint_best.pth",
+    "split": "val",
+    "horizon": 20,
+    "input_window": 5,
+    "event": "Australia flood",
+    "resolution": "30m",
+    "normalization_mode": "standard",
+    "normalization_stats_path": "outputs/floodcastbench_normalization/water_depth_australia_30m_train_input5_h20_stats.json",
+    "metrics_are_denormalized": true,
+    "num_batches": 20,
+    "num_available_samples": 408,
+    "raw_root_mtime_unchanged": true,
+    "elapsed_seconds": 20.448353399988264
+  },
+  "rows": [
+    {
+      "method": "cnn_baseline_raw",
+      "split": "val",
+      "horizon": 20,
+      "mae": 0.2400169852622491,
+      "rmse": 0.4302653784493728,
+      "mse": 0.185128295892182,
+      "nse": 0.38142007336150296,
+      "csi_gamma_0_001": 0.8938616132510222,
+      "csi_gamma_0_01": 0.585514146519383,
+      "path_iou_gamma_0_001": 0.5234728445835137,
+      "path_iou_gamma_0_01": 0.07453733353309087,
+      "negative_prediction_ratio": 0.09192333370447159,
+      "pred_min": -0.030908115208148956,
+      "pred_max": 4.772696495056152,
+      "pred_mean": 0.3514067828655243
+    },
+    {
+      "method": "cnn_baseline_clamped",
+      "split": "val",
+      "horizon": 20,
+      "mae": 0.23916223935556213,
+      "rmse": 0.43024036678415933,
+      "mse": 0.18510677321056795,
+      "nse": 0.3814919883475385,
+      "csi_gamma_0_001": 0.8938616132510222,
+      "csi_gamma_0_01": 0.585514146519383,
+      "path_iou_gamma_0_001": 0.5234728445835137,
+      "path_iou_gamma_0_01": 0.07453733353309087,
+      "negative_prediction_ratio": 0.09192333370447159,
+      "pred_min": -0.030908115208148956,
+      "pred_max": 4.772696495056152,
+      "pred_mean": 0.3514067828655243
+    },
+    {
+      "method": "persistence",
+      "split": "val",
+      "horizon": 20,
+      "mae": 0.017694853807941734,
+      "rmse": 0.03521460757311404,
+      "mse": 0.0012400685865284204,
+      "nse": 0.9958564868131871,
+      "csi_gamma_0_001": 0.9688418731752857,
+      "csi_gamma_0_01": 0.9318733258509376,
+      "path_iou_gamma_0_001": 0.0,
+      "path_iou_gamma_0_01": 0.0,
+      "negative_prediction_ratio": null
+    },
+    {
+      "method": "linear_delta",
+      "split": "val",
+      "horizon": 20,
+      "mae": 0.007934216059868368,
+      "rmse": 0.01693333302849155,
+      "mse": 0.00028673776745380284,
+      "nse": 0.9990419064449264,
+      "csi_gamma_0_001": 0.9220131744277412,
+      "csi_gamma_0_01": 0.9197981382163172,
+      "path_iou_gamma_0_001": 0.15595629715125975,
+      "path_iou_gamma_0_01": 0.2666301686645673,
+      "negative_prediction_ratio": null
+    }
+  ]
+}

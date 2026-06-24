@@ -1,0 +1,17 @@
+experiment_name: simplecnn_cifar10
+model: simple_cnn
+dataset: cifar10
+data_dir: data/CIFAR-10
+train_runs_dir: train_runs
+input_size: 32
+training_mode: classic
+clean_loss_lambda: 0.5
+adv_training_epsilon: 0.03
+adv_training_attack: fgsm
+epochs: 10
+batch_size: 128
+learning_rate: 0.01
+early_stopping_patience: 0
+seed: 42
+num_workers: 0
+device: cpu

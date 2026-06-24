@@ -1,0 +1,11 @@
+event,resolution,variable,num_time_steps,min_time_index,max_time_index,median_step_difference,has_missing_steps,missing_steps_count,example_first_file,example_last_file
+Australia flood,30m,water_depth_forecast,2881,0,864000,300,False,0,High-fidelity flood forecasting/30m/Australia/0.tif,High-fidelity flood forecasting/30m/Australia/864000.tif
+Australia flood,60m,water_depth_forecast,2881,0,864000,300,False,0,High-fidelity flood forecasting/60m/Australia/0.tif,High-fidelity flood forecasting/60m/Australia/864000.tif
+Australia flood,unknown,rainfall,481,,,,False,0,Relevant data/Rainfall/Australia flood/20220220-S190000.tif,Relevant data/Rainfall/Australia flood/20220302-S190000.tif
+Mozambique flood,480m,water_depth_forecast,1729,0,518400,300,False,0,Low-fidelity flood forecasting/480m/Mozambique/0.tif,Low-fidelity flood forecasting/480m/Mozambique/518400.tif
+Mozambique flood,unknown,rainfall,289,,,,False,0,Relevant data/Rainfall/Mozambique flood/20190314-S030000.tif,Relevant data/Rainfall/Mozambique flood/20190320-S030000.tif
+Pakistan flood,480m,water_depth_forecast,4033,0,1209600,300,False,0,Low-fidelity flood forecasting/480m/Pakistan/0.tif,Low-fidelity flood forecasting/480m/Pakistan/1209600.tif
+Pakistan flood,unknown,rainfall,672,,,,False,0,Relevant data/Rainfall/Pakistan flood/20220818-S000000.tif,Relevant data/Rainfall/Pakistan flood/20220831-S233000.tif
+UK flood,30m,water_depth_forecast,865,0,259200,300,False,0,High-fidelity flood forecasting/30m/UK/0.tif,High-fidelity flood forecasting/30m/UK/259200.tif
+UK flood,60m,water_depth_forecast,865,0,259200,300,False,0,High-fidelity flood forecasting/60m/UK/0.tif,High-fidelity flood forecasting/60m/UK/259200.tif
+UK flood,unknown,rainfall,145,,,,False,0,Relevant data/Rainfall/UK flood/20151204-S120000.tif,Relevant data/Rainfall/UK flood/20151207-S120000.tif

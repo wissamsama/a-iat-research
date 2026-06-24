@@ -1,0 +1,37 @@
+{
+  "attack_run_id": "10-06-2026_17-49-01_fgsm_simplecnn_cifar10",
+  "attack_run_dir": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\attack_runs\\10-06-2026_17-49-01_fgsm_simplecnn_cifar10",
+  "device": "cpu",
+  "config": {
+    "attack": "fgsm",
+    "model_path": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\trained_models\\10-06-2026_12-15-39_simple_cnn_cifar10_acc0.8095.pth",
+    "source_checkpoint_path": "train_runs/10-06-2026_12-15-39_simplecnn_cifar10/checkpoint.pth",
+    "trained_models_dir": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\trained_models",
+    "attack_runs_dir": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\attack_runs",
+    "split": "test",
+    "epsilon": 0.03,
+    "batch_size": 128,
+    "max_samples": null,
+    "seed": 42,
+    "device": "cpu"
+  },
+  "model": {
+    "model_name": "simple_cnn",
+    "dataset": "cifar10",
+    "num_classes": 10,
+    "source_run_id": "10-06-2026_12-15-39_simplecnn_cifar10"
+  },
+  "metrics": {
+    "attack": "fgsm",
+    "epsilon": 0.03,
+    "split": "test",
+    "num_samples": 10000,
+    "clean_loss": 0.5755278744220733,
+    "clean_acc": 0.8095,
+    "adversarial_loss": 0.6479130738258362,
+    "adversarial_acc": 0.7896,
+    "accuracy_drop": 0.01990000000000003,
+    "success_rate_on_clean_correct": 0.12056825200741199,
+    "duration_sec": 17.953323199995793
+  }
+}

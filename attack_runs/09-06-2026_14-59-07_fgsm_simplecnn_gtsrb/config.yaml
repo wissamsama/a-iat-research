@@ -1,0 +1,11 @@
+attack: fgsm
+model_path: C:\Users\GDYZ5751\Desktop\UTeM\code\a-iat-research\trained_models\09-06-2026_12-28-15_simple_cnn_gtsrb_acc0.8651.pth
+source_checkpoint_path: train_runs/09-06-2026_12-28-15_simplecnn_gtsrb/checkpoint.pth
+trained_models_dir: C:\Users\GDYZ5751\Desktop\UTeM\code\a-iat-research\trained_models
+attack_runs_dir: C:\Users\GDYZ5751\Desktop\UTeM\code\a-iat-research\attack_runs
+split: test
+epsilon: 0.03
+batch_size: 128
+max_samples: null
+seed: 42
+device: cpu

@@ -1,0 +1,2 @@
+attack,epsilon,split,num_samples,clean_loss,clean_acc,adversarial_loss,adversarial_acc,accuracy_drop,success_rate_on_clean_correct,duration_sec
+fgsm,0.03,test,10000,0.6259335117340088,0.787,5.547098335266114,0.0508,0.7362000000000001,0.935705209656925,17.596020700002555

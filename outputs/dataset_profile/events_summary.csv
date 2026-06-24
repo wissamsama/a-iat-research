@@ -1,0 +1,5 @@
+event,num_files,num_rasters,variables,resolutions
+Australia flood,6250,6247,dem;georeference;initial_condition;lulc;rainfall;water_depth_forecast,30m;60m
+Mozambique flood,2024,2021,dem;georeference;initial_condition;lulc;rainfall;water_depth_forecast,480m
+Pakistan flood,4711,4708,dem;georeference;initial_condition;lulc;rainfall;water_depth_forecast,480m
+UK flood,1882,1879,dem;georeference;initial_condition;lulc;rainfall;water_depth_forecast,30m;60m

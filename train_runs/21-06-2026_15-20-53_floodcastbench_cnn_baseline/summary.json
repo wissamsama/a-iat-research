@@ -1,0 +1,29 @@
+{
+  "experiment_name": "floodcastbench_cnn_baseline",
+  "dataset": "floodcastbench",
+  "event": "Australia flood",
+  "resolution": "30m",
+  "input_window": 5,
+  "horizon": 20,
+  "model": "flood_cnn_baseline",
+  "loss": "mse",
+  "device": "cpu",
+  "best_epoch": 1,
+  "best_val_rmse": 0.653160590511513,
+  "test_metrics": {
+    "mae": 0.577660387473954,
+    "mse": 0.5100522418005626,
+    "rmse": 0.7141794184940943,
+    "nse": -0.20917193541551904,
+    "pearson_r": -0.05485887239564706,
+    "csi_gamma_0_001": 0.5204702565469992,
+    "csi_gamma_0_01": 0.4683552659578626,
+    "path_iou_gamma_0_001": 0.009158137779255187,
+    "path_iou_gamma_0_01": 0.0004269121493309256,
+    "loss": 0.5100522339344025,
+    "batches": 2
+  },
+  "raw_root_mtime_unchanged": true,
+  "total_time_sec": 5.978677499981131,
+  "run_dir": "C:\\Users\\GDYZ5751\\Desktop\\UTeM\\code\\a-iat-research\\train_runs\\21-06-2026_15-20-53_floodcastbench_cnn_baseline"
+}

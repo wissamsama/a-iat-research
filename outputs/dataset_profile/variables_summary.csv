@@ -1,0 +1,7 @@
+variable_guess,num_files,num_rasters,events,resolutions
+dem,8,4,Australia flood;Mozambique flood;Pakistan flood;UK flood,
+georeference,5,0,Australia flood;Mozambique flood;Pakistan flood;UK flood,
+initial_condition,6,6,Australia flood;Mozambique flood;Pakistan flood;UK flood,30m;480m;60m
+lulc,8,4,Australia flood;Mozambique flood;Pakistan flood;UK flood,
+rainfall,1587,1587,Australia flood;Mozambique flood;Pakistan flood;UK flood,
+water_depth_forecast,13254,13254,Australia flood;Mozambique flood;Pakistan flood;UK flood,30m;480m;60m
