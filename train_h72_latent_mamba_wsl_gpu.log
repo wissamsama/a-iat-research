@@ -1,0 +1,116 @@
+run_dir: /mnt/c/Users/Student/Desktop/wissam/a-iat-research/train_runs/23-06-2026_00-45-05_floodcastbench_latent_mamba_h72
+device: cuda
+model: name=flood_latent_temporal activation=identity final_bias_init=None
+normalization: mode=standard stats_path=outputs/floodcastbench_normalization/water_depth_australia_30m_train_input5_h72_stats.json
+train_samples: 1940 | val_samples: 356
+epoch 1: train_loss=0.0313455 val_rmse_raw=0.0935355 val_mae_raw=0.055742
+  train first batch: pred_min=-0.00659291 | pred_max=9.10774 | pred_mean=0.0308679 | negative_prediction_ratio=0.739707 | target_mean=0.0406451
+  val first batch: pred_min=-0.461794 | pred_max=20.4325 | pred_mean=0.324206 | negative_prediction_ratio=0.00491606 | target_mean=0.328883
+epoch 2: train_loss=0.0299888 val_rmse_raw=0.112073 val_mae_raw=0.0744866
+  train first batch: pred_min=-0.0320626 | pred_max=12.8206 | pred_mean=0.0685037 | negative_prediction_ratio=0.00207412 | target_mean=0.0673221
+  val first batch: pred_min=-3.66219 | pred_max=20.5894 | pred_mean=0.342145 | negative_prediction_ratio=0.00634614 | target_mean=0.328883
+epoch 3: train_loss=0.0297092 val_rmse_raw=0.0959403 val_mae_raw=0.06132
+  train first batch: pred_min=-0.0245465 | pred_max=11.0872 | pred_mean=0.0783597 | negative_prediction_ratio=0.00244543 | target_mean=0.0773595
+  val first batch: pred_min=-2.03019 | pred_max=21.5387 | pred_mean=0.330282 | negative_prediction_ratio=0.0199865 | target_mean=0.328883
+epoch 4: train_loss=0.0292727 val_rmse_raw=0.090942 val_mae_raw=0.0497277
+  train first batch: pred_min=-0.0563352 | pred_max=11.062 | pred_mean=0.0931222 | negative_prediction_ratio=0.0200516 | target_mean=0.0856344
+  val first batch: pred_min=-0.650886 | pred_max=22.0393 | pred_mean=0.317322 | negative_prediction_ratio=0.0146179 | target_mean=0.328883
+epoch 5: train_loss=0.0289774 val_rmse_raw=0.105283 val_mae_raw=0.0658616
+  train first batch: pred_min=-0.00165198 | pred_max=1.14648 | pred_mean=0.00729704 | negative_prediction_ratio=0.000585845 | target_mean=0.00413467
+  val first batch: pred_min=-0.856395 | pred_max=22.3775 | pred_mean=0.334483 | negative_prediction_ratio=0.00651291 | target_mean=0.328883
+epoch 6: train_loss=0.0288112 val_rmse_raw=0.0922224 val_mae_raw=0.0521653
+  train first batch: pred_min=-0.0347927 | pred_max=11.1991 | pred_mean=0.0817518 | negative_prediction_ratio=0.00756474 | target_mean=0.0801774
+  val first batch: pred_min=-0.614536 | pred_max=21.8635 | pred_mean=0.320427 | negative_prediction_ratio=0.00994807 | target_mean=0.328883
+epoch 7: train_loss=0.028396 val_rmse_raw=0.103734 val_mae_raw=0.0656025
+  train first batch: pred_min=-0.246946 | pred_max=16.9478 | pred_mean=0.153985 | negative_prediction_ratio=0.0136486 | target_mean=0.163554
+  val first batch: pred_min=-1.55666 | pred_max=22.2589 | pred_mean=0.335572 | negative_prediction_ratio=0.0295719 | target_mean=0.328883
+epoch 8: train_loss=0.0281199 val_rmse_raw=0.0873479 val_mae_raw=0.050108
+  train first batch: pred_min=-0.0509701 | pred_max=10.4958 | pred_mean=0.0640474 | negative_prediction_ratio=0.0610768 | target_mean=0.0654931
+  val first batch: pred_min=-0.879893 | pred_max=22.7449 | pred_mean=0.320157 | negative_prediction_ratio=0.0254354 | target_mean=0.328883
+epoch 9: train_loss=0.0275408 val_rmse_raw=0.116495 val_mae_raw=0.0698393
+  train first batch: pred_min=-0.0630143 | pred_max=11.093 | pred_mean=0.0840631 | negative_prediction_ratio=0.0420275 | target_mean=0.0811185
+  val first batch: pred_min=-0.722651 | pred_max=24.5328 | pred_mean=0.340288 | negative_prediction_ratio=0.0108227 | target_mean=0.328883
+epoch 10: train_loss=0.0274115 val_rmse_raw=0.0928106 val_mae_raw=0.0508287
+  train first batch: pred_min=-0.0541202 | pred_max=11.4235 | pred_mean=0.0580236 | negative_prediction_ratio=0.00817533 | target_mean=0.0523762
+  val first batch: pred_min=-0.702554 | pred_max=22.4001 | pred_mean=0.322797 | negative_prediction_ratio=0.0207986 | target_mean=0.328883
+epoch 11: train_loss=0.0266648 val_rmse_raw=0.0782458 val_mae_raw=0.0420822
+  train first batch: pred_min=-0.0122734 | pred_max=4.06164 | pred_mean=0.0189644 | negative_prediction_ratio=0.000517228 | target_mean=0.0269974
+  val first batch: pred_min=-1.00067 | pred_max=22.0872 | pred_mean=0.316581 | negative_prediction_ratio=0.0542477 | target_mean=0.328883
+epoch 12: train_loss=0.0258098 val_rmse_raw=0.122686 val_mae_raw=0.0773298
+  train first batch: pred_min=-0.0717488 | pred_max=11.2002 | pred_mean=0.097041 | negative_prediction_ratio=0.171929 | target_mean=0.0975967
+  val first batch: pred_min=-0.966555 | pred_max=22.1266 | pred_mean=0.356736 | negative_prediction_ratio=0.0138444 | target_mean=0.328883
+epoch 13: train_loss=0.0255067 val_rmse_raw=0.0708394 val_mae_raw=0.0338333
+  train first batch: pred_min=-0.481417 | pred_max=16.4475 | pred_mean=0.120016 | negative_prediction_ratio=0.00679736 | target_mean=0.12164
+  val first batch: pred_min=-1.31789 | pred_max=20.2107 | pred_mean=0.304195 | negative_prediction_ratio=0.0279755 | target_mean=0.328883
+epoch 14: train_loss=0.0248804 val_rmse_raw=0.0852056 val_mae_raw=0.0426512
+  train first batch: pred_min=-0.0360761 | pred_max=10.5656 | pred_mean=0.0473438 | negative_prediction_ratio=0.0228827 | target_mean=0.043779
+  val first batch: pred_min=-1.08238 | pred_max=21.4848 | pred_mean=0.327323 | negative_prediction_ratio=0.0257437 | target_mean=0.328883
+epoch 15: train_loss=0.024295 val_rmse_raw=0.0976499 val_mae_raw=0.0533173
+  train first batch: pred_min=-0.0756281 | pred_max=10.8397 | pred_mean=0.0468354 | negative_prediction_ratio=0.0342417 | target_mean=0.0436728
+  val first batch: pred_min=-2.0944 | pred_max=21.881 | pred_mean=0.338669 | negative_prediction_ratio=0.0146809 | target_mean=0.328883
+epoch 16: train_loss=0.0236805 val_rmse_raw=0.0840093 val_mae_raw=0.031669
+  train first batch: pred_min=-0.0645509 | pred_max=10.9266 | pred_mean=0.0923245 | negative_prediction_ratio=0.0282973 | target_mean=0.0857197
+  val first batch: pred_min=-1.92755 | pred_max=24.0934 | pred_mean=0.31331 | negative_prediction_ratio=0.0271608 | target_mean=0.328883
+epoch 17: train_loss=0.0240165 val_rmse_raw=0.070019 val_mae_raw=0.0296073
+  train first batch: pred_min=-0.134963 | pred_max=8.67867 | pred_mean=0.0378497 | negative_prediction_ratio=0.0165305 | target_mean=0.0379506
+  val first batch: pred_min=-0.643313 | pred_max=22.3437 | pred_mean=0.308502 | negative_prediction_ratio=0.0287568 | target_mean=0.328883
+epoch 18: train_loss=0.0235751 val_rmse_raw=0.0836092 val_mae_raw=0.0395687
+  train first batch: pred_min=-0.0018427 | pred_max=1.04789 | pred_mean=0.00367606 | negative_prediction_ratio=0.00282586 | target_mean=0.00219026
+  val first batch: pred_min=-1.49665 | pred_max=22.2379 | pred_mean=0.327664 | negative_prediction_ratio=0.0240596 | target_mean=0.328883
+epoch 19: train_loss=0.0235085 val_rmse_raw=0.0751032 val_mae_raw=0.0365517
+  train first batch: pred_min=-0.00404425 | pred_max=1.60728 | pred_mean=0.00656193 | negative_prediction_ratio=0.000102925 | target_mean=0.00635746
+  val first batch: pred_min=-1.44808 | pred_max=22.3096 | pred_mean=0.324815 | negative_prediction_ratio=0.0221692 | target_mean=0.328883
+epoch 20: train_loss=0.0232501 val_rmse_raw=0.0768454 val_mae_raw=0.0359542
+  train first batch: pred_min=-0.138971 | pred_max=10.9035 | pred_mean=0.068392 | negative_prediction_ratio=0.0288992 | target_mean=0.0685932
+  val first batch: pred_min=-1.36662 | pred_max=22.2428 | pred_mean=0.323211 | negative_prediction_ratio=0.019953 | target_mean=0.328883
+epoch 21: train_loss=0.0231042 val_rmse_raw=0.072845 val_mae_raw=0.0272884
+  train first batch: pred_min=-0.233675 | pred_max=12.1347 | pred_mean=0.0778056 | negative_prediction_ratio=0.0136751 | target_mean=0.0817296
+  val first batch: pred_min=-2.48677 | pred_max=22.1769 | pred_mean=0.309406 | negative_prediction_ratio=0.0319791 | target_mean=0.328883
+epoch 22: train_loss=0.0231366 val_rmse_raw=0.0901626 val_mae_raw=0.039587
+  train first batch: pred_min=-0.0105713 | pred_max=1.60573 | pred_mean=0.00726489 | negative_prediction_ratio=0.00096888 | target_mean=0.00926529
+  val first batch: pred_min=-2.08874 | pred_max=24.0287 | pred_mean=0.327452 | negative_prediction_ratio=0.0284866 | target_mean=0.328883
+epoch 23: train_loss=0.0229546 val_rmse_raw=0.0759702 val_mae_raw=0.0350256
+  train first batch: pred_min=-0.506067 | pred_max=16.6424 | pred_mean=0.120348 | negative_prediction_ratio=0.0253889 | target_mean=0.127674
+  val first batch: pred_min=-1.45673 | pred_max=23.1677 | pred_mean=0.322378 | negative_prediction_ratio=0.0276672 | target_mean=0.328883
+epoch 24: train_loss=0.022844 val_rmse_raw=0.0790406 val_mae_raw=0.0330168
+  train first batch: pred_min=-0.204769 | pred_max=11.7868 | pred_mean=0.0551039 | negative_prediction_ratio=0.0273814 | target_mean=0.0543408
+  val first batch: pred_min=-1.75505 | pred_max=23.5181 | pred_mean=0.318886 | negative_prediction_ratio=0.0374567 | target_mean=0.328883
+epoch 25: train_loss=0.0229169 val_rmse_raw=0.065607 val_mae_raw=0.0253008
+  train first batch: pred_min=-0.099906 | pred_max=10.8589 | pred_mean=0.0473641 | negative_prediction_ratio=0.0484388 | target_mean=0.0551128
+  val first batch: pred_min=-1.69007 | pred_max=22.5217 | pred_mean=0.303687 | negative_prediction_ratio=0.0374172 | target_mean=0.328883
+epoch 26: train_loss=0.0226144 val_rmse_raw=0.0740768 val_mae_raw=0.029095
+  train first batch: pred_min=-0.268061 | pred_max=12.9774 | pred_mean=0.063313 | negative_prediction_ratio=0.0337532 | target_mean=0.0706539
+  val first batch: pred_min=-1.51896 | pred_max=22.572 | pred_mean=0.315631 | negative_prediction_ratio=0.0352532 | target_mean=0.328883
+epoch 27: train_loss=0.0225342 val_rmse_raw=0.0926778 val_mae_raw=0.0435714
+  train first batch: pred_min=-0.177573 | pred_max=11.496 | pred_mean=0.0934642 | negative_prediction_ratio=0.0973523 | target_mean=0.0916878
+  val first batch: pred_min=-1.871 | pred_max=22.2929 | pred_mean=0.332744 | negative_prediction_ratio=0.0246572 | target_mean=0.328883
+epoch 28: train_loss=0.0224422 val_rmse_raw=0.087814 val_mae_raw=0.0382745
+  train first batch: pred_min=-0.568646 | pred_max=16.4388 | pred_mean=0.112233 | negative_prediction_ratio=0.016216 | target_mean=0.117551
+  val first batch: pred_min=-1.38124 | pred_max=23.9859 | pred_mean=0.328579 | negative_prediction_ratio=0.0267061 | target_mean=0.328883
+epoch 29: train_loss=0.0225983 val_rmse_raw=0.0962265 val_mae_raw=0.039855
+  train first batch: pred_min=-0.22355 | pred_max=12.0822 | pred_mean=0.0896715 | negative_prediction_ratio=0.0271213 | target_mean=0.0921123
+  val first batch: pred_min=-1.54742 | pred_max=24.2099 | pred_mean=0.331483 | negative_prediction_ratio=0.028408 | target_mean=0.328883
+epoch 30: train_loss=0.022261 val_rmse_raw=0.0842209 val_mae_raw=0.0384597
+  train first batch: pred_min=-0.225049 | pred_max=11.7347 | pred_mean=0.0975828 | negative_prediction_ratio=0.0690189 | target_mean=0.0954653
+  val first batch: pred_min=-1.07072 | pred_max=22.5356 | pred_mean=0.326701 | negative_prediction_ratio=0.0221674 | target_mean=0.328883
+epoch 31: train_loss=0.0220861 val_rmse_raw=0.0692751 val_mae_raw=0.029342
+  train first batch: pred_min=-0.132775 | pred_max=11.747 | pred_mean=0.0537668 | negative_prediction_ratio=0.0248765 | target_mean=0.0529952
+  val first batch: pred_min=-1.41585 | pred_max=21.9527 | pred_mean=0.319204 | negative_prediction_ratio=0.0361812 | target_mean=0.328883
+epoch 32: train_loss=0.0220049 val_rmse_raw=0.0915804 val_mae_raw=0.0458846
+  train first batch: pred_min=-0.103295 | pred_max=11.1729 | pred_mean=0.0740807 | negative_prediction_ratio=0.111811 | target_mean=0.0826949
+  val first batch: pred_min=-1.85437 | pred_max=24.0145 | pred_mean=0.337737 | negative_prediction_ratio=0.0275495 | target_mean=0.328883
+epoch 33: train_loss=0.0220599 val_rmse_raw=0.0727748 val_mae_raw=0.0292831
+  train first batch: pred_min=-0.354607 | pred_max=9.21867 | pred_mean=0.0406609 | negative_prediction_ratio=0.0130137 | target_mean=0.0383266
+  val first batch: pred_min=-1.81155 | pred_max=24.174 | pred_mean=0.321846 | negative_prediction_ratio=0.026522 | target_mean=0.328883
+epoch 34: train_loss=0.0218929 val_rmse_raw=0.0693221 val_mae_raw=0.0238994
+  train first batch: pred_min=-0.00376989 | pred_max=1.54897 | pred_mean=0.0083221 | negative_prediction_ratio=9.55418e-05 | target_mean=0.00324519
+  val first batch: pred_min=-1.95168 | pred_max=24.2163 | pred_mean=0.308542 | negative_prediction_ratio=0.0316191 | target_mean=0.328883
+epoch 35: train_loss=0.0218099 val_rmse_raw=0.0732061 val_mae_raw=0.0272129
+  train first batch: pred_min=-0.240207 | pred_max=11.8593 | pred_mean=0.0964414 | negative_prediction_ratio=0.0821433 | target_mean=0.100978
+  val first batch: pred_min=-1.76762 | pred_max=22.1738 | pred_mean=0.31419 | negative_prediction_ratio=0.0205762 | target_mean=0.328883
+epoch 36: train_loss=0.021757 val_rmse_raw=0.0821058 val_mae_raw=0.0364678
+  train first batch: pred_min=-0.362253 | pred_max=13.9303 | pred_mean=0.130724 | negative_prediction_ratio=0.014921 | target_mean=0.134228
+  val first batch: pred_min=-1.20473 | pred_max=25.7205 | pred_mean=0.327478 | negative_prediction_ratio=0.0196304 | target_mean=0.328883
+epoch 37: train_loss=0.0218676 val_rmse_raw=0.0846292 val_mae_raw=0.0317297
+  train first batch: pred_min=-0.349877 | pred_max=13.7711 | pred_mean=0.125514 | negative_prediction_ratio=0.0263022 | target_mean=0.124118
+  val first batch: pred_min=-0.793192 | pred_max=24.5729 | pred_mean=0.319003 | negative_prediction_ratio=0.0221792 | target_mean=0.328883

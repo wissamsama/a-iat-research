@@ -47,23 +47,21 @@ class GRUTemporalModule(nn.Module):
         return hidden[-1]
 
 
-class MambaPyTemporalModule(nn.Module):
-    """Pure PyTorch Mamba backend over latent temporal tokens.
-
-    This backend uses mambapy instead of the optimized mamba-ssm CUDA kernels,
-    which keeps the model usable on native Windows.
-    """
+class MambaTemporalModule(nn.Module):
+    """Official mamba-ssm backend over latent temporal tokens."""
 
     def __init__(self, channels: int) -> None:
         super().__init__()
+        self.backend = "mamba_ssm"
         try:
-            from mambapy.mamba import Mamba, MambaConfig
-        except ImportError as error:
-            raise RuntimeError(
-                "Mamba backend requires mambapy. Install it with: python -m pip install mambapy"
-            ) from error
+            from mamba_ssm import Mamba
+        except ImportError as exc:
+            raise ImportError(
+                "temporal_module='mamba' requires the official mamba_ssm package. "
+                "Run this model from the WSL environment where mamba-ssm is installed."
+            ) from exc
 
-        self.net = Mamba(MambaConfig(d_model=channels, n_layers=1))
+        self.net = Mamba(d_model=channels, d_state=16, d_conv=4, expand=2)
 
     def forward(self, z_tokens: torch.Tensor) -> torch.Tensor:
         if z_tokens.ndim != 3:
@@ -80,7 +78,7 @@ def build_temporal_module(name: str, channels: int) -> nn.Module:
     if name == "gru":
         return GRUTemporalModule(channels)
     if name == "mamba":
-        return MambaPyTemporalModule(channels)
+        return MambaTemporalModule(channels)
     raise ValueError("temporal_module must be one of: identity, temporal_conv, gru, mamba")
 
 

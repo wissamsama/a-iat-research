@@ -1,5 +1,5 @@
 experiment:
-  name: floodcastbench_latent_mamba_h72
+  name: floodcastbench_latent_mamba_h20
   seed: 42
   output_dir: train_runs
 
@@ -11,14 +11,14 @@ dataset:
   fidelity: high
   resolution: 30m
   input_window: 5
-  horizon: 72
+  horizon: 20
   split_ratios:
     train: 0.70
     val: 0.15
     test: 0.15
   normalization:
     mode: standard
-    stats_path: outputs/floodcastbench_normalization/water_depth_australia_30m_train_input5_h72_stats.json
+    stats_path: outputs/floodcastbench_normalization/water_depth_australia_30m_train_input5_h20_stats.json
 
 loader:
   batch_size: 2
