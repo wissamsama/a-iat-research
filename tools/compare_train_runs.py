@@ -3,6 +3,7 @@ import sys
 import csv
 import json
 from pathlib import Path
+import yaml
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_DIR) not in sys.path:
@@ -12,11 +13,20 @@ from project_paths import TRAIN_RUNS_DIR
 
 
 def load_summary(run_dir):
-    summary_path = run_dir / "summary.json"
-    if not summary_path.exists():
-        return None
-    with summary_path.open("r", encoding="utf-8-sig") as file:
-        return json.load(file)
+    for summary_name in ("summary.json", "summary_recovered.json"):
+        summary_path = run_dir / summary_name
+        if summary_path.exists():
+            with summary_path.open("r", encoding="utf-8-sig") as file:
+                return json.load(file)
+    return None
+
+
+def load_config(run_dir):
+    config_path = run_dir / "config.yaml"
+    if not config_path.exists():
+        return {}
+    with config_path.open("r", encoding="utf-8") as file:
+        return yaml.safe_load(file) or {}
 
 
 def load_metrics(run_dir):
@@ -53,7 +63,24 @@ def best_artifact_path(summary):
 def completed_epochs(summary):
     if not summary:
         return "-"
-    return summary.get("epochs_completed", summary.get("epochs", "-"))
+    return summary.get("epochs_completed", summary.get("num_epochs_completed", summary.get("epochs", "-")))
+
+
+def config_value(config, flat_key, section=None, section_key=None, default="-"):
+    if flat_key in config:
+        return config.get(flat_key, default)
+    if section and isinstance(config.get(section), dict):
+        return config[section].get(section_key or flat_key, default)
+    return default
+
+
+def model_name(config, summary):
+    if summary and isinstance(summary.get("model"), str):
+        return summary["model"]
+    model_config = config.get("model", "-")
+    if isinstance(model_config, dict):
+        return model_config.get("name", "-")
+    return model_config
 
 
 def main():
@@ -71,22 +98,24 @@ def main():
         if summary is None and not metrics:
             continue
 
-        config = summary.get("config", {}) if summary else {}
+        config = summary.get("config") if summary else None
+        if not config:
+            config = load_config(run_dir)
         artifact_path = best_artifact_path(summary)
-        mode = config.get("training_mode", summary.get("training_mode", "classic"))
+        mode = config.get("training_mode", summary.get("training_mode", "classic") if summary else "classic")
         rows.append({
             "run": summary.get("run_id", run_dir.name) if summary else run_dir.name,
-            "model": config.get("model", "-"),
+            "model": model_name(config, summary),
             "mode": mode,
-            "lambda": config.get("clean_loss_lambda", summary.get("clean_loss_lambda", "-")) if mode == "adversarial" else "-",
-            "adv_eps": config.get("adv_training_epsilon", summary.get("adv_training_epsilon", "-")) if mode == "adversarial" else "-",
+            "lambda": config.get("clean_loss_lambda", summary.get("clean_loss_lambda", "-") if summary else "-") if mode == "adversarial" else "-",
+            "adv_eps": config.get("adv_training_epsilon", summary.get("adv_training_epsilon", "-") if summary else "-") if mode == "adversarial" else "-",
             "trained_ep": completed_epochs(summary),
-            "best_ep": summary.get("best_epoch", "-") if summary else "-",
-            "lr": config.get("learning_rate", "-"),
-            "batch": config.get("batch_size", "-"),
+            "best_ep": summary.get("best_epoch", summary.get("best_epoch_by_val_rmse_raw", "-")) if summary else "-",
+            "lr": config_value(config, "learning_rate", section="training"),
+            "batch": config_value(config, "batch_size", section="loader"),
             "best_acc": summary.get("best_test_acc", None) if summary else None,
             "min_loss": summary.get("min_test_loss", min_metric(metrics, "test_loss")) if summary else min_metric(metrics, "test_loss"),
-            "time_sec": summary.get("total_time_sec", None) if summary else None,
+            "time_sec": summary.get("total_time_sec", summary.get("estimated_total_epoch_time_sec", None)) if summary else None,
             "checkpoint": file_status(artifact_path),
         })
 

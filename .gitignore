@@ -2,14 +2,23 @@
 .venv/
 .venv-wsl/
 __pycache__/
+**/__pycache__/
 *.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
 
 # Local/editor files
 .vscode/
 .idea/
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
 
 # Local datasets
 data/
+datasets_local/
 
 # Training outputs
 train_runs/
@@ -17,8 +26,11 @@ attack_runs/
 trained_models/
 reports/
 checkpoints/
+experiments/
+logs/
 *.pth
 *.pt
+*.ckpt
 
 # Generated files
 *.png

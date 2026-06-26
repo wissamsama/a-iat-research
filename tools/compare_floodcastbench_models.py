@@ -359,12 +359,12 @@ def main() -> None:
     parser.add_argument(
         "--cnn-checkpoint",
         type=Path,
-        default=PROJECT_DIR / "train_runs" / "21-06-2026_16-37-25_floodcastbench_cnn_baseline_normalized" / "checkpoint_best.pth",
+        default=PROJECT_DIR / "train_runs" / "21-06-2026_16-37-25_fcb_cnn_norm_h20" / "checkpoint_best.pth",
     )
     parser.add_argument(
         "--latent-checkpoint",
         type=Path,
-        default=PROJECT_DIR / "train_runs" / "22-06-2026_15-25-53_floodcastbench_latent_temporal" / "checkpoint_best.pth",
+        default=PROJECT_DIR / "train_runs" / "22-06-2026_15-25-53_fcb_latent_conv_h20" / "checkpoint_best.pth",
     )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_DIR / "outputs" / "floodcastbench_model_evaluations")

@@ -1,15 +1,15 @@
 # WSL/Linux CUDA environment for official Mamba experiments.
 #
 # Recommended setup on WSL:
-#   python3.12 -m venv ~/.venvs/a-iat-research-mamba
-#   source ~/.venvs/a-iat-research-mamba/bin/activate
+#   python3.12 -m venv ~/.venvs/floodcast-mamba
+#   source ~/.venvs/floodcast-mamba/bin/activate
 #   python -m pip install --upgrade pip setuptools wheel packaging ninja
 #
 # Install PyTorch CUDA first, then this file. mamba-ssm builds/imports against
 # the already installed torch package, so --no-build-isolation is intentional:
 #   python -m pip install --extra-index-url https://download.pytorch.org/whl/cu130 \
 #     torch==2.12.1+cu130 torchvision==0.27.1+cu130
-#   CUDA_HOME=/usr/local/cuda-12.6 python -m pip install --no-build-isolation -r requirements-wsl-mamba.txt
+#   CUDA_HOME=/usr/local/cuda-13.0 python -m pip install --no-build-isolation -r requirements-wsl-mamba.txt
 #
 # This file is for WSL/Linux only. Do not use it for the native Windows venv.
 
@@ -26,6 +26,7 @@ tqdm>=4.67,<5
 PyYAML>=6.0,<7
 Pillow>=12.0,<13
 rasterio>=1.4,<2
+pytest>=8.0,<9
 
 # PyTorch CUDA stack expected by the current WSL Mamba environment.
 # Install these before mamba-ssm, using the PyTorch CUDA wheel index above.

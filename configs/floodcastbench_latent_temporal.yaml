@@ -3,11 +3,23 @@
   seed: 42
   output_dir: train_runs
 
+paths:
+  # Leave these null on Windows/local clones to preserve repo-relative behavior.
+  # On the WSL research workstation, prefer external Linux paths:
+  # dataset_root: /home/wissam/datasets/FloodCastBench
+  # experiment_root: /home/wissam/experiments/FloodCastBench
+  # checkpoint_root: /home/wissam/checkpoints/FloodCastBench
+  # log_root: /home/wissam/logs/FloodCastBench
+  dataset_root: null
+  experiment_root: null
+  checkpoint_root: null
+  log_root: null
+
 dataset:
   name: floodcastbench
   task: water_depth_forecasting
   root: data/FloodCastBench
-  event: Australia flood
+  event: australia
   fidelity: high
   resolution: 30m
   input_window: 5
@@ -21,9 +33,9 @@ dataset:
     stats_path: outputs/floodcastbench_normalization/water_depth_australia_30m_train_input5_h20_stats.json
 
 loader:
-  batch_size: 1
-  num_workers: 0
-  pin_memory: false
+  batch_size: 2
+  num_workers: 2
+  pin_memory: true
 
 model:
   name: flood_latent_temporal
