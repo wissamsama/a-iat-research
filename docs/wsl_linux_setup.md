@@ -5,11 +5,11 @@ This project should run the heavy FloodCastBench/Mamba workflow from the Linux f
 Recommended layout:
 
 ```text
-/home/wissam/projects/a-iat-research
-/home/wissam/datasets/FloodCastBench
-/home/wissam/experiments/FloodCastBench
-/home/wissam/checkpoints/FloodCastBench
-/home/wissam/logs/FloodCastBench
+/home/wissam/utem-workspace/code/a-iat-research
+/home/wissam/utem-workspace/data/FloodCastBench
+/home/wissam/utem-workspace/experiments/FloodCastBench
+/home/wissam/utem-workspace/checkpoints/FloodCastBench
+/home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 Avoid storing datasets, checkpoints, or training outputs under `/mnt/c`; filesystem overhead can slow training and data loading.
@@ -41,7 +41,7 @@ python -m pip install --upgrade pip setuptools wheel packaging ninja
 Install the WSL/Mamba requirements from the repository:
 
 ```bash
-cd /home/wissam/projects/a-iat-research
+cd /home/wissam/utem-workspace/code/a-iat-research
 export CUDA_HOME=/usr/local/cuda-13.0
 python -m pip install --extra-index-url https://download.pytorch.org/whl/cu130 -r requirements-wsl-mamba.txt
 ```
@@ -88,25 +88,25 @@ pytest -q
 Place the raw FloodCastBench dataset here:
 
 ```text
-/home/wissam/datasets/FloodCastBench
+/home/wissam/utem-workspace/data/FloodCastBench
 ```
 
 The generic config keeps path roots as `null` for backward compatibility. On WSL, the training script defaults legacy repo-relative paths to:
 
 ```text
-/home/wissam/datasets/FloodCastBench
-/home/wissam/experiments/FloodCastBench
-/home/wissam/checkpoints/FloodCastBench
-/home/wissam/logs/FloodCastBench
+/home/wissam/utem-workspace/data/FloodCastBench
+/home/wissam/utem-workspace/experiments/FloodCastBench
+/home/wissam/utem-workspace/checkpoints/FloodCastBench
+/home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 You can still pass roots explicitly when you want a different location:
 
 ```bash
---dataset-root /home/wissam/datasets/FloodCastBench
---experiment-root /home/wissam/experiments/FloodCastBench
---checkpoint-root /home/wissam/checkpoints/FloodCastBench
---log-root /home/wissam/logs/FloodCastBench
+--dataset-root /home/wissam/utem-workspace/data/FloodCastBench
+--experiment-root /home/wissam/utem-workspace/experiments/FloodCastBench
+--checkpoint-root /home/wissam/utem-workspace/checkpoints/FloodCastBench
+--log-root /home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 ## Example Training
@@ -118,10 +118,10 @@ python tools/train_floodcastbench_forecasting.py \
   --config configs/floodcastbench_latent_temporal.yaml \
   --temporal-module temporal_conv \
   --horizon 20 \
-  --dataset-root /home/wissam/datasets/FloodCastBench \
-  --experiment-root /home/wissam/experiments/FloodCastBench \
-  --checkpoint-root /home/wissam/checkpoints/FloodCastBench \
-  --log-root /home/wissam/logs/FloodCastBench
+  --dataset-root /home/wissam/utem-workspace/data/FloodCastBench \
+  --experiment-root /home/wissam/utem-workspace/experiments/FloodCastBench \
+  --checkpoint-root /home/wissam/utem-workspace/checkpoints/FloodCastBench \
+  --log-root /home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 Official Mamba, horizon 72:
@@ -131,10 +131,10 @@ python tools/train_floodcastbench_forecasting.py \
   --config configs/floodcastbench_latent_temporal.yaml \
   --temporal-module mamba \
   --horizon 72 \
-  --dataset-root /home/wissam/datasets/FloodCastBench \
-  --experiment-root /home/wissam/experiments/FloodCastBench \
-  --checkpoint-root /home/wissam/checkpoints/FloodCastBench \
-  --log-root /home/wissam/logs/FloodCastBench
+  --dataset-root /home/wissam/utem-workspace/data/FloodCastBench \
+  --experiment-root /home/wissam/utem-workspace/experiments/FloodCastBench \
+  --checkpoint-root /home/wissam/utem-workspace/checkpoints/FloodCastBench \
+  --log-root /home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 ## Resume Training
@@ -146,11 +146,11 @@ python tools/train_floodcastbench_forecasting.py \
   --config configs/floodcastbench_latent_temporal.yaml \
   --temporal-module mamba \
   --horizon 72 \
-  --resume-from /home/wissam/checkpoints/FloodCastBench/<run_name>/checkpoint_last.pth \
-  --dataset-root /home/wissam/datasets/FloodCastBench \
-  --experiment-root /home/wissam/experiments/FloodCastBench \
-  --checkpoint-root /home/wissam/checkpoints/FloodCastBench \
-  --log-root /home/wissam/logs/FloodCastBench
+  --resume-from /home/wissam/utem-workspace/checkpoints/FloodCastBench/<run_name>/checkpoint_last.pth \
+  --dataset-root /home/wissam/utem-workspace/data/FloodCastBench \
+  --experiment-root /home/wissam/utem-workspace/experiments/FloodCastBench \
+  --checkpoint-root /home/wissam/utem-workspace/checkpoints/FloodCastBench \
+  --log-root /home/wissam/utem-workspace/logs/FloodCastBench
 ```
 
 `checkpoint_last.pth` is the latest epoch state. `checkpoint_best.pth` is the best validation checkpoint when a new validation best is observed.

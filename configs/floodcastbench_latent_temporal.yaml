@@ -6,10 +6,10 @@
 paths:
   # Leave these null on Windows/local clones to preserve repo-relative behavior.
   # On the WSL research workstation, prefer external Linux paths:
-  # dataset_root: /home/wissam/datasets/FloodCastBench
-  # experiment_root: /home/wissam/experiments/FloodCastBench
-  # checkpoint_root: /home/wissam/checkpoints/FloodCastBench
-  # log_root: /home/wissam/logs/FloodCastBench
+  # dataset_root: /home/wissam/utem-workspace/data/FloodCastBench
+  # experiment_root: /home/wissam/utem-workspace/experiments/FloodCastBench
+  # checkpoint_root: /home/wissam/utem-workspace/checkpoints/FloodCastBench
+  # log_root: /home/wissam/utem-workspace/logs/FloodCastBench
   dataset_root: null
   experiment_root: null
   checkpoint_root: null

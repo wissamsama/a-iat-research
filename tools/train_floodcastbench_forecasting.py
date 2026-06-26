@@ -82,10 +82,10 @@ TEMPORAL_MODULE_NAME_MAP = {
     "identity": "identity",
 }
 FUTURE_WSL_PATHS = {
-    "dataset_root": Path("/home/wissam/datasets/FloodCastBench"),
-    "experiment_root": Path("/home/wissam/experiments/FloodCastBench"),
-    "checkpoint_root": Path("/home/wissam/checkpoints/FloodCastBench"),
-    "log_root": Path("/home/wissam/logs/FloodCastBench"),
+    "dataset_root": Path("/home/wissam/utem-workspace/data/FloodCastBench"),
+    "experiment_root": Path("/home/wissam/utem-workspace/experiments/FloodCastBench"),
+    "checkpoint_root": Path("/home/wissam/utem-workspace/checkpoints/FloodCastBench"),
+    "log_root": Path("/home/wissam/utem-workspace/logs/FloodCastBench"),
 }
 
 
