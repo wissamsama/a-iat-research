@@ -1,9 +1,8 @@
-numpy>=2.2,<3
-matplotlib>=3.10,<4
-torch>=2.9,<3
-torchvision>=0.24,<1
-tqdm>=4.67,<5
-PyYAML>=6.0,<7
-Pillow>=12.0,<13
-rasterio>=1.4,<2
-pytest>=8.0,<9
+# Legacy/native placeholder.
+#
+# The canonical environment for the current FloodCastBench/Mamba workflow is WSL/Linux CUDA.
+# Use:
+#   requirements-wsl-mamba.txt
+#
+# See:
+#   docs/wsl_linux_setup.md
