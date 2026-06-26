@@ -12,6 +12,7 @@ __pycache__/
 .idea/
 *.tmp
 *.temp
+*.log
 *.bak
 *.swp
 *~
