@@ -1,7 +1,0 @@
-﻿Starting download: 2026-06-22T11:26:17.5462373+08:00
-Target: C:\Users\Student\Desktop\wissam\a-iat-research\data\FloodCastBench.zip
-curl_exit_code: 0
-md5: c43f3009c82e212ef21a65739f4ada3d
-md5_expected: c43f3009c82e212ef21a65739f4ada3d
-md5_ok: True
-Finished: 2026-06-22T13:19:30.5617341+08:00

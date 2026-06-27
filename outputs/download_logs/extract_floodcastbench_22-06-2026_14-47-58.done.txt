@@ -1,8 +1,0 @@
-﻿Starting extraction: 2026-06-22T14:47:58.5712037+08:00
-Zip: C:\Users\Student\Desktop\wissam\a-iat-research\data\FloodCastBench.zip
-md5: c43f3009c82e212ef21a65739f4ada3d
-md5_expected: c43f3009c82e212ef21a65739f4ada3d
-tar_exit_code: 0
-target: C:\Users\Student\Desktop\wissam\a-iat-research\data\FloodCastBench
-tiff_count: 14868
-Finished: 2026-06-22T14:51:40.2446875+08:00
