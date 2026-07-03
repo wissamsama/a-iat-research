@@ -1,0 +1,161 @@
+{
+  "best_run": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m",
+  "checkpoint_best": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m/checkpoint_best.pth",
+  "checkpoint_last": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m/checkpoint_last.pth",
+  "best_run_reason": "Only run with 100 completed epochs plus test_metrics_best.json and diagnostics_best_checkpoint outputs.",
+  "fno_baseline_without_dem_rainfall_found": false,
+  "runs": [
+    {
+      "run": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_13-23-11_fcb_fno_plus_highfid_60m",
+      "status": "smoke/short run",
+      "completed_epochs": 1,
+      "selected_best_epoch": 1,
+      "train_loss_best": 0.061683475971221924,
+      "val_loss_best": 0.5058401226997375,
+      "best_validation_relative_rmse": 1.019133377139276,
+      "final_validation_relative_rmse": 1.019133377139276,
+      "test_metrics": "not found",
+      "checkpoint_best": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_13-23-11_fcb_fno_plus_highfid_60m/checkpoint_best.pth",
+      "checkpoint_last": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_13-23-11_fcb_fno_plus_highfid_60m/checkpoint_last.pth"
+    },
+    {
+      "run": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_13-48-07_fcb_fno_plus_highfid_60m",
+      "status": "5-epoch pilot run",
+      "completed_epochs": 5,
+      "selected_best_epoch": 5,
+      "train_loss_best": 0.052279939094221156,
+      "val_loss_best": 0.2695679025990622,
+      "best_validation_relative_rmse": 0.741641996424083,
+      "final_validation_relative_rmse": 0.741641996424083,
+      "test_metrics": "not found",
+      "checkpoint_best": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_13-48-07_fcb_fno_plus_highfid_60m/checkpoint_best.pth",
+      "checkpoint_last": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_13-48-07_fcb_fno_plus_highfid_60m/checkpoint_last.pth"
+    },
+    {
+      "run": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m",
+      "status": "complete 100-epoch run",
+      "completed_epochs": 100,
+      "selected_best_epoch": 95,
+      "train_loss_best": 7.23579758038074e-05,
+      "val_loss_best": 7.83560930618218e-05,
+      "train_loss_final": 7.057429732820561e-05,
+      "val_loss_final": 7.872482404179339e-05,
+      "best_validation_relative_rmse": 0.01264435320861495,
+      "final_validation_relative_rmse": 0.012674069374974775,
+      "best_validation_metrics": {
+        "nse": 0.9997807820181474,
+        "pearson_r": 0.9998941792026936,
+        "csi_0_001": 0.7486980306403336,
+        "csi_0_01": 0.9880056549017209
+      },
+      "test_metrics_raw": {
+        "rmse_or_relative_rmse": 0.01235829833769271,
+        "nse": 0.9997911644242803,
+        "pearson_r": 0.9998986562960474,
+        "csi_0_001": 0.7241764635613173,
+        "csi_0_01": 0.9857210422280918
+      },
+      "test_metrics_clamped": {
+        "relative_rmse": 0.012327009254078678,
+        "nse": 0.9997922205570557,
+        "pearson_r": 0.9998996089527856,
+        "csi_0_001": 0.7241764635613173,
+        "csi_0_005": 0.9020154761457968,
+        "csi_0_01": 0.9857210422280918,
+        "csi_0_05": 0.9854720774428696
+      },
+      "checkpoint_best": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m/checkpoint_best.pth",
+      "checkpoint_last": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m/checkpoint_last.pth",
+      "additional_metrics": {
+        "path_iou": "not found in FNO+ scaffold",
+        "flood_front_metrics": "not found in FNO+ scaffold",
+        "csi_0_005": 0.9020154761457968,
+        "csi_0_05": 0.9854720774428696,
+        "negative_prediction_ratio": 0.07447449864916245,
+        "target_depth_lt_0_001_ratio": 0.35486707429774034,
+        "target_depth_0_001_to_0_01_ratio": 0.057984458563707104
+      }
+    }
+  ],
+  "official_reference": {
+    "FNO": {
+      "rmse": 0.004258,
+      "nse": 0.999975,
+      "pearson_r": 0.999987,
+      "csi_0_001": 0.895553,
+      "csi_0_01": 0.980748
+    },
+    "FNO_plus": {
+      "rmse": 0.003941,
+      "nse": 0.999979,
+      "pearson_r": 0.99999,
+      "csi_0_001": 0.939638,
+      "csi_0_01": 0.984588
+    }
+  },
+  "comparison_to_official_fno_plus": [
+    {
+      "metric": "RMSE / relative RMSE",
+      "official_fno_plus": 0.003941,
+      "our_best_test": 0.01235829833769271,
+      "absolute_difference": 0.00841729833769271,
+      "relative_difference_vs_official": 2.1358280481331415,
+      "comparison_validity": "partially valid",
+      "validity_reason": "Local scaffold stores relative_rmse; official table says RMSE, so numeric convention is not independently confirmed."
+    },
+    {
+      "metric": "NSE",
+      "official_fno_plus": 0.999979,
+      "our_best_test": 0.9997911644242803,
+      "absolute_difference": -0.0001878355757196637,
+      "relative_difference_vs_official": -0.00018783952034959105,
+      "comparison_validity": "partially valid",
+      "validity_reason": "Formula is standard/global, but official aggregation convention is not independently verified."
+    },
+    {
+      "metric": "Pearson r",
+      "official_fno_plus": 0.99999,
+      "our_best_test": 0.9998986562960474,
+      "absolute_difference": -9.134370395269542e-05,
+      "relative_difference_vs_official": -9.13446173988694e-05,
+      "comparison_validity": "partially valid",
+      "validity_reason": "Formula is standard/global, but official aggregation convention is not independently verified."
+    },
+    {
+      "metric": "CSI@0.001",
+      "official_fno_plus": 0.939638,
+      "our_best_test": 0.7241764635613173,
+      "absolute_difference": -0.2154615364386827,
+      "relative_difference_vs_official": -0.22930270640255365,
+      "comparison_validity": "partially valid",
+      "validity_reason": "Threshold definition matches common CSI, but official dry-cell handling and aggregation are not independently verified."
+    },
+    {
+      "metric": "CSI@0.01",
+      "official_fno_plus": 0.984588,
+      "our_best_test": 0.9857210422280918,
+      "absolute_difference": 0.0011330422280917407,
+      "relative_difference_vs_official": 0.0011507780189193254,
+      "comparison_validity": "partially valid",
+      "validity_reason": "Threshold definition matches common CSI, but official dry-cell handling and aggregation are not independently verified."
+    }
+  ],
+  "diagnosis": {
+    "main_discrepancies": [
+      "relative RMSE is much worse than Table 4",
+      "CSI@0.001 is much worse than Table 4",
+      "CSI@0.01 is close/slightly higher"
+    ],
+    "most_likely_causes": [
+      "architecture mismatch: implemented model is 2D spatial FNO with temporal channels",
+      "possible RMSE definition mismatch: official table says RMSE while local metric is relative_rmse",
+      "raw/no-normalization preprocessing may differ from official setup",
+      "near-zero water depths dominate CSI@0.001 sensitivity",
+      "rainfall alignment and bilinear resampling may differ from official preprocessing",
+      "official metric aggregation may differ from local global accumulator"
+    ],
+    "not_explained_by": [
+      "negative predictions alone; clamping barely changes metrics and leaves CSI unchanged"
+    ]
+  }
+}

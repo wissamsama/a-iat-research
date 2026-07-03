@@ -1,0 +1,185 @@
+{
+  "status": "current FNO+ work is a simplified internal approximation, not an official reproduction",
+  "repository": "/home/wissam/utem-workspace/code/a-iat-research",
+  "scaffold_commit": "f2c5235 Add FNO+ reproduction scaffold for FloodCastBench",
+  "implementation_files": [
+    "models/fno_plus.py",
+    "datasets/floodcastbench_fno_dataset.py",
+    "evaluation/floodcastbench_official_metrics.py",
+    "tools/train_floodcastbench_fno_plus.py",
+    "configs/floodcastbench_fno_plus_highfid_60m.yaml",
+    "tests/test_fno_plus_smoke.py"
+  ],
+  "dataset": {
+    "root": "/home/wissam/utem-workspace/data/FloodCastBench",
+    "fidelity": "high",
+    "event": "australia",
+    "resolution": "60m",
+    "water_depth_frames": 2881,
+    "spatial_shape": [
+      536,
+      536
+    ],
+    "sample_length": 20,
+    "stride": 20,
+    "windows": "non-overlapping",
+    "split_counts": {
+      "train": 116,
+      "val": 14,
+      "test": 14
+    },
+    "train_start_indices": [
+      0,
+      2300
+    ],
+    "val_start_indices": [
+      2320,
+      2580
+    ],
+    "test_start_indices": [
+      2600,
+      2860
+    ],
+    "target": "water depth frames t=2..20, 19 output channels",
+    "input_channels": {
+      "x_coordinate": 1,
+      "y_coordinate": 1,
+      "initial_water_depth_t1": 1,
+      "dem": 1,
+      "rainfall_t1_to_t20": 20,
+      "time_channels_t2_to_t20": 19,
+      "total": 43
+    },
+    "normalization": "raw DEM, raw rainfall, raw water depth; nodata/nan/inf replaced by 0",
+    "rainfall_alignment": "latest rainfall frame at or before each water timestamp via water_timestamp // 1800"
+  },
+  "model": {
+    "class": "FNOPlus2d",
+    "kind": "2D spatial FNO with temporal information encoded as channels",
+    "not_true_space_time_fno": true,
+    "input_shape": "[B, 43, H, W]",
+    "output_shape": "[B, 19, H, W]",
+    "future_prediction": "direct multi-output prediction of all 19 future frames, not autoregressive",
+    "fourier_layers": 4,
+    "modes": 12,
+    "width": 20,
+    "activation": "GELU internally, identity final output"
+  },
+  "official_table4_high_fidelity_60m": {
+    "FNO": {
+      "rmse": 0.004258,
+      "nse": 0.999975,
+      "pearson_r": 0.999987,
+      "csi_0_001": 0.895553,
+      "csi_0_01": 0.980748
+    },
+    "FNO_plus": {
+      "rmse": 0.003941,
+      "nse": 0.999979,
+      "pearson_r": 0.99999,
+      "csi_0_001": 0.939638,
+      "csi_0_01": 0.984588
+    }
+  },
+  "runs": [
+    {
+      "name": "27-06-2026_13-23-11_fcb_fno_plus_highfid_60m",
+      "path": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_13-23-11_fcb_fno_plus_highfid_60m",
+      "status": "smoke/short run",
+      "epochs_completed": 1,
+      "best_val_relative_rmse": 1.019133377139276,
+      "final_val_relative_rmse": 1.019133377139276,
+      "test_metrics": "not found",
+      "checkpoint_best": "present",
+      "checkpoint_last": "present"
+    },
+    {
+      "name": "27-06-2026_13-48-07_fcb_fno_plus_highfid_60m",
+      "path": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_13-48-07_fcb_fno_plus_highfid_60m",
+      "status": "5-epoch pilot run",
+      "epochs_completed": 5,
+      "best_val_relative_rmse": 0.741641996424083,
+      "final_val_relative_rmse": 0.741641996424083,
+      "test_metrics": "not found",
+      "checkpoint_best": "present",
+      "checkpoint_last": "present"
+    },
+    {
+      "name": "27-06-2026_14-00-18_fcb_fno_plus_highfid_60m",
+      "path": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m",
+      "status": "completed 100-epoch run",
+      "epochs_completed": 100,
+      "best_epoch": 95,
+      "best_val": {
+        "relative_rmse": 0.01264435320861495,
+        "nse": 0.9997807820181474,
+        "pearson_r": 0.9998941792026936,
+        "csi_0_001": 0.7486980306403336,
+        "csi_0_01": 0.9880056549017209
+      },
+      "final_val": {
+        "relative_rmse": 0.012674069374974775,
+        "nse": 0.9997797504157028,
+        "pearson_r": 0.9998925118401252,
+        "csi_0_001": 0.7528600820332979,
+        "csi_0_01": 0.9876390569982846
+      },
+      "test_best_checkpoint_raw": {
+        "relative_rmse": 0.01235829833769271,
+        "nse": 0.9997911644242803,
+        "pearson_r": 0.9998986562960474,
+        "csi_0_001": 0.7241764635613173,
+        "csi_0_005": 0.9020154761457968,
+        "csi_0_01": 0.9857210422280918,
+        "csi_0_05": 0.9854720774428696
+      },
+      "test_best_checkpoint_clamped": {
+        "relative_rmse": 0.012327009254078678,
+        "nse": 0.9997922205570557,
+        "pearson_r": 0.9998996089527856,
+        "csi_0_001": 0.7241764635613173,
+        "csi_0_005": 0.9020154761457968,
+        "csi_0_01": 0.9857210422280918,
+        "csi_0_05": 0.9854720774428696
+      },
+      "delta_vs_official_fno_plus_raw_test": {
+        "relative_rmse": 0.00841729833769271,
+        "nse": -0.0001878355757196637,
+        "pearson_r": -9.134370395269542e-05,
+        "csi_0_001": -0.2154615364386827,
+        "csi_0_01": 0.0011330422280917407
+      },
+      "diagnostics": {
+        "prediction_min": -0.009813625365495682,
+        "prediction_max": 14.2191162109375,
+        "prediction_mean": 0.365123706411307,
+        "target_min": 0.0,
+        "target_max": 14.902684211730957,
+        "target_mean": 0.36470336565457834,
+        "negative_prediction_ratio": 0.07447449864916245,
+        "target_depth_lt_0_001_ratio": 0.35486707429774034,
+        "target_depth_0_001_to_0_01_ratio": 0.057984458563707104,
+        "mean_abs_error_target_lt_0_01": 0.0025889602423660838,
+        "mean_abs_error_target_ge_0_01": 0.007035663508878519
+      }
+    }
+  ],
+  "mamba_relation": {
+    "comparison_files_exist": true,
+    "direct_fno_plus_vs_mamba_comparison_found": false,
+    "reason_not_directly_comparable": "Mamba/latent comparison outputs use Australia 30m h20/h72 one-step horizon style metrics, while FNO+ run uses Australia high-fidelity 60m 20-frame sequence prediction."
+  },
+  "claims": {
+    "allowed": [
+      "A functional FNO+ scaffold exists and trains on FloodCastBench high-fidelity Australia 60m.",
+      "The local 100-epoch FNO+ run completed and has test metrics for checkpoint_best selected on validation relative RMSE.",
+      "The local result is close to the official FNO+ CSI@0.01 but far from official FNO+ CSI@0.001 and relative RMSE.",
+      "The implementation is a simplified 2D spatial FNO approximation with temporal channels."
+    ],
+    "not_allowed": [
+      "Do not claim this is an official reproduction.",
+      "Do not claim FNO+ has been fairly compared against Mamba yet.",
+      "Do not claim superiority or inferiority of Mamba versus FNO+ from current artifacts."
+    ]
+  }
+}

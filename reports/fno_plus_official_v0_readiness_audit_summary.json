@@ -1,0 +1,112 @@
+{
+  "real_data_forward_pass_ok": true,
+  "mini_training_ok": true,
+  "checkpoint_write_ok": true,
+  "metric_compute_ok": true,
+  "input_shape": [
+    1,
+    6,
+    536,
+    536,
+    20
+  ],
+  "target_shape": [
+    1,
+    1,
+    536,
+    536,
+    19
+  ],
+  "output_shape": [
+    1,
+    1,
+    536,
+    536,
+    19
+  ],
+  "parameter_count": 11061901,
+  "measured_gpu_memory_mb_if_available": {
+    "forward_no_grad_peak_mb": 3050.9638671875,
+    "backward_one_step_peak_mb": 6998.4013671875
+  },
+  "estimated_full_training_feasible": true,
+  "normalization_status": "No normalization currently applied. X/Y/T are normalized coordinates; depth, DEM, rainfall are raw except nodata/nan/inf -> 0 and DEM/rainfall bilinear resize.",
+  "temporal_alignment_status": "Input has 20 time steps; initial depth repeated over all 20; rainfall sampled for t=1..20; target is water depth t=2..20; model output has 19 time steps and loss aligns output with target.",
+  "recommendation": "Do not launch full 100-epoch official-v0 training yet; run a 5-epoch pilot with the current code first, while resolving RMSE/dry-cell handling and normalization risk.",
+  "next_command_if_ready": "python tools/train_floodcastbench_fno_plus_official.py --config configs/floodcastbench_fno_plus_official_highfid_60m.yaml",
+  "safer_next_command": "python tools/train_floodcastbench_fno_plus_official.py --config configs/floodcastbench_fno_plus_official_highfid_60m.yaml --epochs 5 --num-workers 2",
+  "blocking_issues": [],
+  "non_blocking_scientific_risks": [
+    "RMSE formula and dry-cell handling unresolved",
+    "No normalization currently applied",
+    "Official architecture still ambiguous",
+    "No mixed precision or gradient checkpointing implemented",
+    "No crop/downsample debug option in official-v0 training config"
+  ],
+  "mini_run": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_16-09-27_fcb_fno_plus_official_v0_highfid_60m",
+  "mini_run_metrics": {
+    "train_loss": 0.008085238747298717,
+    "val_loss": 0.44642436504364014,
+    "train_paper_formula_rmse": 195065.23464374905,
+    "val_paper_formula_rmse": 54750.32929617428,
+    "train_current_relative_rmse": 14.332513530554138,
+    "val_current_relative_rmse": 0.9577227044366031,
+    "train_classical_rmse": 0.08991795469924405,
+    "val_classical_rmse": 0.6681499908361189,
+    "val_nse": -0.2603332549470603,
+    "val_pearson_r": -0.08390004515731572,
+    "val_csi_gamma_0_001": 0.6670977887467611,
+    "val_csi_gamma_0_01": 0.5967511226272408
+  },
+  "channel_stats": {
+    "X": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.5,
+      "std": 0.28921422362327576
+    },
+    "Y": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.4999999701976776,
+      "std": 0.28921422362327576
+    },
+    "T": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.5,
+      "std": 0.30348852276802063
+    },
+    "initial_depth": {
+      "min": 2.8960159397684038e-05,
+      "max": 0.6093350648880005,
+      "mean": 0.002194788074120879,
+      "std": 0.005758466199040413
+    },
+    "DEM": {
+      "min": -1.4188876152038574,
+      "max": 214.3459930419922,
+      "mean": 22.019779205322266,
+      "std": 39.50021743774414
+    },
+    "rainfall": {
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "std": 0.0
+    },
+    "target": {
+      "min": 2.8012163966195658e-05,
+      "max": 0.6090869307518005,
+      "mean": 0.0021947065833956003,
+      "std": 0.005803832784295082
+    }
+  },
+  "forward_output_stats": {
+    "min": 0.13402238488197327,
+    "max": 0.2027270793914795,
+    "mean": 0.14766278862953186,
+    "std": 0.015312140807509422,
+    "loss": 0.02144654653966427
+  }
+}

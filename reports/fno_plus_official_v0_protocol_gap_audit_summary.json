@@ -1,0 +1,117 @@
+{
+  "report": "/home/wissam/utem-workspace/code/a-iat-research/reports/fno_plus_official_v0_protocol_gap_audit.md",
+  "rainfall_count": 481,
+  "rainfall_step_counts": {
+    "1800.0": 480
+  },
+  "water_count": 2881,
+  "water_step_counts": {
+    "300": 2880
+  },
+  "metric_variants": {
+    "current_relative_rmse_global": 0.008135040478428111,
+    "classical_rmse_global": 0.005723862436022205,
+    "paper_formula_raw_no_epsilon_ignore_invalid_mean": 37.52406251423861,
+    "paper_formula_eps_1e_12_global_mean": 44.46523184492754,
+    "paper_formula_eps_1e_6_global_mean": 1.519605706231356,
+    "mean_over_samples_current_relative_rmse": 0.008134939346545361,
+    "mean_over_samples_classical_rmse": 0.005723799663031973,
+    "mean_over_samples_paper_eps12": 44.4652316229684,
+    "mean_over_timesteps_current_relative_rmse": 0.008129830114823522,
+    "mean_over_timesteps_classical_rmse": 0.005720206615907914,
+    "mean_over_timesteps_paper_eps12": 44.46523141310757,
+    "paper_formula_only_y_gt_0_0": 37.52406251423861,
+    "paper_formula_only_y_gt_0_001": 0.16271736988888358,
+    "paper_formula_only_y_gt_0_005": 0.004721914774738134,
+    "paper_formula_only_y_gt_0_01": 0.0018086460723113775
+  },
+  "closest_rmse_variants": [
+    [
+      "paper_formula_only_y_gt_0_005",
+      0.004721914774738134
+    ],
+    [
+      "mean_over_timesteps_classical_rmse",
+      0.005720206615907914
+    ],
+    [
+      "mean_over_samples_classical_rmse",
+      0.005723799663031973
+    ],
+    [
+      "classical_rmse_global",
+      0.005723862436022205
+    ],
+    [
+      "paper_formula_only_y_gt_0_01",
+      0.0018086460723113775
+    ],
+    [
+      "mean_over_timesteps_current_relative_rmse",
+      0.008129830114823522
+    ],
+    [
+      "mean_over_samples_current_relative_rmse",
+      0.008134939346545361
+    ],
+    [
+      "current_relative_rmse_global",
+      0.008135040478428111
+    ]
+  ],
+  "train_stats": {
+    "channels": {
+      "X": {
+        "min": 0.0,
+        "max": 1.0,
+        "mean": 0.5,
+        "std": 0.28921420665336434,
+        "count": 666526720
+      },
+      "Y": {
+        "min": 0.0,
+        "max": 1.0,
+        "mean": 0.5,
+        "std": 0.28921420665336434,
+        "count": 666526720
+      },
+      "T": {
+        "min": 0.0,
+        "max": 1.0,
+        "mean": 0.5,
+        "std": 0.30348848668464734,
+        "count": 666526720
+      },
+      "initial_depth": {
+        "min": 2.1933510652161203e-05,
+        "max": 15.0083646774292,
+        "mean": 0.10461929209732442,
+        "std": 0.2882487686375449,
+        "count": 666526720
+      },
+      "DEM": {
+        "min": -1.4188876152038574,
+        "max": 214.3459930419922,
+        "mean": 22.019778903987525,
+        "std": 39.50021532446466,
+        "count": 666526720
+      },
+      "rainfall": {
+        "min": 0.0,
+        "max": 26.329999923706055,
+        "mean": 1.8731880845773459,
+        "std": 3.092138860283626,
+        "count": 666526720
+      }
+    },
+    "target": {
+      "min": 2.1659754565916955e-05,
+      "max": 15.013915061950684,
+      "mean": 0.10615786882820435,
+      "std": 0.2912860004041163,
+      "count": 633200384
+    }
+  },
+  "rainfall_suspicious": false,
+  "metric_equivalence_confirmed": false
+}

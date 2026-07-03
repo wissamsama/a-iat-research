@@ -1,0 +1,18 @@
+{
+  "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m",
+  "checkpoint": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/27-06-2026_14-00-18_fcb_fno_plus_highfid_60m/checkpoint_best.pth",
+  "checkpoint_epoch": 95,
+  "split": "test",
+  "samples": 14,
+  "metrics": {
+    "paper_formula_rmse": 90.00131859499496,
+    "current_relative_rmse": 0.01235829833769271,
+    "classical_rmse": 0.00869537161902043,
+    "nse": 0.9997911644242803,
+    "pearson_r": 0.9998986562960474,
+    "csi_gamma_0_001": 0.7241764635613173,
+    "csi_gamma_0_01": 0.9857210422280918,
+    "pixels": 76420736
+  },
+  "paper_formula_note": "Formula is mean((y-p)^2/(y^2+eps)); no square root; dry cells are epsilon-stabilized."
+}
