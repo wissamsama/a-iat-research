@@ -1,0 +1,49 @@
+experiment:
+  name: fcb_fno_plus_official_v0_highfid_60m
+
+paths:
+  dataset_root: /home/wissam/utem-workspace/data/FloodCastBench
+  experiment_root: /home/wissam/utem-workspace/experiments/FloodCastBench
+  checkpoint_root: /home/wissam/utem-workspace/checkpoints/FloodCastBench
+  log_root: /home/wissam/utem-workspace/logs/FloodCastBench
+
+dataset:
+  name: floodcastbench
+  task: fno_plus_official_reproduction_attempt_v0
+  fidelity: high
+  event: australia
+  resolution: 60m
+  sample_length: 20
+  stride: 20
+  split_counts:
+    train: 116
+    val: 14
+    test: 14
+
+model:
+  name: fno_plus_official_v0
+  input_channels: 6
+  modes: 12
+  width: 20
+  fourier_layers: 4
+  output_steps: 19
+
+loader:
+  batch_size: 1
+  num_workers: 2
+  pin_memory: true
+
+training:
+  epochs: 100
+  learning_rate: 0.001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
+  scheduler: cosine
+  min_learning_rate: 0.0
+  loss: mse
+  selection_metric: val_current_relative_rmse
+  device: auto
+  seed: 42
+
+evaluation:
+  gammas: [0.001, 0.01]
