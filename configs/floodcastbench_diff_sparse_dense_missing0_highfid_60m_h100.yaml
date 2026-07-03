@@ -1,0 +1,113 @@
+experiment:
+  name: fcb_diff_sparse_dense_missing0_highfid_60m_h100
+  seed: 42
+
+paths:
+  dataset_root: /home/wissam/utem-workspace/data/FloodCastBench
+  experiment_root: /home/wissam/utem-workspace/experiments/FloodCastBench
+  checkpoint_root: /home/wissam/utem-workspace/checkpoints/FloodCastBench
+  log_root: /home/wissam/utem-workspace/logs/FloodCastBench
+
+dataset:
+  name: floodcastbench
+  task: diff_sparse_dense_direct_h100
+  fidelity: high
+  event: australia
+  resolution: 60m
+  sample_length: 20
+  stride: 20
+  target_horizon_label: h100
+  target_horizon_index_from_h1: 99
+  split_counts:
+    train: 116
+    val: 14
+    test: 14
+  h100_eligibility:
+    train: 116
+    val: 14
+    test: 10
+    test_total: 14
+
+normalization:
+  fit_split: train
+  method: standardization
+  context_reuse_official_v1: true
+  target_normalization: target_depth_h100_direct
+  min_std: 0.000001
+
+target_normalization:
+  key: target_depth_h100_direct
+  fit_split: train
+  train_only: true
+  mean: 0.1200550028330472
+  std: 0.31688976890064807
+  min: 0.000021956322598271072
+  max: 15.00886058807373
+  stats:
+    mean: 0.1200550028330472
+    std: 0.31688976890064807
+    min: 0.000021956322598271072
+    max: 15.00886058807373
+    pixel_count: 33326336
+    train_sample_count: 116
+    fit_split: train
+    train_only: true
+    horizon_range: h100
+
+masking:
+  missing_rate: 0.0
+  mask_mode: all_ones
+
+model:
+  name: diff_sparse_dense
+  context_channels: 6
+  target_channels: 1
+  input_timesteps: 20
+  use_dem: true
+  use_rain: true
+  use_coords: true
+  use_time: true
+  base_channels: 32
+  channel_mults: [1, 2, 4]
+  conditioning: concat
+
+diffusion:
+  steps: 20
+  beta_schedule: linear
+  beta_start: 0.0001
+  beta_end: 0.02
+  prediction_type: x0
+
+loader:
+  batch_size: 1
+  num_workers: 0
+  pin_memory: true
+
+training:
+  epochs: 20
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  loss: mse_x0
+  selection_metric: val_loss
+  device: auto
+  seed: 42
+  grad_clip_norm: 1.0
+
+evaluation:
+  metric_units: normalized_h100_direct_sampling_sanity
+  num_samples: 2
+  persistence_h100_direct:
+    val_rmse: 0.07562014600551345
+    val_mae: 0.026143467265402807
+    test_rmse: 0.04477572312232809
+    test_mae: 0.015716384291761747
+
+scientific:
+  status: dense_missing0_direct_h100_sanity_baseline
+  does_not_claim:
+    - official FloodCastBench benchmark performance
+    - physical-unit forecast skill
+    - sparse-sensor robustness
+    - uncertainty calibration
+    - autoregressive rollout
+    - superiority over persistence or FNO+
