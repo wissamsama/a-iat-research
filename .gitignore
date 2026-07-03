@@ -25,7 +25,6 @@ datasets_local/
 train_runs/
 attack_runs/
 trained_models/
-reports/
 checkpoints/
 experiments/
 logs/
