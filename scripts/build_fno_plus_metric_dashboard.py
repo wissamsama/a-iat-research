@@ -27,6 +27,7 @@ import csv
 import html
 import json
 import math
+import statistics
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,46 @@ DEFAULT_OUTPUT = Path(
 )
 SECONDS_PER_STEP = 300
 CANONICAL_STEPS = [1, 5, 10, 19, 37, 54, 72, 96, 120, 144, 168, 192, 216]
+
+# The 3 official-v1 FNO+ seed runs (see reports/fno_plus_multiseed_results.md).
+# Used to average the "same protocol as Table 4" reference point across seeds
+# instead of reporting a single seed=42 number.
+FNO_SEED_RUN_DIRS = [
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "28-06-2026_15-59-18_fcb_fno_plus_official_v1_normalized_100epoch_highfid_60m"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "03-07-2026_17-43-06_fcb_fno_plus_official_v1_normalized_highfid_60m"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "03-07-2026_22-38-40_fcb_fno_plus_official_v1_normalized_seed123_highfid_60m"
+    ),
+]
+
+# The 3 official DIFF-SPARSE v1 dense (missing_rate=0.0) seed runs under the
+# 161-epoch gradient-step-parity protocol (see
+# reports/diff_sparse_v1_fno_plus_training_protocol.md). Each entry is the
+# test-split eval_rollout directory containing eval_metrics_official_per_step.csv.
+DIFF_SPARSE_DENSE_SEED_EVAL_DIRS = [
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m/"
+        "eval_rollout_test_04-07-2026_11-11-40"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m/"
+        "eval_rollout_test_04-07-2026_15-52-05"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m/"
+        "eval_rollout_test_04-07-2026_20-30-50"
+    ),
+]
 
 OFFICIAL_TABLE4 = {
     "FNO+ (official Table 4)": {
@@ -231,6 +272,59 @@ def read_diff_sparse_official_per_step(path: Path) -> dict[int, dict[str, float]
     return rows
 
 
+def average_diff_sparse_per_step(
+    eval_dirs: list[Path],
+) -> tuple[dict[int, dict[str, float]], dict[int, dict[str, float]], dict[int, float]]:
+    """Mean/std of per-step official metrics across seed eval dirs.
+
+    Returns (mean_by_step, std_by_step, n_by_step). A metric key is only
+    averaged for a step if every seed's CSV has a value for it, so partial
+    data never silently understates the true seed count.
+    """
+
+    per_seed = [read_diff_sparse_official_per_step(d / "eval_metrics_official_per_step.csv") for d in eval_dirs]
+    common_steps = set.intersection(*(set(seed.keys()) for seed in per_seed)) if per_seed else set()
+    mean_by_step: dict[int, dict[str, float]] = {}
+    std_by_step: dict[int, dict[str, float]] = {}
+    n_by_step: dict[int, float] = {}
+    for step in sorted(common_steps):
+        keys = set.intersection(*(set(seed[step].keys()) for seed in per_seed))
+        mean_by_step[step] = {}
+        std_by_step[step] = {}
+        for key in keys:
+            values = [seed[step][key] for seed in per_seed]
+            mean_by_step[step][key] = statistics.mean(values)
+            std_by_step[step][key] = statistics.stdev(values) if len(values) > 1 else 0.0
+        n_by_step[step] = float(len(per_seed))
+    return mean_by_step, std_by_step, n_by_step
+
+
+def average_fno_pooled_metrics(run_dirs: list[Path]) -> dict[str, Any]:
+    """Mean/std of the pooled official-protocol test metrics across FNO+ seeds."""
+
+    metric_keys = ["current_relative_rmse", "classical_rmse", "nse", "pearson_r", "csi_gamma_0_001", "csi_gamma_0_01"]
+    per_seed = []
+    for run_dir in run_dirs:
+        # Filename differs: the original seed=42 run predates a naming tweak
+        # in the eval tool and uses a "_normalized" suffix; seed 7/123 don't.
+        candidates = [
+            run_dir / "test_metrics_checkpoint_best_official_v1_normalized.json",
+            run_dir / "test_metrics_checkpoint_best_official_v1.json",
+        ]
+        path = next((c for c in candidates if c.exists()), None)
+        if path is None:
+            raise FileNotFoundError(f"No pooled test metrics file found in {run_dir}")
+        with path.open() as file:
+            per_seed.append(json.load(file)["metrics"])
+    mean: dict[str, float] = {}
+    std: dict[str, float] = {}
+    for key in metric_keys:
+        values = [seed[key] for seed in per_seed]
+        mean[key] = statistics.mean(values)
+        std[key] = statistics.stdev(values) if len(values) > 1 else 0.0
+    return {"mean": mean, "std": std, "n": len(per_seed)}
+
+
 def read_diff_sparse_path_metrics(summary_path: Path) -> dict[int, dict[str, float]]:
     with summary_path.open("r", encoding="utf-8") as file:
         summary = json.load(file)
@@ -263,30 +357,47 @@ def curve_series(
     per_step: dict[int, dict[str, float]],
     path_metrics: dict[int, dict[str, float]],
     steps: list[int],
+    std_by_step: dict[int, dict[str, float]] | None = None,
+    n_by_step: dict[int, float] | None = None,
 ) -> dict[str, Any]:
     metric_names = [m for group in METRIC_GROUPS for m in group["metrics"]]
     values: dict[str, dict[str, float | None]] = {m: {} for m in metric_names}
+    stds: dict[str, dict[str, float | None]] = {m: {} for m in metric_names}
     samples: dict[str, float | None] = {}
+    seed_counts: dict[str, float | None] = {}
     for step in steps:
         row = per_step.get(step, {})
         path_row = path_metrics.get(step, {})
+        std_row = (std_by_step or {}).get(step, {})
         samples[str(step)] = row.get("rollout_samples")
+        seed_counts[str(step)] = (n_by_step or {}).get(step)
         for metric in metric_names:
             value = row.get(metric)
             if value is None:
                 value = path_row.get(metric)
             values[metric][str(step)] = value
+            std_value = std_row.get(metric)
+            stds[metric][str(step)] = std_value
     return {
         "name": name,
         "status": status,
         "kind": "curve",
         "style": {"color": color, "width": width},
         "values": values,
+        "stds": stds,
         "samples": samples,
+        "seed_counts": seed_counts,
     }
 
 
-def reference_series(name: str, status: str, color: str, dash: str, refs: dict[str, float]) -> dict[str, Any]:
+def reference_series(
+    name: str,
+    status: str,
+    color: str,
+    dash: str,
+    refs: dict[str, float],
+    stds: dict[str, float] | None = None,
+) -> dict[str, Any]:
     return {
         "name": name,
         "status": status,
@@ -294,6 +405,7 @@ def reference_series(name: str, status: str, color: str, dash: str, refs: dict[s
         "style": {"color": color, "dash": dash, "width": 2.0},
         "span": [1, 19],
         "refs": refs,
+        "stds": stds or {},
     }
 
 
@@ -306,19 +418,25 @@ COLOR_PROTOCOL = {"light": "#eb6834", "dark": "#d95926"}  # slot 8 orange — sa
 COLOR_DIFFSPARSE = {"light": "#4a3aa7", "dark": "#9085e9"}  # slot 5 violet — DIFF-SPARSE comparison
 
 
-def build_data(run_dir: Path, diff_sparse_eval_dir: Path | None = None) -> dict[str, Any]:
+def build_data(
+    run_dir: Path,
+    diff_sparse_eval_dirs: list[Path] | None = None,
+    fno_seed_run_dirs: list[Path] | None = None,
+) -> dict[str, Any]:
     rollout_dir = run_dir / "long_horizon_rollout_eval_dense_v2"
     best_steps = read_per_step(rollout_dir / "checkpoint_best" / "long_horizon_metrics_per_step.csv")
     best_path = read_path_metrics(rollout_dir / "checkpoint_best" / "long_horizon_path_metrics.csv")
     steps = sorted(best_steps)
 
-    with (run_dir / "test_metrics_checkpoint_best_official_v1_normalized.json").open() as file:
-        pooled_best = json.load(file)
+    fno_seed_run_dirs = fno_seed_run_dirs if fno_seed_run_dirs is not None else FNO_SEED_RUN_DIRS
+    fno_pooled = average_fno_pooled_metrics(fno_seed_run_dirs)
+    n_fno_seeds = fno_pooled["n"]
 
     series: list[dict[str, Any]] = [
         curve_series(
-            "FNO+ (this repo) — rollout, step by step",
-            "validation-selected checkpoint, autoregressive rollout, physical units, no clipping",
+            "FNO+ (this repo) — rollout, step by step (seed 42 only)",
+            "single seed (42); the long-horizon per-step rollout has not been run for seeds 7/123 "
+            "(it is separately expensive from the pooled protocol eval below) — not multiseed",
             COLOR_CURVE,
             2.5,
             best_steps,
@@ -333,34 +451,42 @@ def build_data(run_dir: Path, diff_sparse_eval_dir: Path | None = None) -> dict[
             OFFICIAL_TABLE4["FNO+ (official Table 4)"],
         ),
         reference_series(
-            "FNO+ (this repo) — same protocol as Table 4",
-            "this run evaluated with the official pooled t2..t20 protocol — the fair apples-to-apples comparison point",
+            f"FNO+ (this repo) — same protocol as Table 4 (mean of {n_fno_seeds} seeds)",
+            f"official pooled t2..t20 protocol, mean +/- std across seeds 42/7/123 (N={n_fno_seeds}) "
+            "— the fair apples-to-apples comparison point",
             COLOR_PROTOCOL,
             "2 3",
-            {
-                "current_relative_rmse": pooled_best["metrics"]["current_relative_rmse"],
-                "classical_rmse": pooled_best["metrics"]["classical_rmse"],
-                "nse": pooled_best["metrics"]["nse"],
-                "pearson_r": pooled_best["metrics"]["pearson_r"],
-                "csi_gamma_0_001": pooled_best["metrics"]["csi_gamma_0_001"],
-                "csi_gamma_0_01": pooled_best["metrics"]["csi_gamma_0_01"],
-            },
+            fno_pooled["mean"],
+            fno_pooled["std"],
         ),
     ]
-    if diff_sparse_eval_dir is not None:
-        diff_sparse_per_step = read_diff_sparse_official_per_step(
-            diff_sparse_eval_dir / "eval_metrics_official_per_step.csv"
-        )
-        diff_sparse_path = read_diff_sparse_path_metrics(diff_sparse_eval_dir / "eval_summary.json")
+
+    diff_sparse_eval_dirs = (
+        diff_sparse_eval_dirs if diff_sparse_eval_dirs is not None else DIFF_SPARSE_DENSE_SEED_EVAL_DIRS
+    )
+    if diff_sparse_eval_dirs:
+        mean_by_step, std_by_step, n_by_step = average_diff_sparse_per_step(diff_sparse_eval_dirs)
+        n_ds_seeds = len(diff_sparse_eval_dirs)
+        # PathIoU (h20 only) averaged across the same seeds, for consistency.
+        path_per_seed = [read_diff_sparse_path_metrics(d / "eval_summary.json") for d in diff_sparse_eval_dirs]
+        diff_sparse_path: dict[int, dict[str, float]] = {}
+        common_path_steps = set.intersection(*(set(p.keys()) for p in path_per_seed)) if path_per_seed else set()
+        for step in common_path_steps:
+            keys = set.intersection(*(set(p[step].keys()) for p in path_per_seed))
+            diff_sparse_path[step] = {k: statistics.mean(p[step][k] for p in path_per_seed) for k in keys}
         series.append(
             curve_series(
-                "DIFF-SPARSE v1 — rollout, step by step (dense, no missing sensors)",
-                "dense DIFF-SPARSE v1 rollout, shared physical metrics, native h13..h20 horizon only",
+                f"DIFF-SPARSE v1 — rollout, step by step (dense, mean of {n_ds_seeds} seeds)",
+                f"dense (missing_rate=0.0) DIFF-SPARSE v1, 161-epoch protocol, mean +/- std across seeds "
+                f"42/7/123 (N={n_ds_seeds}), shared physical metrics, native h13..h20 horizon only — "
+                "does not extend further (no long-horizon rollout has been run for DIFF-SPARSE)",
                 COLOR_DIFFSPARSE,
                 2.4,
-                diff_sparse_per_step,
+                mean_by_step,
                 diff_sparse_path,
-                sorted(diff_sparse_per_step),
+                sorted(mean_by_step),
+                std_by_step=std_by_step,
+                n_by_step=n_by_step,
             )
         )
 
@@ -370,13 +496,11 @@ def build_data(run_dir: Path, diff_sparse_eval_dir: Path | None = None) -> dict[
         "per_step_last": str(rollout_dir / "checkpoint_last" / "long_horizon_metrics_per_step.csv"),
         "path_best": str(rollout_dir / "checkpoint_best" / "long_horizon_path_metrics.csv"),
         "path_last": str(rollout_dir / "checkpoint_last" / "long_horizon_path_metrics.csv"),
-        "pooled_best": str(run_dir / "test_metrics_checkpoint_best_official_v1_normalized.json"),
+        "fno_seed_run_dirs": [str(d) for d in fno_seed_run_dirs],
         "generator": str(Path(__file__).resolve()),
     }
-    if diff_sparse_eval_dir is not None:
-        source_files["diff_sparse_eval_dir"] = str(diff_sparse_eval_dir)
-        source_files["diff_sparse_per_step"] = str(diff_sparse_eval_dir / "eval_metrics_official_per_step.csv")
-        source_files["diff_sparse_summary"] = str(diff_sparse_eval_dir / "eval_summary.json")
+    if diff_sparse_eval_dirs:
+        source_files["diff_sparse_eval_dirs"] = [str(d) for d in diff_sparse_eval_dirs]
 
     return {
         "title": "FloodCastBench FNO+ baseline metrics",
@@ -409,9 +533,13 @@ def build_data(run_dir: Path, diff_sparse_eval_dir: Path | None = None) -> dict[
                 "per-step sample count is shown in tooltips and in the table."
             ),
             "time": "1 step = 300 s; step 19 is the paper's t=20 target; step 216 = 18 h.",
-            "diff_sparse": (
-                "When provided, DIFF-SPARSE v1 is shown only on its native dense rollout window h13..h20; "
-                "no values are fabricated outside that horizon range."
+            "multiseed_status": (
+                "Multiseed status differs by series, shown honestly rather than uniformly: the FNO+ per-step "
+                "curve (blue) is seed=42 only — the expensive long-horizon rollout has not been run for seeds "
+                "7/123. The FNO+ same-protocol reference (orange) and the DIFF-SPARSE curve (violet) ARE "
+                "mean +/- std across all 3 seeds (42/7/123), shown as a shaded band (reference) or error bars "
+                "at canonical steps (curve). DIFF-SPARSE is dense (missing_rate=0.0), 161-epoch protocol, and "
+                "shown only on its native h13..h20 window — no long-horizon rollout exists for it yet."
             ),
         },
         "source_files": source_files,
@@ -697,13 +825,19 @@ function renderChart() {
     if (s.kind === 'reference') {
       const r = s.refs[currentMetric];
       if (r == null) return;
+      const std = s.stds ? s.stds[currentMetric] : null;
       const [sx0,sx1] = s.span;
       const xa = xFor(Math.max(sx0,x0)), xb = xFor(Math.min(sx1,x1));
       if (xb <= xa) return;
       const y = yFor(Number(r));
+      if (std != null && std > 0) {
+        const yTop = yFor(Number(r) + std), yBot = yFor(Number(r) - std);
+        layer.appendChild(el('rect',{x:xa,y:yTop,width:xb-xa,height:Math.max(yBot-yTop,0.5),fill:color,opacity:0.14}));
+      }
       const hit = el('line',{x1:xa,x2:xb,y1:y,y2:y,stroke:'transparent','stroke-width':16});
       const line = el('line',{x1:xa,x2:xb,y1:y,y2:y,stroke:color,'stroke-width':s.style.width,'stroke-dasharray':s.style.dash||'','stroke-linecap':'round'});
-      hit.addEventListener('mousemove',ev=>showTooltip(ev, fmt(r), s.name, color, 'pooled t=2..20'));
+      const extra = std != null && std > 0 ? `pooled t=2..20 · ±${fmt(std)} (std)` : 'pooled t=2..20';
+      hit.addEventListener('mousemove',ev=>showTooltip(ev, fmt(r), s.name, color, extra));
       hit.addEventListener('mouseleave',hideTooltip);
       layer.appendChild(line);
       layer.appendChild(hit);
@@ -716,11 +850,18 @@ function renderChart() {
     pts.forEach(p => {
       const emphasized = sparse || DATA.canonical_steps.includes(p.step);
       const r = sparse ? 4.5 : (emphasized ? 4 : 1.8);
+      const std = s.stds && s.stds[currentMetric] ? s.stds[currentMetric][String(p.step)] : null;
+      if (std != null && std > 0 && emphasized) {
+        const yTop = yFor(p.v + std), yBot = yFor(p.v - std);
+        layer.appendChild(el('line',{x1:xFor(p.step),x2:xFor(p.step),y1:yTop,y2:yBot,stroke:color,'stroke-width':1.4,opacity:0.55}));
+      }
       const c = el('circle',{cx:xFor(p.step),cy:yFor(p.v),r,fill:color,stroke:emphasized?surface:'none','stroke-width':emphasized?2:0});
       const hitR = el('circle',{cx:xFor(p.step),cy:yFor(p.v),r:Math.max(r,12),fill:'transparent'});
       const label = (DATA.metric_info[currentMetric]||{label:currentMetric}).label;
+      const seedNote = s.seed_counts && s.seed_counts[String(p.step)] ? `, N=${s.seed_counts[String(p.step)]} seeds` : '';
+      const stdNote = std != null && std > 0 ? ` (±${fmt(std)} std${seedNote})` : (seedNote ? ` (${seedNote.slice(2)})` : '');
       const extra = `step ${p.step} · ${stepTime(p.step)}${p.step===DATA.paper_t20_step?' · paper t=20':''} · ${p.n??'?'} test starts`;
-      hitR.addEventListener('mousemove',ev=>showTooltip(ev, `${label}: ${fmt(p.v)}`, s.name, color, extra));
+      hitR.addEventListener('mousemove',ev=>showTooltip(ev, `${label}: ${fmt(p.v)}${stdNote}`, s.name, color, extra));
       hitR.addEventListener('mouseleave',hideTooltip);
       layer.appendChild(c);
       layer.appendChild(hitR);
@@ -749,10 +890,16 @@ function renderTable() {
   activeSeries().forEach(s => {
     h += `<tr><td><b>${s.name}</b><span class="status">${s.status||''}</span></td>`;
     cols.forEach(st => {
-      let v = null;
-      if (s.kind==='reference') { v = (st>=s.span[0]&&st<=s.span[1]) ? s.refs[currentMetric] : null; }
-      else { v = s.values[currentMetric] ? s.values[currentMetric][String(st)] : null; }
-      h += `<td>${fmt(v)}</td>`;
+      let v = null, std = null;
+      if (s.kind==='reference') {
+        v = (st>=s.span[0]&&st<=s.span[1]) ? s.refs[currentMetric] : null;
+        std = s.stds ? s.stds[currentMetric] : null;
+      } else {
+        v = s.values[currentMetric] ? s.values[currentMetric][String(st)] : null;
+        std = s.stds && s.stds[currentMetric] ? s.stds[currentMetric][String(st)] : null;
+      }
+      const cell = (std != null && std > 0) ? `${fmt(v)} ± ${fmt(std)}` : fmt(v);
+      h += `<td>${cell}</td>`;
     });
     h += '</tr>';
   });
@@ -801,10 +948,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build the FNO+ scientific metric dashboard from run artifacts.")
     parser.add_argument("--run-dir", type=Path, default=DEFAULT_RUN_DIR)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--diff-sparse-eval-dir", type=Path)
+    parser.add_argument(
+        "--diff-sparse-eval-dirs",
+        type=Path,
+        nargs="+",
+        help="One or more DIFF-SPARSE eval_rollout_test_* dirs to average (default: the 3 official seed dirs)",
+    )
+    parser.add_argument(
+        "--fno-seed-run-dirs",
+        type=Path,
+        nargs="+",
+        help="FNO+ official-v1 run dirs to average for the same-protocol reference (default: the 3 official seeds)",
+    )
     args = parser.parse_args()
 
-    data = build_data(args.run_dir, args.diff_sparse_eval_dir)
+    data = build_data(args.run_dir, args.diff_sparse_eval_dirs, args.fno_seed_run_dirs)
     page = HTML_TEMPLATE.replace("__TITLE__", html.escape(data["title"])).replace(
         "__DATA__", json.dumps(data, allow_nan=False)
     )
