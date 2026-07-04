@@ -1,0 +1,310 @@
+{
+  "created_at_local": "2026-07-05T01:16:06",
+  "code_root": "/home/wissam/utem-workspace/code/a-iat-research",
+  "experiment_root": "/home/wissam/utem-workspace/experiments/FloodCastBench",
+  "checkpoint_root": "/home/wissam/utem-workspace/checkpoints/FloodCastBench",
+  "process_check": {
+    "patterns": [
+      "train_floodcastbench",
+      "evaluate_floodcastbench",
+      "diff_sparse",
+      "fno_plus"
+    ],
+    "matches": [],
+    "active_floodcastbench_processes_found": false
+  },
+  "queue_logs": {
+    "fno_plus_multiseed": {
+      "path": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/fno_plus_multiseed_queue_03-07-2026_17-41-24.log",
+      "exists": true,
+      "line_count": 458,
+      "started_marker": "FNO+ multi-seed cross-validation queue started at 2026-07-03T17:43:03+08:00",
+      "finished_marker": "FNO+ multi-seed cross-validation queue finished at 2026-07-04T03:59:26+08:00",
+      "appears_complete": true,
+      "last_non_empty_lines": [
+        "===== EVAL seed123 test END 2026-07-04T03:59:26+08:00 =====",
+        "++ date -Is",
+        "+ echo 'FNO+ multi-seed cross-validation queue finished at 2026-07-04T03:59:26+08:00'",
+        "FNO+ multi-seed cross-validation queue finished at 2026-07-04T03:59:26+08:00",
+        "+ echo SEED7_RUN=/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_17-43-06_fcb_fno_plus_official_v1_normalized_highfid_60m",
+        "SEED7_RUN=/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_17-43-06_fcb_fno_plus_official_v1_normalized_highfid_60m",
+        "+ echo SEED123_RUN=/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_22-38-40_fcb_fno_plus_official_v1_normalized_seed123_highfid_60m",
+        "SEED123_RUN=/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_22-38-40_fcb_fno_plus_official_v1_normalized_seed123_highfid_60m"
+      ]
+    },
+    "diff_sparse_protocol161_full": {
+      "path": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/diff_sparse_v1_protocol161_full_queue_04-07-2026_10-09-54.log",
+      "exists": true,
+      "line_count": 22272,
+      "started_marker": "DIFF-SPARSE v1 protocol-161 full queue started at 2026-07-04T10:10:39+08:00",
+      "finished_marker": "DIFF-SPARSE v1 protocol-161 full queue finished at 2026-07-05T00:09:58+08:00",
+      "appears_complete": true,
+      "last_non_empty_lines": [
+        "  ]",
+        "}",
+        "++ date -Is",
+        "+ echo '===== EVAL seed123_m95_test_oracle END 2026-07-05T00:09:58+08:00 ====='",
+        "===== EVAL seed123_m95_test_oracle END 2026-07-05T00:09:58+08:00 =====",
+        "++ date -Is",
+        "+ echo 'DIFF-SPARSE v1 protocol-161 full queue finished at 2026-07-05T00:09:58+08:00'",
+        "DIFF-SPARSE v1 protocol-161 full queue finished at 2026-07-05T00:09:58+08:00"
+      ]
+    },
+    "diff_sparse_seed_ablation_partial": {
+      "path": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/diff_sparse_v1_seed_ablation_queue_04-07-2026_09-47-11.log",
+      "exists": true,
+      "line_count": 829,
+      "started_marker": "DIFF-SPARSE v1 seed-ablation queue started at 2026-07-04T09:47:29+08:00",
+      "finished_marker": null,
+      "appears_complete": false,
+      "last_non_empty_lines": [
+        "+ run_eval seed7_m50_test_sparse configs/floodcastbench_diff_sparse_v1_seed7_highfid_60m.yaml /home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_09-47-32_fcb_diff_sparse_v1_seed7_highfid_60m/checkpoint_best.pth test 0.5 sparse",
+        "+ local label=seed7_m50_test_sparse config=configs/floodcastbench_diff_sparse_v1_seed7_highfid_60m.yaml checkpoint=/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_09-47-32_fcb_diff_sparse_v1_seed7_highfid_60m/checkpoint_best.pth split=test missing_rate=0.5 persistence_mode=sparse",
+        "++ date -Is",
+        "+ echo '===== EVAL seed7_m50_test_sparse START 2026-07-04T10:06:05+08:00 ====='",
+        "===== EVAL seed7_m50_test_sparse START 2026-07-04T10:06:05+08:00 =====",
+        "+ /home/wissam/miniforge3/envs/floodcast-mamba/bin/python tools/evaluate_floodcastbench_diff_sparse_v1.py --config configs/floodcastbench_diff_sparse_v1_seed7_highfid_60m.yaml --checkpoint /home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_09-47-32_fcb_diff_sparse_v1_seed7_highfid_60m/checkpoint_best.pth --split test --device cuda --tile-stride 48 --missing-rate 0.5 --persistence-mode sparse",
+        "/home/wissam/miniforge3/envs/floodcast-mamba/lib/python3.12/site-packages/rasterio/__init__.py:367: NotGeoreferencedWarning: Dataset has no geotransform, gcps, or rpcs. The identity matrix will be returned.",
+        "  dataset = DatasetReader(path, driver=driver, sharing=sharing, thread_safe=thread_safe, **kwargs)"
+      ]
+    },
+    "diff_sparse_followup_retry3": {
+      "path": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/diff_sparse_v1_followup_queue_03-07-2026_16-41-12_retry3.log",
+      "exists": true,
+      "line_count": 10639,
+      "started_marker": "DIFF-SPARSE v1 follow-up queue started at 2026-07-03T20:07:31+08:00",
+      "finished_marker": "DIFF-SPARSE v1 follow-up queue finished at 2026-07-04T03:31:55+08:00",
+      "appears_complete": true,
+      "last_non_empty_lines": [
+        "  ]",
+        "}",
+        "++ date -Is",
+        "+ echo '===== EVAL m0_80epochs_val_oracle END 2026-07-04T03:31:55+08:00 ====='",
+        "===== EVAL m0_80epochs_val_oracle END 2026-07-04T03:31:55+08:00 =====",
+        "++ date -Is",
+        "+ echo 'DIFF-SPARSE v1 follow-up queue finished at 2026-07-04T03:31:55+08:00'",
+        "DIFF-SPARSE v1 follow-up queue finished at 2026-07-04T03:31:55+08:00"
+      ]
+    }
+  },
+  "fno_plus_runs": [
+    {
+      "label": "seed7",
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_17-43-06_fcb_fno_plus_official_v1_normalized_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/03-07-2026_17-43-06_fcb_fno_plus_official_v1_normalized_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 80,
+      "best_selection_metric": 0.006549833096395971,
+      "val_eval_exists": true,
+      "test_eval_exists": true
+    },
+    {
+      "label": "seed123",
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/03-07-2026_22-38-40_fcb_fno_plus_official_v1_normalized_seed123_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/03-07-2026_22-38-40_fcb_fno_plus_official_v1_normalized_seed123_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 75,
+      "best_selection_metric": 0.00635408577142449,
+      "val_eval_exists": true,
+      "test_eval_exists": true
+    }
+  ],
+  "diff_sparse_protocol161_runs": [
+    {
+      "seed": "seed42",
+      "missing_rate": 0.0,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 100,
+      "best_selection_metric": 0.004676183685660362,
+      "eval_dir_count": 2,
+      "expected_eval_dir_count": 2,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m/eval_rollout_test_04-07-2026_11-11-40",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m/eval_rollout_val_04-07-2026_11-07-25"
+      ]
+    },
+    {
+      "seed": "seed42",
+      "missing_rate": 0.5,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 137,
+      "best_selection_metric": 0.14967530965805054,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m/eval_rollout_test_04-07-2026_12-30-37",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m/eval_rollout_test_04-07-2026_12-52-30",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m/eval_rollout_val_04-07-2026_12-25-58",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_11-28-30_fcb_diff_sparse_v1_highfid_60m/eval_rollout_val_04-07-2026_12-48-08"
+      ]
+    },
+    {
+      "seed": "seed42",
+      "missing_rate": 0.95,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 58,
+      "best_selection_metric": 0.5551629662513733,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m/eval_rollout_test_04-07-2026_14-11-55",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m/eval_rollout_test_04-07-2026_14-33-52",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m/eval_rollout_val_04-07-2026_14-07-18",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_13-09-59_fcb_diff_sparse_v1_highfid_60m/eval_rollout_val_04-07-2026_14-29-25"
+      ]
+    },
+    {
+      "seed": "seed7",
+      "missing_rate": 0.0,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 79,
+      "best_selection_metric": 0.005988688673824072,
+      "eval_dir_count": 2,
+      "expected_eval_dir_count": 2,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_test_04-07-2026_15-52-05",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_val_04-07-2026_15-47-49"
+      ]
+    },
+    {
+      "seed": "seed7",
+      "missing_rate": 0.5,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 159,
+      "best_selection_metric": 0.15946272015571594,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_test_04-07-2026_17-10-56",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_test_04-07-2026_17-32-06",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_val_04-07-2026_17-06-39",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_16-08-49_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_val_04-07-2026_17-27-46"
+      ]
+    },
+    {
+      "seed": "seed7",
+      "missing_rate": 0.95,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 68,
+      "best_selection_metric": 0.4965687692165375,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_test_04-07-2026_18-51-44",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_test_04-07-2026_19-12-55",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_val_04-07-2026_18-47-28",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m/eval_rollout_val_04-07-2026_19-08-39"
+      ]
+    },
+    {
+      "seed": "seed123",
+      "missing_rate": 0.0,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 89,
+      "best_selection_metric": 0.005089394748210907,
+      "eval_dir_count": 2,
+      "expected_eval_dir_count": 2,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_test_04-07-2026_20-30-50",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_val_04-07-2026_20-26-34"
+      ]
+    },
+    {
+      "seed": "seed123",
+      "missing_rate": 0.5,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 133,
+      "best_selection_metric": 0.1770090013742447,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_test_04-07-2026_21-50-04",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_test_04-07-2026_22-11-30",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_val_04-07-2026_21-45-38",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_20-47-41_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_val_04-07-2026_22-07-12"
+      ]
+    },
+    {
+      "seed": "seed123",
+      "missing_rate": 0.95,
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "checkpoint_dir": "/home/wissam/utem-workspace/checkpoints/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m",
+      "summary_exists": true,
+      "best_checkpoint_exists": true,
+      "last_checkpoint_exists": true,
+      "best_epoch": 68,
+      "best_selection_metric": 0.613926351070404,
+      "eval_dir_count": 4,
+      "expected_eval_dir_count": 4,
+      "eval_dirs": [
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_test_04-07-2026_23-31-05",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_test_04-07-2026_23-52-47",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_val_04-07-2026_23-26-40",
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m/eval_rollout_val_04-07-2026_23-48-21"
+      ]
+    }
+  ],
+  "diff_sparse_protocol161_eval_count": 30,
+  "diff_sparse_protocol161_expected_eval_count": 30,
+  "excluded_runs": [
+    {
+      "reason": "partial seed-ablation queue; stopped during seed7_m50_test_sparse and is not a complete protocol-161 replicate set",
+      "run_dir": "/home/wissam/utem-workspace/experiments/FloodCastBench/04-07-2026_09-47-32_fcb_diff_sparse_v1_seed7_highfid_60m",
+      "log": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/diff_sparse_v1_seed_ablation_queue_04-07-2026_09-47-11.log"
+    }
+  ],
+  "aggregate_inputs": [
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_protocol161_eval_aggregate.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_protocol161_eval_aggregate_by_condition.csv"
+  ],
+  "generated_outputs": [
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_comparison_fno_diff_sparse.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_run_manifest.json",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_comparison_summary.md",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_comparison_dashboard.html"
+  ],
+  "scientific_limitations": [
+    "not official FloodCastBench benchmark performance for DIFF-SPARSE-style model",
+    "not full original DIFF-SPARSE reproduction",
+    "not proof of sparse-sensor robustness beyond local protocol-161 sanity tests",
+    "not long-horizon superiority claim",
+    "not uncertainty calibration claim",
+    "FNO+ pooled h2:h20 and DIFF-SPARSE h13:h20 overall are not perfectly horizon-matched"
+  ]
+}

@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FloodCastBench Final Protocol Summary</title>
+<style>body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:#f7f8fa;color:#1d2733}header{background:#17202a;color:#fff;padding:28px 36px}main{max-width:1180px;margin:0 auto;padding:28px 24px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:#fff;border:1px solid #d9e0e8;border-radius:8px;padding:16px}.kpi{font-size:28px;font-weight:700}.muted{color:#5c6978}.warn{background:#fff7df;border:1px solid #e0b84f;border-radius:8px;padding:14px;margin:18px 0}.barrow{display:grid;grid-template-columns:260px 1fr 90px;gap:12px;align-items:center;margin:10px 0}.bar{height:22px;border-radius:4px}.section{margin-top:24px}table{border-collapse:collapse;width:100%;background:#fff;border:1px solid #d9e0e8}th,td{padding:8px 10px;border-bottom:1px solid #e8edf2;text-align:left;font-size:13px}th{background:#eef2f5}.small{font-size:12px}.good{color:#0a7f42}.bad{color:#b00020}@media(max-width:850px){.grid{grid-template-columns:1fr 1fr}.barrow{grid-template-columns:1fr}.bar{min-width:4px}}</style>
+</head><body>
+<header><h1>FloodCastBench Final Protocol Summary</h1><p>FNO+ official-v1 context plus DIFF-SPARSE v1 protocol-161 sanity comparison. Generated locally from run artifacts.</p></header><main>
+<div class="grid">
+<div class="card"><div class="muted">Active processes</div><div class="kpi">0</div><div class="small">No matching train/eval process found</div></div>
+<div class="card"><div class="muted">DIFF evals</div><div class="kpi">30/30</div><div class="small">protocol-161 completed</div></div>
+<div class="card"><div class="muted">DIFF trainings</div><div class="kpi">9</div><div class="small">3 seeds x 3 missing rates</div></div>
+<div class="card"><div class="muted">FNO+ runs</div><div class="kpi">2</div><div class="small">seed7 and seed123 completed</div></div>
+</div>
+<div class="warn"><b>Caveat:</b> FNO+ rows here are pooled h2:h20 official-v1 evals. DIFF-SPARSE v1 overall rows are native rollout h13:h20 plus explicit h20 fields. This dashboard is a research-engineering summary, not an official benchmark claim.</div>
+<div class="section card"><h2>Test RMSE context</h2>
+<div class="barrow"><div>FNO+ mean test h2:h20 pooled</div><div><div class="bar" style="width:1.1%;background:#1f77b4"></div></div><div>0.004558</div></div>
+<div class="barrow"><div>DIFF m0 test h13:h20 oracle</div><div><div class="bar" style="width:5.0%;background:#d62728"></div></div><div>0.019720</div></div>
+<div class="barrow"><div>DIFF m50 test h13:h20 sparse</div><div><div class="bar" style="width:40.2%;background:#ff7f0e"></div></div><div>0.159798</div></div>
+<div class="barrow"><div>DIFF m95 test h13:h20 sparse</div><div><div class="bar" style="width:100.0%;background:#9467bd"></div></div><div>0.397201</div></div>
+</div>
+<div class="section card"><h2>Sparse DIFF improvement vs sparse persistence</h2>
+<div class="barrow"><div>m50 val vs sparse persistence</div><div><div class="bar" style="width:63.7%;background:#0a7f42"></div></div><div>63.69%</div></div>
+<div class="barrow"><div>m50 test vs sparse persistence</div><div><div class="bar" style="width:65.6%;background:#0a7f42"></div></div><div>65.57%</div></div>
+<div class="barrow"><div>m95 val vs sparse persistence</div><div><div class="bar" style="width:48.8%;background:#0a7f42"></div></div><div>48.83%</div></div>
+<div class="barrow"><div>m95 test vs sparse persistence</div><div><div class="bar" style="width:37.8%;background:#0a7f42"></div></div><div>37.81%</div></div>
+</div>
+<div class="section"><h2>DIFF-SPARSE v1 protocol-161 mean by condition</h2><table><thead><tr><th>split</th><th>missing</th><th>persistence</th><th>model RMSE m</th><th>persistence RMSE m</th><th>improvement %</th><th>h20 RMSE m</th><th>h20 CSI 0.01</th><th>path IoU 0.001</th></tr></thead><tbody>
+<tr><td>val</td><td>0</td><td>oracle</td><td>0.018832</td><td>0.001362</td><td class="bad">-1283.02</td><td>0.024057</td><td>0.854630</td><td>0.002691</td></tr>
+<tr><td>val</td><td>0.5</td><td>sparse</td><td>0.167576</td><td>0.461490</td><td class="good">63.69</td><td>0.171752</td><td>0.703717</td><td>0.002905</td></tr>
+<tr><td>val</td><td>0.5</td><td>oracle</td><td>0.167576</td><td>0.001362</td><td class="bad">-12206.52</td><td>0.171752</td><td>0.703717</td><td>0.002905</td></tr>
+<tr><td>val</td><td>0.95</td><td>sparse</td><td>0.324966</td><td>0.635088</td><td class="good">48.83</td><td>0.343307</td><td>0.676725</td><td>0.003117</td></tr>
+<tr><td>val</td><td>0.95</td><td>oracle</td><td>0.324966</td><td>0.001362</td><td class="bad">-23765.01</td><td>0.343307</td><td>0.676725</td><td>0.003117</td></tr>
+<tr><td>test</td><td>0</td><td>oracle</td><td>0.019720</td><td>0.000738</td><td class="bad">-2573.49</td><td>0.024999</td><td>0.849758</td><td>0.003438</td></tr>
+<tr><td>test</td><td>0.5</td><td>sparse</td><td>0.159798</td><td>0.464078</td><td class="good">65.57</td><td>0.164730</td><td>0.696757</td><td>0.003696</td></tr>
+<tr><td>test</td><td>0.5</td><td>oracle</td><td>0.159798</td><td>0.000738</td><td class="bad">-21564.18</td><td>0.164730</td><td>0.696757</td><td>0.003696</td></tr>
+<tr><td>test</td><td>0.95</td><td>sparse</td><td>0.397201</td><td>0.638680</td><td class="good">37.81</td><td>0.432397</td><td>0.660587</td><td>0.003978</td></tr>
+<tr><td>test</td><td>0.95</td><td>oracle</td><td>0.397201</td><td>0.000738</td><td class="bad">-53749.33</td><td>0.432397</td><td>0.660587</td><td>0.003978</td></tr>
+</tbody></table></div>
+<div class="section"><h2>FNO+ pooled h2:h20 mean of 2 seeds</h2><table><thead><tr><th>split</th><th>RMSE m</th><th>relative RMSE</th><th>NSE</th><th>Pearson r</th></tr></thead><tbody>
+<tr><td>val</td><td>0.004517</td><td>0.006452</td><td>0.999943</td><td>0.999972</td></tr>
+<tr><td>test</td><td>0.004558</td><td>0.006478</td><td>0.999943</td><td>0.999972</td></tr>
+</tbody></table></div>
+<div class="section card"><h2>Interpretation</h2><p>Dense m0 DIFF-SPARSE-style does not beat oracle persistence. Sparse m50/m95 beats sparse persistence but does not beat oracle persistence. Path IoU is near zero, so propagation quality is not established. The safest next engineering step is a horizon-matched FNO+ h13:h20 and h20-only evaluation.</p></div>
+<div class="section small muted">Manifest: /home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_run_manifest.json<br>CSV: /home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_comparison_fno_diff_sparse.csv<br>Summary: /home/wissam/utem-workspace/code/a-iat-research/reports/floodcastbench_final_comparison_summary.md</div>
+</main></body></html>
