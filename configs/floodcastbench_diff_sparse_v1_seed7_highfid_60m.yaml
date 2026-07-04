@@ -81,7 +81,12 @@ loader:
   pin_memory: true
 
 training:
-  epochs: 40             # paper Table 2
+  epochs: 161            # gradient-step parity with FNO+ official-v1 (100 epochs x 116
+                         # non-overlapping windows, batch_size=1 = 11600 steps).
+                         # DIFF-SPARSE uses batch_size=32 on 2301 sliding
+                         # windows/epoch, so 161 epochs = ceil(11600*32/2301)
+                         # gradient steps, not samples seen or wall-clock time.
+                         # See reports/diff_sparse_v1_fno_plus_training_protocol.md.
   learning_rate: 0.001   # paper Table 2
   lr_policy: reduce_on_plateau
   lr_patience: 3         # paper Table 2
