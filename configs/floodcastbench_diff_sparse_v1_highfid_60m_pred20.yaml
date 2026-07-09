@@ -51,14 +51,12 @@ model:
   name: diff_sparse_v1
   context_conv_channels: [16, 32, 64]
   context_embedding_dim: 32
-  covariate_dim: 16
+  context_groupnorm_groups: 8
   unet_channels: [16, 32, 32, 64]
   resnet_layers_per_block: 2
   cross_attention_blocks: 2
-  attention_heads: 4
-  groupnorm_groups: 8
-  time_embedding_dim: 128
-  conditioning: cross_attention_concat
+  groupnorm_groups: 16
+  dropout: 0.0
 
 diffusion:
   steps: 20
@@ -73,7 +71,7 @@ loader:
   pin_memory: true
 
 training:
-  epochs: 40
+  epochs: 161
   learning_rate: 0.001
   lr_policy: reduce_on_plateau
   lr_patience: 3
@@ -88,7 +86,7 @@ training:
 evaluation:
   num_scenarios_val: 2
   num_scenarios_test: 8
-  rollout_remask: true
+  rollout_remask: false
   clip_x0: false
   metrics: [nrmse, nacrps, rmse, mae]
 

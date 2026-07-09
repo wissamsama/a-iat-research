@@ -6,25 +6,11 @@ from typing import Any, Callable
 import torch
 from torch import nn
 import torch.nn.functional as F
+from diffusers import UNet2DConditionModel
 
 
 DAY_SECONDS = 86400.0
 HOUR_FREQUENCIES = (1.0, 2.0, 4.0)
-
-
-def sinusoidal_timestep_embedding(timesteps: torch.Tensor, dim: int) -> torch.Tensor:
-    if timesteps.ndim != 1:
-        raise ValueError(f"Expected timesteps [B], got {tuple(timesteps.shape)}")
-    half = dim // 2
-    if half < 1:
-        raise ValueError("embedding dim must be >= 2")
-    scale = math.log(10000.0) / max(half - 1, 1)
-    frequencies = torch.exp(torch.arange(half, device=timesteps.device, dtype=torch.float32) * -scale)
-    args = timesteps.float().unsqueeze(1) * frequencies.unsqueeze(0)
-    embedding = torch.cat([torch.sin(args), torch.cos(args)], dim=1)
-    if dim % 2:
-        embedding = F.pad(embedding, (0, 1))
-    return embedding
 
 
 def _groups(channels: int, preferred: int) -> int:
@@ -34,101 +20,63 @@ def _groups(channels: int, preferred: int) -> int:
     return 1
 
 
-_POSENC_CACHE: dict[tuple, torch.Tensor] = {}
+def _temporal_down_block_output_size(input_size: int, num_blocks: int) -> int:
+    """Spatial size after `num_blocks` TemporalDownBlocks (two unpadded 3x3 convs
+    then a 2x2 avgpool per block), matching hidden_state_net.py's DownSampleBlock
+    exactly: each conv shrinks by 2, each pool halves via floor((size-2)/2)+1."""
 
-
-def positional_encoding_2d(dim: int, height: int, width: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
-    """Fixed 2D sine-cosine positional encoding [dim, H, W] (spatial alignment for cross-attention)."""
-
-    key = (dim, height, width, str(device), dtype)
-    cached = _POSENC_CACHE.get(key)
-    if cached is not None:
-        return cached
-    if dim % 4 != 0:
-        raise ValueError(f"positional encoding dim must be divisible by 4, got {dim}")
-    quarter = dim // 4
-    omega = torch.arange(quarter, device=device, dtype=torch.float32) / max(quarter - 1, 1)
-    omega = 1.0 / (10000.0**omega)
-    ys = torch.arange(height, device=device, dtype=torch.float32)
-    xs = torch.arange(width, device=device, dtype=torch.float32)
-    y_args = ys.unsqueeze(1) * omega.unsqueeze(0)
-    x_args = xs.unsqueeze(1) * omega.unsqueeze(0)
-    y_enc = torch.cat([torch.sin(y_args), torch.cos(y_args)], dim=1)
-    x_enc = torch.cat([torch.sin(x_args), torch.cos(x_args)], dim=1)
-    encoding = torch.cat(
-        [
-            y_enc.unsqueeze(1).expand(height, width, 2 * quarter),
-            x_enc.unsqueeze(0).expand(height, width, 2 * quarter),
-        ],
-        dim=-1,
-    ).permute(2, 0, 1)
-    encoding = encoding.to(dtype=dtype)
-    _POSENC_CACHE[key] = encoding
-    return encoding
-
-
-class ResBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, time_dim: int, groups: int) -> None:
-        super().__init__()
-        self.norm1 = nn.GroupNorm(_groups(in_channels, groups), in_channels)
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.time_proj = nn.Linear(time_dim, out_channels)
-        self.norm2 = nn.GroupNorm(_groups(out_channels, groups), out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
-        self.skip = (
-            nn.Conv2d(in_channels, out_channels, kernel_size=1) if in_channels != out_channels else nn.Identity()
+    size = input_size
+    for _ in range(num_blocks):
+        size = size - 2 - 2
+        size = (size - 2) // 2 + 1
+    if size < 1:
+        raise ValueError(
+            f"patch size {input_size} is too small for {num_blocks} TemporalDownBlocks "
+            f"(would shrink to {size})"
         )
-
-    def forward(self, x: torch.Tensor, time_embedding: torch.Tensor) -> torch.Tensor:
-        h = self.conv1(F.silu(self.norm1(x)))
-        h = h + self.time_proj(F.silu(time_embedding)).unsqueeze(-1).unsqueeze(-1)
-        h = self.conv2(F.silu(self.norm2(h)))
-        return h + self.skip(x)
+    return size
 
 
-class CrossAttentionBlock(nn.Module):
-    """Cross-attention from UNet features to the context embedding (Rombach et al. style).
+class TemporalDownBlock(nn.Module):
+    """Official hidden_state_net.py DownSampleBlock: unpadded Conv3d pair + AvgPool3d(1,2,2).
 
-    Context tokens are the spatial context embedding pooled to the query resolution;
-    fixed 2D positional encodings are added on both sides so attention can align
-    context pixels with output pixels.
+    Deliberately unpadded (matching the reference exactly): each 3x3 spatial conv shrinks
+    H/W by 2, then the (1,2,2) pool halves them. Kernel (1,3,3) convolves only spatially,
+    never mixing across the context_length ("depth"/time) axis -- each of the T context
+    frames is downsampled independently before flattening into a per-timestep token.
     """
 
-    def __init__(self, query_dim: int, context_dim: int, heads: int, groups: int) -> None:
+    def __init__(self, in_channels: int, out_channels: int, groups: int) -> None:
         super().__init__()
-        if query_dim % heads != 0:
-            raise ValueError(f"query_dim={query_dim} must be divisible by heads={heads}")
-        self.heads = heads
-        self.head_dim = query_dim // heads
-        self.norm = nn.GroupNorm(_groups(query_dim, groups), query_dim)
-        self.to_q = nn.Linear(query_dim, query_dim, bias=False)
-        self.to_k = nn.Linear(context_dim, query_dim, bias=False)
-        self.to_v = nn.Linear(context_dim, query_dim, bias=False)
-        self.to_out = nn.Linear(query_dim, query_dim)
-        self.context_dim = context_dim
-        self.query_dim = query_dim
+        self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=(1, 3, 3))
+        self.norm1 = nn.GroupNorm(_groups(out_channels, groups), out_channels)
+        self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=(1, 3, 3))
+        self.norm2 = nn.GroupNorm(_groups(out_channels, groups), out_channels)
+        self.pool = nn.AvgPool3d((1, 2, 2))
 
-    def forward(self, x: torch.Tensor, context: torch.Tensor) -> torch.Tensor:
-        batch, channels, height, width = x.shape
-        pooled = F.adaptive_avg_pool2d(context, (height, width))
-        query_pos = positional_encoding_2d(channels, height, width, x.device, x.dtype)
-        context_pos = positional_encoding_2d(self.context_dim, height, width, x.device, x.dtype)
-
-        queries = (self.norm(x) + query_pos).flatten(2).transpose(1, 2)
-        tokens = (pooled + context_pos).flatten(2).transpose(1, 2)
-
-        q = self.to_q(queries).view(batch, -1, self.heads, self.head_dim).transpose(1, 2)
-        k = self.to_k(tokens).view(batch, -1, self.heads, self.head_dim).transpose(1, 2)
-        v = self.to_v(tokens).view(batch, -1, self.heads, self.head_dim).transpose(1, 2)
-        attended = F.scaled_dot_product_attention(q, k, v)
-        attended = attended.transpose(1, 2).reshape(batch, -1, channels)
-        out = self.to_out(attended).transpose(1, 2).view(batch, channels, height, width)
-        return x + out
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = F.silu(self.norm1(self.conv1(x)))
+        x = F.silu(self.norm2(self.conv2(x)))
+        return self.pool(x)
 
 
-class ContextEncoder(nn.Module):
-    """Paper eq. (9)-(12): conv blocks over [masked water ⊕ DEM ⊕ mask (⊕ rainfall)],
-    sinusoidal temporal covariates, then a 1x1 linear fusion to the context embedding."""
+class TemporalContextEncoder(nn.Module):
+    """Official hidden_state_net.py HiddenStateNet: produces the cross-attention token
+    sequence consumed by UNet2DConditionModel's encoder_hidden_states.
+
+    Per-context-timestep channels [masked water, DEM, sensor mask, (rainfall)] are stacked
+    as a [B, C, T, H, W] volume (DEM and sensor mask are static, broadcast across T; water
+    and rainfall vary with T) and downsampled by 3 unpadded TemporalDownBlocks, producing one
+    heavily-pooled spatial summary token per context timestep -- NOT a pixel-aligned spatial
+    map. This is a temporal attention mechanism (context frames are "tokens", like words in
+    text-conditioned diffusion), not a spatial one: the UNet's own convolutions do all
+    per-pixel spatial reasoning, and cross-attention only injects "what history looked like,
+    per past timestep, in coarse aggregate."
+
+    Per-timestep raw sinusoidal covariate features are concatenated to each token before a
+    single shared linear projection to context_embedding_dim (no separate covariate MLP,
+    matching the reference's direct `torch.cat((x, covariate), dim=2)`).
+    """
 
     def __init__(self, config: dict[str, Any]) -> None:
         super().__init__()
@@ -138,54 +86,43 @@ class ContextEncoder(nn.Module):
         self.include_dem = bool(dataset_config.get("include_dem", True))
         self.include_rainfall = bool(dataset_config.get("include_rainfall", True))
         self.include_covariates = bool(dataset_config.get("include_covariates", True))
-        self.covariate_dim = int(model_config.get("covariate_dim", 16))
         self.embedding_dim = int(model_config.get("context_embedding_dim", 32))
-        groups = int(model_config.get("groupnorm_groups", 8))
+        groups = int(model_config.get("context_groupnorm_groups", 8))
         conv_channels = [int(c) for c in model_config.get("context_conv_channels", [16, 32, 64])]
+        patch_size = int(dataset_config.get("patch_size", 64))
 
-        in_channels = self.context_length + 1  # masked water history + sensor mask
-        if self.include_dem:
-            in_channels += 1
-        if self.include_rainfall:
-            in_channels += self.context_length
-
-        layers: list[nn.Module] = []
+        in_channels = 1 + (1 if self.include_dem else 0) + 1 + (1 if self.include_rainfall else 0)
+        blocks = []
         current = in_channels
         for out_channels in conv_channels:
-            layers.extend(
-                [
-                    nn.Conv2d(current, out_channels, kernel_size=3, padding=1),
-                    nn.GroupNorm(_groups(out_channels, groups), out_channels),
-                    nn.SiLU(inplace=True),
-                ]
-            )
+            blocks.append(TemporalDownBlock(current, out_channels, groups))
             current = out_channels
-        self.conv = nn.Sequential(*layers)
+        self.blocks = nn.ModuleList(blocks)
+        self.output_conv = nn.Conv3d(current, 1, kernel_size=1)
 
-        covariate_features = len(HOUR_FREQUENCIES) * 2 + 1
-        self.covariate_mlp = (
-            nn.Sequential(
-                nn.Linear(self.context_length * covariate_features, self.covariate_dim),
-                nn.SiLU(inplace=True),
-                nn.Linear(self.covariate_dim, self.covariate_dim),
-            )
-            if self.include_covariates
-            else None
-        )
-        fusion_in = current + (self.covariate_dim if self.include_covariates else 0)
-        self.fusion = nn.Conv2d(fusion_in, self.embedding_dim, kernel_size=1)
-        self.covariate_time_scale = float(config.get("dataset", {}).get("covariate_time_scale", 864000.0))
+        self.covariate_features = len(HOUR_FREQUENCIES) * 2 + 1 if self.include_covariates else 0
+        self.covariate_time_scale = float(dataset_config.get("covariate_time_scale", 864000.0))
+
+        # Flattened per-timestep token size computed analytically (not lazily on
+        # first forward) so token_linear is a real registered parameter from
+        # __init__ -- building it lazily on first forward left it out of
+        # model.parameters() whenever the optimizer is constructed before that
+        # first forward pass, silently freezing the entire conditioning
+        # projection at its random init and making training unable to progress
+        # past a large loss plateau regardless of everything else being correct.
+        pooled_size = _temporal_down_block_output_size(patch_size, len(conv_channels))
+        token_features = pooled_size * pooled_size + self.covariate_features
+        self.token_linear = nn.Linear(token_features, self.embedding_dim)
 
     def encode_covariates(self, timestamps: torch.Tensor) -> torch.Tensor:
-        """timestamps [B, c] in seconds -> [B, covariate_dim] (hour-of-day cycles + event fraction)."""
+        """timestamps [B, T] seconds -> [B, T, covariate_features], raw (no learned projection)."""
 
         hour_fraction = (timestamps % DAY_SECONDS) / DAY_SECONDS
         features = [timestamps / self.covariate_time_scale]
         for frequency in HOUR_FREQUENCIES:
             angle = 2.0 * math.pi * frequency * hour_fraction
             features.extend([torch.sin(angle), torch.cos(angle)])
-        stacked = torch.stack(features, dim=-1).flatten(1)
-        return self.covariate_mlp(stacked)
+        return torch.stack(features, dim=-1)
 
     def forward(
         self,
@@ -195,33 +132,40 @@ class ContextEncoder(nn.Module):
         rainfall_context: torch.Tensor | None,
         timestamps_context: torch.Tensor | None,
     ) -> torch.Tensor:
-        parts = [context_water_masked, sensor_mask]
+        batch, length, height, width = context_water_masked.shape
+        parts = [context_water_masked.unsqueeze(1)]
         if self.include_dem:
-            parts.append(dem)
+            parts.append(dem.unsqueeze(2).expand(batch, 1, length, height, width))
+        parts.append(sensor_mask.unsqueeze(2).expand(batch, 1, length, height, width))
         if self.include_rainfall:
             if rainfall_context is None:
                 raise ValueError("rainfall_context is required when include_rainfall is true")
-            parts.append(rainfall_context)
-        features = self.conv(torch.cat(parts, dim=1))
+            parts.append(rainfall_context.unsqueeze(1))
+        x = torch.cat(parts, dim=1)
+        for block in self.blocks:
+            x = block(x)
+        x = self.output_conv(x)
+        tokens = x.permute(0, 2, 1, 3, 4).reshape(batch, length, -1)
 
         if self.include_covariates:
             if timestamps_context is None:
                 raise ValueError("timestamps_context is required when include_covariates is true")
-            covariates = self.encode_covariates(timestamps_context)
-            covariates = covariates.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, *features.shape[-2:])
-            features = torch.cat([features, covariates], dim=1)
-        return self.fusion(features)
+            tokens = torch.cat([tokens, self.encode_covariates(timestamps_context)], dim=-1)
+
+        return self.token_linear(tokens)
 
 
 class DiffSparseV1Model(nn.Module):
     """DIFF-SPARSE adaptation for FloodCastBench (Islam et al., AAAI 2026).
 
-    x0-parameterized conditional diffusion: a UNet predicts the clean next-step
-    water-depth field from a noisy field, the diffusion step, and a context
-    embedding built from sparse (masked) water history, DEM, rainfall, and
-    temporal covariates. The linear beta schedule ends at beta_end=1.0
-    (paper Table 2), so the terminal step is pure noise and reverse sampling
-    from N(0, I) matches the training distribution exactly.
+    x0-parameterized conditional diffusion matching the official implementation
+    (github.com/KAI10/Diff-Sparse): a diffusers.UNet2DConditionModel predicts the
+    clean next-step water-depth field, conditioned via cross-attention on a
+    temporal token sequence (TemporalContextEncoder) built from sparse (masked)
+    water history, DEM, sensor mask, and (FloodCastBench-specific) rainfall. The
+    linear beta schedule ends at beta_end=1.0 (paper Table 2), so the terminal
+    step is pure noise and reverse sampling from N(0, I) matches the training
+    distribution exactly.
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
@@ -250,7 +194,11 @@ class DiffSparseV1Model(nn.Module):
         denominator = 1.0 - alpha_cumprod
         posterior_coef_x0 = betas * torch.sqrt(alpha_cumprod_prev) / denominator
         posterior_coef_xt = torch.sqrt(alphas) * (1.0 - alpha_cumprod_prev) / denominator
-        posterior_variance = betas * (1.0 - alpha_cumprod_prev) / denominator
+        # Reference implementation's active reverse-step noise ("Option 1" in
+        # diffusion.py: sigma_t^2 = beta_t), not the tighter beta-tilde posterior
+        # variance (its "Option 2", present in the file only as a commented-out
+        # alternative).
+        posterior_variance = betas
 
         self.register_buffer("betas", betas.float())
         self.register_buffer("sqrt_alpha_cumprod", torch.sqrt(alpha_cumprod).float())
@@ -259,85 +207,32 @@ class DiffSparseV1Model(nn.Module):
         self.register_buffer("posterior_coef_xt", posterior_coef_xt.float())
         self.register_buffer("posterior_variance", posterior_variance.float())
 
-        self.context_encoder = ContextEncoder(config)
+        self.context_encoder = TemporalContextEncoder(config)
         self.embedding_dim = self.context_encoder.embedding_dim
-        self.conditioning = str(model_config.get("conditioning", "cross_attention_concat")).lower()
-        if self.conditioning not in {"cross_attention", "cross_attention_concat"}:
-            raise ValueError(f"Unsupported conditioning {self.conditioning!r}")
 
-        groups = int(model_config.get("groupnorm_groups", 8))
-        heads = int(model_config.get("attention_heads", 4))
         unet_channels = [int(c) for c in model_config.get("unet_channels", [16, 32, 32, 64])]
-        res_layers = int(model_config.get("resnet_layers_per_block", 2))
-        attention_levels = int(model_config.get("cross_attention_blocks", 2))
+        if len(unet_channels) != 4:
+            raise ValueError("unet_channels must have exactly 4 levels (matches the reference down/up_block_types)")
         levels = len(unet_channels)
-        attention_from = levels - attention_levels
-        time_dim = int(model_config.get("time_embedding_dim", 128))
-        self.time_dim = time_dim
-        self.time_mlp = nn.Sequential(
-            nn.Linear(time_dim, time_dim),
-            nn.SiLU(inplace=True),
-            nn.Linear(time_dim, time_dim),
+        attention_levels = int(model_config.get("cross_attention_blocks", 2))
+        outer = (levels - attention_levels) // 2
+        down_block_types = tuple(
+            "CrossAttnDownBlock2D" if outer <= i < levels - outer else "DownBlock2D" for i in range(levels)
         )
-
-        in_channels = 1 + (self.embedding_dim if self.conditioning == "cross_attention_concat" else 0)
-        self.in_conv = nn.Conv2d(in_channels, unet_channels[0], kernel_size=3, padding=1)
-
-        self.down_blocks = nn.ModuleList()
-        self.down_attentions = nn.ModuleList()
-        self.downsamples = nn.ModuleList()
-        skip_channels = [unet_channels[0]]
-        current = unet_channels[0]
-        for level, channels in enumerate(unet_channels):
-            blocks = nn.ModuleList()
-            attentions = nn.ModuleList()
-            for _ in range(res_layers):
-                blocks.append(ResBlock(current, channels, time_dim, groups))
-                attentions.append(
-                    CrossAttentionBlock(channels, self.embedding_dim, heads, groups)
-                    if level >= attention_from
-                    else nn.Identity()
-                )
-                current = channels
-                skip_channels.append(current)
-            self.down_blocks.append(blocks)
-            self.down_attentions.append(attentions)
-            if level < levels - 1:
-                self.downsamples.append(nn.Conv2d(current, current, kernel_size=3, stride=2, padding=1))
-                skip_channels.append(current)
-            else:
-                self.downsamples.append(nn.Identity())
-
-        self.mid_block1 = ResBlock(current, current, time_dim, groups)
-        self.mid_attention = CrossAttentionBlock(current, self.embedding_dim, heads, groups)
-        self.mid_block2 = ResBlock(current, current, time_dim, groups)
-
-        self.up_blocks = nn.ModuleList()
-        self.up_attentions = nn.ModuleList()
-        self.upsamples = nn.ModuleList()
-        for level in reversed(range(levels)):
-            channels = unet_channels[level]
-            blocks = nn.ModuleList()
-            attentions = nn.ModuleList()
-            for _ in range(res_layers + 1):
-                blocks.append(ResBlock(current + skip_channels.pop(), channels, time_dim, groups))
-                attentions.append(
-                    CrossAttentionBlock(channels, self.embedding_dim, heads, groups)
-                    if level >= attention_from
-                    else nn.Identity()
-                )
-                current = channels
-            self.up_blocks.append(blocks)
-            self.up_attentions.append(attentions)
-            if level > 0:
-                self.upsamples.append(nn.Conv2d(current, current, kernel_size=3, padding=1))
-            else:
-                self.upsamples.append(nn.Identity())
-        if skip_channels:
-            raise RuntimeError("UNet skip bookkeeping mismatch")
-
-        self.out_norm = nn.GroupNorm(_groups(current, groups), current)
-        self.out_conv = nn.Conv2d(current, 1, kernel_size=3, padding=1)
+        up_block_types = tuple(
+            "CrossAttnUpBlock2D" if outer <= i < levels - outer else "UpBlock2D" for i in range(levels)
+        )
+        self.unet = UNet2DConditionModel(
+            in_channels=1,
+            out_channels=1,
+            layers_per_block=int(model_config.get("resnet_layers_per_block", 2)),
+            norm_num_groups=int(model_config.get("groupnorm_groups", 16)),
+            block_out_channels=tuple(unet_channels),
+            cross_attention_dim=self.embedding_dim,
+            dropout=float(model_config.get("dropout", 0.0)),
+            down_block_types=down_block_types,
+            up_block_types=up_block_types,
+        )
 
     def encode_context(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.context_encoder(
@@ -351,46 +246,7 @@ class DiffSparseV1Model(nn.Module):
     def denoise(self, x_noisy: torch.Tensor, timesteps: torch.Tensor, context_embedding: torch.Tensor) -> torch.Tensor:
         if x_noisy.ndim != 4 or x_noisy.shape[1] != 1:
             raise ValueError(f"Expected x_noisy [B, 1, H, W], got {tuple(x_noisy.shape)}")
-        if context_embedding.shape[-2:] != x_noisy.shape[-2:]:
-            raise ValueError(
-                f"context embedding spatial size {tuple(context_embedding.shape[-2:])} "
-                f"must match x_noisy {tuple(x_noisy.shape[-2:])}"
-            )
-        time_embedding = self.time_mlp(sinusoidal_timestep_embedding(timesteps, self.time_dim))
-
-        if self.conditioning == "cross_attention_concat":
-            h = self.in_conv(torch.cat([x_noisy, context_embedding], dim=1))
-        else:
-            h = self.in_conv(x_noisy)
-
-        skips = [h]
-        for blocks, attentions, downsample in zip(self.down_blocks, self.down_attentions, self.downsamples):
-            for block, attention in zip(blocks, attentions):
-                h = block(h, time_embedding)
-                if not isinstance(attention, nn.Identity):
-                    h = attention(h, context_embedding)
-                skips.append(h)
-            if not isinstance(downsample, nn.Identity):
-                h = downsample(h)
-                skips.append(h)
-
-        h = self.mid_block1(h, time_embedding)
-        h = self.mid_attention(h, context_embedding)
-        h = self.mid_block2(h, time_embedding)
-
-        for blocks, attentions, upsample in zip(self.up_blocks, self.up_attentions, self.upsamples):
-            for block, attention in zip(blocks, attentions):
-                skip = skips.pop()
-                if skip.shape[-2:] != h.shape[-2:]:
-                    h = F.interpolate(h, size=skip.shape[-2:], mode="bilinear", align_corners=False)
-                h = block(torch.cat([h, skip], dim=1), time_embedding)
-                if not isinstance(attention, nn.Identity):
-                    h = attention(h, context_embedding)
-            if not isinstance(upsample, nn.Identity):
-                h = F.interpolate(h, scale_factor=2.0, mode="nearest")
-                h = upsample(h)
-
-        return self.out_conv(F.silu(self.out_norm(h)))
+        return self.unet(x_noisy, timestep=timesteps, encoder_hidden_states=context_embedding).sample
 
     def forward(self, x_noisy: torch.Tensor, timesteps: torch.Tensor, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.denoise(x_noisy, timesteps, self.encode_context(batch))

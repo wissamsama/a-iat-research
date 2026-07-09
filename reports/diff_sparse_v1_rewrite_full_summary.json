@@ -1,0 +1,42 @@
+{
+  "created_at_local": "2026-07-08T11:53:02",
+  "queue_log": "/home/wissam/utem-workspace/logs/FloodCastBench/background_jobs/diff_sparse_v1_rewrite_full_queue_05-07-2026_18-20-38.log",
+  "queue_started": "2026-07-05T20:20:26+08:00",
+  "queue_finished": "2026-07-08T11:19:54+08:00",
+  "runs": 9,
+  "eval_summaries": 30,
+  "expected_eval_summaries": 30,
+  "horizon_scope": "DIFF-SPARSE rewrite evaluates native rollout h13:h24 (prediction_length=12).",
+  "outputs": [
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_rewrite_full_eval_aggregate.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_rewrite_full_eval_aggregate_by_condition.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_rewrite_full_train_runs.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_rewrite_vs_protocol161_h20_comparison.csv",
+    "/home/wissam/utem-workspace/code/a-iat-research/reports/diff_sparse_v1_rewrite_full_long_analysis.md"
+  ],
+  "fno_context": [
+    {
+      "name": "Official Table 4 FNO+",
+      "t20_rmse_m": 0.003941,
+      "t20_csi_0_001": 0.939638,
+      "t20_csi_0_01": 0.984588,
+      "t20_path_iou_0_001": null,
+      "note": "Context only; not same protocol as DIFF-SPARSE rewrite."
+    },
+    {
+      "name": "Official-v1 Best (main baseline)",
+      "t20_rmse_m": 0.006479518419451935,
+      "t20_csi_0_001": 0.9271985351856663,
+      "t20_csi_0_01": 0.9939970675281226,
+      "t20_path_iou_0_001": 0.01531848171736124,
+      "note": "Context only; not same protocol as DIFF-SPARSE rewrite."
+    }
+  ],
+  "scientific_limitations": [
+    "not official FloodCastBench benchmark performance",
+    "not full original DIFF-SPARSE reproduction",
+    "overall metrics are h13:h24 and not directly comparable to prior h13:h20 aggregates",
+    "FNO+ dashboard values are contextual and not a strict same-protocol comparison",
+    "sparse persistence and oracle persistence answer different questions"
+  ]
+}

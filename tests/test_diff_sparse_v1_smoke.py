@@ -42,14 +42,12 @@ def _small_config(missing_rate: float = 0.5) -> dict:
         "model": {
             "context_conv_channels": [8, 16],
             "context_embedding_dim": 16,
-            "covariate_dim": 8,
+            "context_groupnorm_groups": 4,
             "unet_channels": [8, 16, 16, 32],
             "resnet_layers_per_block": 1,
             "cross_attention_blocks": 2,
-            "attention_heads": 2,
             "groupnorm_groups": 4,
-            "time_embedding_dim": 32,
-            "conditioning": "cross_attention_concat",
+            "dropout": 0.0,
         },
         "diffusion": {
             "steps": 20,
@@ -84,6 +82,32 @@ def test_terminal_snr_is_exactly_zero() -> None:
     assert float(model.posterior_coef_xt[-1]) == 0.0
 
 
+def test_context_encoder_token_linear_is_registered_before_first_forward() -> None:
+    """Regression test: token_linear must exist as a real parameter from
+    construction, not be lazily built on first forward. A lazily-built layer
+    is silently excluded from any optimizer constructed before that first
+    forward pass (the exact pattern train_floodcastbench_diff_sparse_v1.py
+    uses: optimizer created, then a no-grad dry-run forward pass for shape
+    logging) -- freezing the entire conditioning projection at its random
+    initialization and capping training at a large loss plateau forever,
+    regardless of how correct everything else is."""
+
+    model = DiffSparseV1Model(_small_config())
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer_param_ids = {id(p) for group in optimizer.param_groups for p in group["params"]}
+    for name, parameter in model.context_encoder.token_linear.named_parameters():
+        assert id(parameter) in optimizer_param_ids, f"token_linear.{name} missing from optimizer"
+
+
+def test_reverse_diffusion_uses_raw_beta_variance() -> None:
+    """Regression test matching the reference's active reverse-step noise
+    (diffusion.py "Option 1": sigma_t^2 = beta_t), not the tighter beta-tilde
+    posterior variance (its "Option 2", left commented out in the reference)."""
+
+    model = DiffSparseV1Model(_small_config())
+    assert torch.equal(model.posterior_variance, model.betas)
+
+
 def test_q_sample_terminal_step_is_pure_noise() -> None:
     model = DiffSparseV1Model(_small_config())
     x0 = torch.randn(2, 1, 8, 8)
@@ -97,7 +121,7 @@ def test_oracle_denoiser_recovers_x0_exactly() -> None:
 
     model = DiffSparseV1Model(_small_config())
     x0 = torch.randn(2, 1, 8, 8)
-    context = torch.zeros(2, 16, 8, 8)
+    context = torch.zeros(2, 4, 16)  # [B, context_length, embedding_dim] token sequence
     result = model.sample(context, x0.shape, denoiser=lambda x_t, t: x0)
     assert torch.allclose(result, x0, atol=1e-5)
 
@@ -125,9 +149,15 @@ def test_sensor_mask_fraction_and_noise_masking() -> None:
 def test_split_frame_ranges_match_canonical_windows() -> None:
     ranges = split_frame_ranges(2881)
     assert ranges == {"train": (0, 2320), "val": (2320, 2600), "test": (2600, 2881)}
+    # Canonical 20-frame FNO+ windows (frame-range derivation contract).
     assert len(window_starts_for_split(ranges["train"], 20, 1)) == 2301
     assert len(window_starts_for_split(ranges["val"], 20, 20)) == 14
     assert len(window_starts_for_split(ranges["test"], 20, 20)) == 14
+    # Paper-faithful v1 protocol: context 12 + prediction 12 = 24-frame windows
+    # (paper Table 2), same frame ranges, only eligibility changes.
+    assert len(window_starts_for_split(ranges["train"], 24, 1)) == 2297
+    assert len(window_starts_for_split(ranges["val"], 24, 20)) == 13
+    assert len(window_starts_for_split(ranges["test"], 24, 20)) == 13
 
 
 def test_model_forward_and_training_step() -> None:
@@ -139,20 +169,13 @@ def test_model_forward_and_training_step() -> None:
     assert torch.isfinite(loss)
     assert diagnostics["pred_finite"] == 1.0
 
+    # Temporal token sequence (one heavily-pooled spatial summary per context
+    # timestep), not a pixel-aligned spatial map -- see TemporalContextEncoder.
     embedding = model.encode_context(batch)
-    assert tuple(embedding.shape) == (2, 16, 32, 32)
+    assert tuple(embedding.shape) == (2, config["dataset"]["context_length"], 16)
     sample = model.sample(embedding, (2, 1, 32, 32))
     assert tuple(sample.shape) == (2, 1, 32, 32)
     assert torch.isfinite(sample).all()
-
-
-def test_paper_faithful_attention_only_conditioning() -> None:
-    config = _small_config()
-    config["model"]["conditioning"] = "cross_attention"
-    model = DiffSparseV1Model(config)
-    batch = _fake_model_batch(config)
-    loss, _ = model.training_step_loss(batch)
-    assert torch.isfinite(loss)
 
 
 def _real_config() -> dict:
@@ -174,9 +197,9 @@ def test_dataset_window_counts_and_shapes() -> None:
     train = FloodCastBenchDiffSparseV1Dataset(root, config, split="train")
     val = FloodCastBenchDiffSparseV1Dataset(root, config, split="val")
     test = FloodCastBenchDiffSparseV1Dataset(root, config, split="test")
-    assert len(train) == 2301
-    assert len(val) == 14
-    assert len(test) == 14
+    assert len(train) == 2297
+    assert len(val) == 13
+    assert len(test) == 13
 
     sample = train[0]
     c, l, p = train.context_length, train.prediction_length, train.patch_size

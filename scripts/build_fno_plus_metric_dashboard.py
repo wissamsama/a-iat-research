@@ -60,25 +60,60 @@ FNO_SEED_RUN_DIRS = [
     ),
 ]
 
-# The 3 official DIFF-SPARSE v1 dense (missing_rate=0.0) seed runs under the
-# 161-epoch gradient-step-parity protocol (see
-# reports/diff_sparse_v1_fno_plus_training_protocol.md). Each entry is the
-# test-split eval_rollout directory containing eval_metrics_official_per_step.csv.
+# The 3 DIFF-SPARSE v1 dense (missing_rate=0.0) seed runs under the
+# 300-epoch reference-architecture rewrite protocol (see
+# reports/diff_sparse_v1_paper_fidelity_audit.md). Each entry is the
+# native test-split eval_rollout directory containing
+# eval_metrics_official_per_step.csv; h216 directories are auto-discovered
+# from DIFF_SPARSE_DENSE_SEED_TRAIN_RUN_DIRS once the matching long-horizon
+# evals exist.
 DIFF_SPARSE_DENSE_SEED_EVAL_DIRS = [
     Path(
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
-        "04-07-2026_10-10-42_fcb_diff_sparse_v1_highfid_60m/"
-        "eval_rollout_test_04-07-2026_11-11-40"
+        "05-07-2026_20-20-31_fcb_diff_sparse_v1_highfid_60m/"
+        "eval_rollout_test_05-07-2026_23-06-27"
     ),
     Path(
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
-        "04-07-2026_14-50-59_fcb_diff_sparse_v1_seed7_highfid_60m/"
-        "eval_rollout_test_04-07-2026_15-52-05"
+        "06-07-2026_22-04-43_fcb_diff_sparse_v1_seed7_highfid_60m/"
+        "eval_rollout_test_07-07-2026_00-52-41"
     ),
     Path(
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
-        "04-07-2026_19-29-46_fcb_diff_sparse_v1_seed123_highfid_60m/"
-        "eval_rollout_test_04-07-2026_20-30-50"
+        "07-07-2026_16-43-37_fcb_diff_sparse_v1_seed123_highfid_60m/"
+        "eval_rollout_test_07-07-2026_19-29-53"
+    ),
+]
+
+# DIFF-SPARSE v2 (performance variant: delta prediction, hybrid conditioning,
+# context 24 / 40 diffusion steps -- see reports/diff_sparse_v2_design.md).
+# PILOT result only: single seed, checkpoint_best from a 60-epoch pilot run
+# (not the full 300-epoch protocol), val split, dense (missing_rate=0.0),
+# living in the session scratchpad -- update this path once a real
+# experiments/-rooted evaluation exists.
+DIFF_SPARSE_V2_EVAL_DIRS: list[Path] = [
+    Path(
+        "/tmp/claude-1001/-home-wissam-utem-workspace/d3fe234b-dc01-46fd-9c36-7503c2c975f9/"
+        "scratchpad/v2_pilot1_eval_val"
+    ),
+]
+
+# Same 3 seeds' training run directories, used to auto-discover each seed's
+# h216 long-horizon rollout eval (once it exists) so the DIFF-SPARSE curve can
+# extend from its native rollout window to the full h13..h216 range that
+# FNO+'s curve already covers. See find_h216_test_eval_dir() below.
+DIFF_SPARSE_DENSE_SEED_TRAIN_RUN_DIRS = [
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "05-07-2026_20-20-31_fcb_diff_sparse_v1_highfid_60m"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "06-07-2026_22-04-43_fcb_diff_sparse_v1_seed7_highfid_60m"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "07-07-2026_16-43-37_fcb_diff_sparse_v1_seed123_highfid_60m"
     ),
 ]
 
@@ -272,17 +307,38 @@ def read_diff_sparse_official_per_step(path: Path) -> dict[int, dict[str, float]
     return rows
 
 
+def read_diff_sparse_v2_official_per_step(path: Path) -> dict[int, dict[str, float]]:
+    """Like read_diff_sparse_official_per_step, but renames V2's own
+    path_iou_gamma_X / propagation_path_iou_gamma_X columns (already present
+    per-step, at every horizon -- no V1-style final-horizon-only translation
+    needed) to the dashboard's path_iou_X / propagation_path_iou_X key
+    convention. _median (scenario-majority) variants are left as-is under
+    their own *_median keys, available but not wired into METRIC_GROUPS."""
+
+    rows = read_diff_sparse_official_per_step(path)
+    for step, values in rows.items():
+        for gamma_key_text in ("0_001", "0_01"):
+            for prefix in ("path_iou", "propagation_path_iou"):
+                gamma_name = f"{prefix}_gamma_{gamma_key_text}"
+                if gamma_name in values:
+                    values[f"{prefix}_{gamma_key_text}"] = values[gamma_name]
+    return rows
+
+
 def average_diff_sparse_per_step(
     eval_dirs: list[Path],
+    reader=read_diff_sparse_official_per_step,
 ) -> tuple[dict[int, dict[str, float]], dict[int, dict[str, float]], dict[int, float]]:
     """Mean/std of per-step official metrics across seed eval dirs.
 
     Returns (mean_by_step, std_by_step, n_by_step). A metric key is only
     averaged for a step if every seed's CSV has a value for it, so partial
-    data never silently understates the true seed count.
+    data never silently understates the true seed count. `reader` swaps in
+    read_diff_sparse_v2_official_per_step for V2 eval dirs (renames its
+    already-per-step, every-horizon path/propagation IoU columns).
     """
 
-    per_seed = [read_diff_sparse_official_per_step(d / "eval_metrics_official_per_step.csv") for d in eval_dirs]
+    per_seed = [reader(d / "eval_metrics_official_per_step.csv") for d in eval_dirs]
     common_steps = set.intersection(*(set(seed.keys()) for seed in per_seed)) if per_seed else set()
     mean_by_step: dict[int, dict[str, float]] = {}
     std_by_step: dict[int, dict[str, float]] = {}
@@ -297,6 +353,73 @@ def average_diff_sparse_per_step(
             std_by_step[step][key] = statistics.stdev(values) if len(values) > 1 else 0.0
         n_by_step[step] = float(len(per_seed))
     return mean_by_step, std_by_step, n_by_step
+
+
+def find_h216_test_eval_dir(train_run_dir: Path) -> Path | None:
+    """Newest eval_rollout_test_* under a seed's run dir whose per-step CSV reaches h216.
+
+    A seed's training run dir accumulates one eval_rollout_test_* subfolder per
+    evaluate_floodcastbench_diff_sparse_v1.py invocation. The native rollout
+    protocol eval and the (separately launched) h216 long-horizon eval both
+    land here; this distinguishes them by the max step actually present in the
+    per-step CSV rather than by a hardcoded timestamp, so it keeps working once
+    a seed's h216 run finishes without further code changes.
+    """
+
+    candidates = sorted(
+        (p for p in train_run_dir.glob("eval_rollout_test_*") if p.is_dir()),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        csv_path = candidate / "eval_metrics_official_per_step.csv"
+        if not csv_path.exists():
+            continue
+        with csv_path.open("r", encoding="utf-8") as file:
+            steps = [int(row["step"]) for row in csv.DictReader(file)]
+        if steps and max(steps) >= 200:
+            return candidate
+    return None
+
+
+def average_fno_per_step(
+    run_dirs: list[Path],
+) -> tuple[dict[int, dict[str, float]], dict[int, dict[str, float]], dict[int, float], dict[int, dict[str, float]]]:
+    """Mean/std of the FNO+ per-step long-horizon rollout metrics across seeds.
+
+    Mirrors average_diff_sparse_per_step's semantics (a metric/step is only
+    averaged where every seed has it), applied to the FNO+ checkpoint_best
+    rollout CSVs instead.
+    """
+
+    per_seed_steps = [
+        read_per_step(d / "long_horizon_rollout_eval_dense_v2" / "checkpoint_best" / "long_horizon_metrics_per_step.csv")
+        for d in run_dirs
+    ]
+    per_seed_path = [
+        read_path_metrics(d / "long_horizon_rollout_eval_dense_v2" / "checkpoint_best" / "long_horizon_path_metrics.csv")
+        for d in run_dirs
+    ]
+    common_steps = set.intersection(*(set(seed.keys()) for seed in per_seed_steps)) if per_seed_steps else set()
+    mean_by_step: dict[int, dict[str, float]] = {}
+    std_by_step: dict[int, dict[str, float]] = {}
+    n_by_step: dict[int, float] = {}
+    for step in sorted(common_steps):
+        keys = set.intersection(*(set(seed[step].keys()) for seed in per_seed_steps))
+        mean_by_step[step] = {}
+        std_by_step[step] = {}
+        for key in keys:
+            values = [seed[step][key] for seed in per_seed_steps]
+            mean_by_step[step][key] = statistics.mean(values)
+            std_by_step[step][key] = statistics.stdev(values) if len(values) > 1 else 0.0
+        n_by_step[step] = float(len(per_seed_steps))
+
+    common_path_steps = set.intersection(*(set(p.keys()) for p in per_seed_path)) if per_seed_path else set()
+    mean_path: dict[int, dict[str, float]] = {}
+    for step in common_path_steps:
+        keys = set.intersection(*(set(p[step].keys()) for p in per_seed_path))
+        mean_path[step] = {key: statistics.mean(p[step][key] for p in per_seed_path) for key in keys}
+    return mean_by_step, std_by_step, n_by_step, mean_path
 
 
 def average_fno_pooled_metrics(run_dirs: list[Path]) -> dict[str, Any]:
@@ -416,32 +539,36 @@ COLOR_CURVE = {"light": "#2a78d6", "dark": "#3987e5"}  # slot 1 blue — the act
 COLOR_TARGET = {"light": "#e34948", "dark": "#e66767"}  # slot 6 red — the benchmark to beat
 COLOR_PROTOCOL = {"light": "#eb6834", "dark": "#d95926"}  # slot 8 orange — same-protocol fairness check
 COLOR_DIFFSPARSE = {"light": "#4a3aa7", "dark": "#9085e9"}  # slot 5 violet — DIFF-SPARSE comparison
+COLOR_DIFFSPARSE_V2 = {"light": "#1f9e6d", "dark": "#3ecf94"}  # slot 3 green — DIFF-SPARSE v2 (pilot)
 
 
 def build_data(
     run_dir: Path,
     diff_sparse_eval_dirs: list[Path] | None = None,
     fno_seed_run_dirs: list[Path] | None = None,
+    diff_sparse_train_run_dirs: list[Path] | None = None,
+    diff_sparse_v2_eval_dirs: list[Path] | None = None,
 ) -> dict[str, Any]:
     rollout_dir = run_dir / "long_horizon_rollout_eval_dense_v2"
-    best_steps = read_per_step(rollout_dir / "checkpoint_best" / "long_horizon_metrics_per_step.csv")
-    best_path = read_path_metrics(rollout_dir / "checkpoint_best" / "long_horizon_path_metrics.csv")
-    steps = sorted(best_steps)
 
     fno_seed_run_dirs = fno_seed_run_dirs if fno_seed_run_dirs is not None else FNO_SEED_RUN_DIRS
+    n_fno_seeds = len(fno_seed_run_dirs)
+    fno_mean_by_step, fno_std_by_step, fno_n_by_step, fno_mean_path = average_fno_per_step(fno_seed_run_dirs)
+    fno_steps = sorted(fno_mean_by_step)
     fno_pooled = average_fno_pooled_metrics(fno_seed_run_dirs)
-    n_fno_seeds = fno_pooled["n"]
 
     series: list[dict[str, Any]] = [
         curve_series(
-            "FNO+ (this repo) — rollout, step by step (seed 42 only)",
-            "single seed (42); the long-horizon per-step rollout has not been run for seeds 7/123 "
-            "(it is separately expensive from the pooled protocol eval below) — not multiseed",
+            f"FNO+ (this repo) — rollout, step by step (mean of {n_fno_seeds} seeds)",
+            f"mean +/- std across seeds 42/7/123 (N={n_fno_seeds}), same long-horizon rollout protocol "
+            "for every seed",
             COLOR_CURVE,
             2.5,
-            best_steps,
-            best_path,
-            steps,
+            fno_mean_by_step,
+            fno_mean_path,
+            fno_steps,
+            std_by_step=fno_std_by_step,
+            n_by_step=fno_n_by_step,
         ),
         reference_series(
             "FNO+ — published Table 4 result",
@@ -451,8 +578,8 @@ def build_data(
             OFFICIAL_TABLE4["FNO+ (official Table 4)"],
         ),
         reference_series(
-            f"FNO+ (this repo) — same protocol as Table 4 (mean of {n_fno_seeds} seeds)",
-            f"official pooled t2..t20 protocol, mean +/- std across seeds 42/7/123 (N={n_fno_seeds}) "
+            f"FNO+ (this repo) — same protocol as Table 4 (mean of {fno_pooled['n']} seeds)",
+            f"official pooled t2..t20 protocol, mean +/- std across seeds 42/7/123 (N={fno_pooled['n']}) "
             "— the fair apples-to-apples comparison point",
             COLOR_PROTOCOL,
             "2 3",
@@ -461,14 +588,38 @@ def build_data(
         ),
     ]
 
-    diff_sparse_eval_dirs = (
-        diff_sparse_eval_dirs if diff_sparse_eval_dirs is not None else DIFF_SPARSE_DENSE_SEED_EVAL_DIRS
-    )
-    if diff_sparse_eval_dirs:
-        mean_by_step, std_by_step, n_by_step = average_diff_sparse_per_step(diff_sparse_eval_dirs)
-        n_ds_seeds = len(diff_sparse_eval_dirs)
-        # PathIoU (h20 only) averaged across the same seeds, for consistency.
-        path_per_seed = [read_diff_sparse_path_metrics(d / "eval_summary.json") for d in diff_sparse_eval_dirs]
+    horizon_note = None
+    if diff_sparse_eval_dirs is not None:
+        chosen_diff_sparse_dirs = diff_sparse_eval_dirs
+        horizon_note = "explicit --diff-sparse-eval-dirs override"
+    else:
+        diff_sparse_train_run_dirs = (
+            diff_sparse_train_run_dirs
+            if diff_sparse_train_run_dirs is not None
+            else DIFF_SPARSE_DENSE_SEED_TRAIN_RUN_DIRS
+        )
+        h216_dirs = [
+            found
+            for found in (find_h216_test_eval_dir(d) for d in diff_sparse_train_run_dirs)
+            if found is not None
+        ]
+        if h216_dirs:
+            chosen_diff_sparse_dirs = h216_dirs
+            horizon_note = (
+                f"h13..h216 long-horizon rollout ({len(h216_dirs)}/{len(diff_sparse_train_run_dirs)} "
+                "seeds available)"
+            )
+        else:
+            chosen_diff_sparse_dirs = DIFF_SPARSE_DENSE_SEED_EVAL_DIRS
+            horizon_note = "native protocol only (no seed's h216 long-horizon rollout is available yet)"
+
+    if chosen_diff_sparse_dirs:
+        mean_by_step, std_by_step, n_by_step = average_diff_sparse_per_step(chosen_diff_sparse_dirs)
+        n_ds_seeds = len(chosen_diff_sparse_dirs)
+        # PathIoU averaged across the same seeds, for consistency (h20 only for
+        # the native-protocol fallback, h216 only once the long-horizon dirs
+        # are used, since FinalHorizonPathAccumulator reports the last horizon).
+        path_per_seed = [read_diff_sparse_path_metrics(d / "eval_summary.json") for d in chosen_diff_sparse_dirs]
         diff_sparse_path: dict[int, dict[str, float]] = {}
         common_path_steps = set.intersection(*(set(p.keys()) for p in path_per_seed)) if path_per_seed else set()
         for step in common_path_steps:
@@ -477,9 +628,8 @@ def build_data(
         series.append(
             curve_series(
                 f"DIFF-SPARSE v1 — rollout, step by step (dense, mean of {n_ds_seeds} seeds)",
-                f"dense (missing_rate=0.0) DIFF-SPARSE v1, 161-epoch protocol, mean +/- std across seeds "
-                f"42/7/123 (N={n_ds_seeds}), shared physical metrics, native h13..h20 horizon only — "
-                "does not extend further (no long-horizon rollout has been run for DIFF-SPARSE)",
+                f"dense (missing_rate=0.0) DIFF-SPARSE v1, 300-epoch reference-architecture rewrite, mean +/- std across "
+                f"N={n_ds_seeds} seeds, shared physical metrics, {horizon_note}",
                 COLOR_DIFFSPARSE,
                 2.4,
                 mean_by_step,
@@ -490,22 +640,48 @@ def build_data(
             )
         )
 
+    diff_sparse_v2_eval_dirs = (
+        diff_sparse_v2_eval_dirs if diff_sparse_v2_eval_dirs is not None else DIFF_SPARSE_V2_EVAL_DIRS
+    )
+    if diff_sparse_v2_eval_dirs:
+        v2_mean_by_step, v2_std_by_step, v2_n_by_step = average_diff_sparse_per_step(
+            diff_sparse_v2_eval_dirs, reader=read_diff_sparse_v2_official_per_step
+        )
+        n_v2_seeds = len(diff_sparse_v2_eval_dirs)
+        v2_status = (
+            f"PILOT result, N={n_v2_seeds} seed(s), single checkpoint (epoch 50/90, before the full "
+            "300-epoch protocol), dense (missing_rate=0.0), val split (not test), context 24 / 40 "
+            "diffusion steps / delta-space prediction -- see reports/diff_sparse_v2_design.md. "
+            "NOT the final multi-seed result."
+        )
+        series.append(
+            curve_series(
+                f"DIFF-SPARSE v2 — rollout, step by step (dense, pilot, N={n_v2_seeds})",
+                v2_status,
+                COLOR_DIFFSPARSE_V2,
+                2.4,
+                v2_mean_by_step,
+                {},
+                sorted(v2_mean_by_step),
+                std_by_step=v2_std_by_step,
+                n_by_step=v2_n_by_step,
+            )
+        )
+
     source_files = {
         "run_dir": str(run_dir),
-        "per_step_best": str(rollout_dir / "checkpoint_best" / "long_horizon_metrics_per_step.csv"),
-        "per_step_last": str(rollout_dir / "checkpoint_last" / "long_horizon_metrics_per_step.csv"),
-        "path_best": str(rollout_dir / "checkpoint_best" / "long_horizon_path_metrics.csv"),
-        "path_last": str(rollout_dir / "checkpoint_last" / "long_horizon_path_metrics.csv"),
         "fno_seed_run_dirs": [str(d) for d in fno_seed_run_dirs],
         "generator": str(Path(__file__).resolve()),
     }
-    if diff_sparse_eval_dirs:
-        source_files["diff_sparse_eval_dirs"] = [str(d) for d in diff_sparse_eval_dirs]
+    if chosen_diff_sparse_dirs:
+        source_files["diff_sparse_eval_dirs"] = [str(d) for d in chosen_diff_sparse_dirs]
+    if diff_sparse_v2_eval_dirs:
+        source_files["diff_sparse_v2_eval_dirs"] = [str(d) for d in diff_sparse_v2_eval_dirs]
 
     return {
         "title": "FloodCastBench FNO+ baseline metrics",
         "seconds_per_step": SECONDS_PER_STEP,
-        "steps": steps,
+        "steps": fno_steps,
         "canonical_steps": CANONICAL_STEPS,
         "paper_t20_step": 19,
         "metric_groups": METRIC_GROUPS,
@@ -534,12 +710,11 @@ def build_data(
             ),
             "time": "1 step = 300 s; step 19 is the paper's t=20 target; step 216 = 18 h.",
             "multiseed_status": (
-                "Multiseed status differs by series, shown honestly rather than uniformly: the FNO+ per-step "
-                "curve (blue) is seed=42 only — the expensive long-horizon rollout has not been run for seeds "
-                "7/123. The FNO+ same-protocol reference (orange) and the DIFF-SPARSE curve (violet) ARE "
-                "mean +/- std across all 3 seeds (42/7/123), shown as a shaded band (reference) or error bars "
-                "at canonical steps (curve). DIFF-SPARSE is dense (missing_rate=0.0), 161-epoch protocol, and "
-                "shown only on its native h13..h20 window — no long-horizon rollout exists for it yet."
+                f"All 3 curves/references are mean +/- std across seeds 42/7/123 (N={n_fno_seeds} for FNO+), "
+                "shown as a shaded band (reference) or error bars at canonical steps (curve). DIFF-SPARSE v1 is "
+                f"dense (missing_rate=0.0), 300-epoch reference-architecture rewrite: {horizon_note}. DIFF-SPARSE v2 (green) is a "
+                "SINGLE-SEED PILOT (not the final multi-seed protocol) shown for reference only -- see its "
+                "legend status text."
             ),
         },
         "source_files": source_files,
@@ -960,9 +1135,21 @@ def main() -> int:
         nargs="+",
         help="FNO+ official-v1 run dirs to average for the same-protocol reference (default: the 3 official seeds)",
     )
+    parser.add_argument(
+        "--diff-sparse-v2-eval-dirs",
+        type=Path,
+        nargs="+",
+        help="DIFF-SPARSE v2 eval dirs to average (default: the pilot dir; pass [] via no flag to omit the curve)",
+    )
+    parser.add_argument(
+        "--no-diff-sparse-v2",
+        action="store_true",
+        help="Omit the DIFF-SPARSE v2 curve entirely",
+    )
     args = parser.parse_args()
 
-    data = build_data(args.run_dir, args.diff_sparse_eval_dirs, args.fno_seed_run_dirs)
+    v2_dirs = [] if args.no_diff_sparse_v2 else args.diff_sparse_v2_eval_dirs
+    data = build_data(args.run_dir, args.diff_sparse_eval_dirs, args.fno_seed_run_dirs, diff_sparse_v2_eval_dirs=v2_dirs)
     page = HTML_TEMPLATE.replace("__TITLE__", html.escape(data["title"])).replace(
         "__DATA__", json.dumps(data, allow_nan=False)
     )

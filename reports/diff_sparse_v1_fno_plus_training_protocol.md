@@ -86,6 +86,64 @@ results table and per-run convergence discussion.
 | 7 | 0.95 | `04-07-2026_17-48-58_fcb_diff_sparse_v1_seed7_highfid_60m` | 68 | done |
 | 123 | 0.95 | `04-07-2026_22-28-24_fcb_diff_sparse_v1_seed123_highfid_60m` | 68 | done |
 
+## 2026-07-05 revision: paper-faithful v1 retrain (supersedes the 9 runs above)
+
+Two paper-fidelity corrections were applied to all v1 configs
+(`prediction_length: 8 -> 12` per paper Table 2, and
+`conditioning: cross_attention_concat -> cross_attention`, the paper's
+attention-only conditioning). The parity arithmetic is essentially unchanged
+by the new window length (2297 sliding train windows at 24 frames instead of
+2301 at 20 frames: 161 x ceil(2297/32) = 11,592 gradient steps ~ 11,600).
+Eligible eval windows drop from 14 to 13 per split.
+
+A first attempt at this retrain (seed42 dense) plateaued completely --
+`train_loss` stuck at ~0.4 for all 161 epochs instead of dropping to ~0.0005
+like the concat variant. Root-caused (at the time) to `training.lr_patience: 3`
+being too aggressive for the hand-rolled attention-only conditioning's harder
+optimization landscape, and fixed by raising `lr_patience` to 15, verified on
+a 60-epoch pilot (LR stays at 1e-3 throughout, breaks through at epoch ~37,
+`val_loss` 3.7 -> 1.65 by epoch 60).
+
+Before committing that fix to a full 9-run retrain, the official reference
+code (`github.com/KAI10/Diff-Sparse`) was cloned and read directly, which
+found the real problem: the hand-rolled cross-attention conditioning
+(pixel-aligned spatial map + fixed 2D positional encodings, no self-attention)
+was not what the paper's authors built at all — the reference uses a
+temporal token sequence (one summary per context timestep) fed to
+`diffusers.UNet2DConditionModel` with cross-attention at the 2 *middle* UNet
+levels (self- and cross-attention combined). `models/diff_sparse_v1.py` was
+rewritten around this exact mechanism (see `reports/diff_sparse_v1_design.md`
+for the full diagnostic and architecture description); the earlier 9 runs and
+the seed42 partial retrains (both the `lr_patience=3` and `lr_patience=15`
+attempts) are superseded and architecture-incompatible with the current
+configs — any re-evaluation of them must use the config snapshot saved inside
+each run directory.
+
+`lr_patience` was first reverted to the paper's own value (3) under the new
+architecture on the hypothesis that the earlier fix was tied to the (wrong)
+hand-rolled attention mechanism. Two pilots (40 and 60 epochs) under the
+*correct* reference-matching architecture showed the identical plateau
+signature at patience=3, ruling that hypothesis out; `lr_patience=15` was
+restored. A further 70-epoch pilot at patience=15 (LR pinned at 1e-3 the
+whole time, never reduced) still showed only slow improvement
+(val_loss 6.58 -> 3.7, clearly decelerating but not fully flat) — no hard
+ceiling, just slow.
+
+A decisive single-batch diagnostic then isolated the cause definitively: at a
+**fixed** t=0 diffusion timestep (the easy case), the architecture converges
+cleanly to loss ~0.0007 in 300 steps — proof the architecture, gradient flow,
+and TemporalContextEncoder are all correct, no bug. At **random** timesteps
+(matching real training exactly), the same fixed 8-example batch only reaches
+loss ~0.17 in the same 300 steps, clearly still falling. Conclusion: this is
+not a bug, it is a genuinely slow optimization landscape for the paper's
+cross-attention-only (no-concat) conditioning mechanism across the full
+random-timestep objective, requiring substantially more gradient steps than
+161 epochs (11,592 steps) provides. `training.epochs` is raised to **300**
+(~21,600 gradient steps) for the full retrain, explicitly abandoning FNO+
+gradient-step parity as a goal for this specific run (a deliberate trade-off,
+chosen directly over further piloting once the "not a bug, just slow"
+diagnosis was confirmed).
+
 ## Follow-up: early stopping recommended, not yet implemented
 
 The 161-epoch ceiling was sized for gradient-step parity, not measured

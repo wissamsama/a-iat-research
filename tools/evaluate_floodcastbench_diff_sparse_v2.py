@@ -1,0 +1,611 @@
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import math
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import torch
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
+
+from datasets.floodcastbench_diff_sparse_v2_dataset import build_diff_sparse_v2_dataset  # noqa: E402
+from models.diff_sparse_v2 import DiffSparseV2Model  # noqa: E402
+from tools.evaluate_floodcastbench_fno_plus_official_v1_long_horizon_rollout import (  # noqa: E402
+    MetricAccumulator as OfficialMetricAccumulator,
+    gamma_key,
+    write_csv as write_dynamic_csv,
+)
+from tools.evaluate_floodcastbench_diff_sparse_v1 import (  # noqa: E402
+    MetricAccumulator,
+    persistence_forecast,
+    save_maps,
+    tile_blend_window,
+    tile_positions,
+    to_physical,
+    unique_dir,
+)
+from tools.train_floodcastbench_diff_sparse_v1 import (  # noqa: E402
+    cli_args_for_summary,
+    command_reconstruction,
+    git_status_short,
+    load_config,
+    path_from_config,
+    resolve_device,
+    resolve_path,
+    save_json,
+)
+from tools.train_floodcastbench_diff_sparse_v2 import (  # noqa: E402
+    SCIENTIFIC_STATUS,
+    DeltaSpec,
+    load_delta_stats,
+)
+from training.utils import set_seed  # noqa: E402
+
+
+EVAL_STATUS = "diff_sparse_v2_floodcastbench_rollout_eval"
+DOES_NOT_CLAIM = [
+    "official FloodCastBench benchmark performance",
+    "official DIFF-SPARSE TideWatch reproduction",
+    "uncertainty calibration",
+]
+OFFICIAL_GAMMAS = [0.001, 0.01]
+
+STEP_FIELDS = [
+    "split",
+    "step",
+    "horizon_label",
+    "nrmse",
+    "rmse_normalized",
+    "mae_normalized",
+    "rmse_physical_m",
+    "mae_physical_m",
+    "nacrps",
+    "persistence_nrmse",
+    "persistence_rmse_normalized",
+    "persistence_mae_normalized",
+    "persistence_rmse_physical_m",
+]
+
+
+def load_checkpoint(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"Checkpoint does not exist: {path}")
+    checkpoint = torch.load(path, map_location="cpu")
+    if not isinstance(checkpoint, dict):
+        raise TypeError(f"Expected checkpoint dict, got {type(checkpoint).__name__}")
+    if checkpoint.get("scientific_status") != SCIENTIFIC_STATUS:
+        raise ValueError(
+            f"Checkpoint scientific_status {checkpoint.get('scientific_status')!r} "
+            f"is not a DIFF-SPARSE v2 checkpoint ({SCIENTIFIC_STATUS!r})"
+        )
+    if "model_state_dict" not in checkpoint:
+        raise KeyError("Checkpoint is missing model_state_dict")
+    if not isinstance(checkpoint.get("normalization_stats"), dict):
+        raise KeyError("Checkpoint is missing normalization_stats")
+    return checkpoint
+
+
+class MultiHorizonPathAccumulator:
+    """Path IoU and propagation-path IoU at EVERY rollout step.
+
+    Per horizon step h (1-indexed within the rollout):
+      - path IoU: IoU of (flooded at step h) MINUS (flooded initially), i.e.
+        the cumulative newly-flooded-since-context area, pred vs target.
+      - per-step propagation IoU: IoU of pixels newly flooded exactly at step
+        h relative to step h-1 (step 0 = initial frame), pred vs target.
+    Fixes V1's FinalHorizonPathAccumulator, which only reported the final
+    horizon and pooled propagation counts over all steps.
+    """
+
+    def __init__(self, prediction_length: int, gammas: list[float]) -> None:
+        self.length = int(prediction_length)
+        self.gammas = tuple(float(gamma) for gamma in gammas)
+        self.samples = 0
+        self.counts = {
+            gamma: {
+                "tp": [0.0] * self.length,
+                "fp": [0.0] * self.length,
+                "fn": [0.0] * self.length,
+                "prop_tp": [0.0] * self.length,
+                "prop_fp": [0.0] * self.length,
+                "prop_fn": [0.0] * self.length,
+            }
+            for gamma in self.gammas
+        }
+
+    def update(self, pred: torch.Tensor, target: torch.Tensor, initial: torch.Tensor) -> None:
+        if pred.shape != target.shape:
+            raise ValueError(f"pred and target must match, got {pred.shape} vs {target.shape}")
+        if pred.ndim != 3 or pred.shape[0] != self.length:
+            raise ValueError(f"Expected pred/target [{self.length}, H, W], got {tuple(pred.shape)}")
+        if initial.shape != pred.shape[1:]:
+            raise ValueError(f"Expected initial [H, W] matching pred, got {tuple(initial.shape)}")
+        pred = pred.detach().float().cpu()
+        target = target.detach().float().cpu()
+        initial = initial.detach().float().cpu()
+        self.samples += 1
+
+        for gamma in self.gammas:
+            counts = self.counts[gamma]
+            initial_mask = initial > gamma
+            prev_pred = initial_mask
+            prev_target = initial_mask
+            for step in range(self.length):
+                pred_mask = pred[step] > gamma
+                target_mask = target[step] > gamma
+                pred_path = pred_mask & ~initial_mask
+                target_path = target_mask & ~initial_mask
+                counts["tp"][step] += float((pred_path & target_path).sum().item())
+                counts["fp"][step] += float((pred_path & ~target_path).sum().item())
+                counts["fn"][step] += float((~pred_path & target_path).sum().item())
+
+                pred_new = pred_mask & ~prev_pred
+                target_new = target_mask & ~prev_target
+                counts["prop_tp"][step] += float((pred_new & target_new).sum().item())
+                counts["prop_fp"][step] += float((pred_new & ~target_new).sum().item())
+                counts["prop_fn"][step] += float((~pred_new & target_new).sum().item())
+                prev_pred = pred_mask
+                prev_target = target_mask
+
+    def per_step_metrics(self) -> list[dict[str, Any]]:
+        eps = 1e-12
+        rows = []
+        for step in range(self.length):
+            row: dict[str, Any] = {"rollout_step": step + 1, "samples": self.samples}
+            for gamma in self.gammas:
+                key = gamma_key(gamma)
+                counts = self.counts[gamma]
+                tp, fp, fn = counts["tp"][step], counts["fp"][step], counts["fn"][step]
+                ptp, pfp, pfn = counts["prop_tp"][step], counts["prop_fp"][step], counts["prop_fn"][step]
+                row[f"path_iou_gamma_{key}"] = tp / max(tp + fp + fn, eps)
+                row[f"propagation_path_iou_gamma_{key}"] = ptp / max(ptp + pfp + pfn, eps)
+                row[f"path_tp_gamma_{key}"] = int(tp)
+                row[f"path_fp_gamma_{key}"] = int(fp)
+                row[f"path_fn_gamma_{key}"] = int(fn)
+                row[f"propagation_tp_gamma_{key}"] = int(ptp)
+                row[f"propagation_fp_gamma_{key}"] = int(pfp)
+                row[f"propagation_fn_gamma_{key}"] = int(pfn)
+            rows.append(row)
+        return rows
+
+    def pooled_propagation(self) -> dict[str, Any]:
+        eps = 1e-12
+        result: dict[str, Any] = {"samples": self.samples}
+        for gamma in self.gammas:
+            key = gamma_key(gamma)
+            counts = self.counts[gamma]
+            ptp, pfp, pfn = sum(counts["prop_tp"]), sum(counts["prop_fp"]), sum(counts["prop_fn"])
+            result[f"propagation_path_iou_gamma_{key}"] = ptp / max(ptp + pfp + pfn, eps)
+            final = self.length - 1
+            tp, fp, fn = counts["tp"][final], counts["fp"][final], counts["fn"][final]
+            result[f"final_path_iou_gamma_{key}"] = tp / max(tp + fp + fn, eps)
+        return result
+
+
+@torch.no_grad()
+def rollout_window(
+    model: DiffSparseV2Model,
+    sample: dict[str, torch.Tensor],
+    num_scenarios: int,
+    patch_size: int,
+    tile_stride: int,
+    tile_chunk: int,
+    remask: bool,
+    mask_mode: str,
+    delta: DeltaSpec,
+    clamp: bool,
+    generator: torch.Generator | None,
+    device: torch.device,
+) -> torch.Tensor:
+    """V2 autoregressive per-tile rollout.
+
+    Adds vs V1: sliding target-step rainfall conditioning, delta-space
+    prediction with per-tile absolute reconstruction (base = observed last
+    context frame at step 1, then the model's own dense previous prediction),
+    and the physically-bounded x0 clamp. No re-masking by default (matches the
+    reference's generate_multistep_scenarios). Returns ABSOLUTE-space
+    predictions [M, l, H, W]."""
+
+    context_masked = sample["context_water_masked"].to(device)
+    context_true = sample["context_water_true"].to(device)
+    sensor_mask = sample["sensor_mask"].to(device)
+    dem = sample["dem"].to(device)
+    rainfall = sample["rainfall"].to(device)
+    timestamps = sample["timestamps"].to(device)
+    context_length, height, width = context_masked.shape
+    prediction_length = sample["target"].shape[0]
+
+    ys = tile_positions(height, patch_size, tile_stride)
+    xs = tile_positions(width, patch_size, tile_stride)
+    tiles = [(y, x) for y in ys for x in xs]
+    blend = tile_blend_window(patch_size, device=device, dtype=context_masked.dtype)
+
+    output_sum = torch.zeros(num_scenarios, prediction_length, height, width, device=device)
+    weight = torch.zeros(height, width, device=device)
+
+    tiles_per_chunk = max(1, tile_chunk // max(num_scenarios, 1))
+    for chunk_start in range(0, len(tiles), tiles_per_chunk):
+        chunk = tiles[chunk_start : chunk_start + tiles_per_chunk]
+        n_tiles = len(chunk)
+        batch_size = n_tiles * num_scenarios
+
+        def stack_tiles(tensor: torch.Tensor) -> torch.Tensor:
+            crops = [tensor[..., y : y + patch_size, x : x + patch_size] for y, x in chunk]
+            stacked = torch.stack(crops, dim=0)
+            return stacked.repeat_interleave(num_scenarios, dim=0)
+
+        context = stack_tiles(context_masked)
+        context_true_tiles = stack_tiles(context_true)
+        mask = stack_tiles(sensor_mask)
+        dem_tiles = stack_tiles(dem)
+        rain_tiles = stack_tiles(rainfall)
+        ts_batch = timestamps.unsqueeze(0).expand(batch_size, -1)
+        base = delta.base_from_sample(context_true_tiles, mask)
+
+        for step in range(prediction_length):
+            model_batch = {
+                "context_water_masked": context,
+                "sensor_mask": mask,
+                "dem": dem_tiles,
+                "rainfall_context": rain_tiles[:, step : step + context_length],
+                "rainfall_target": rain_tiles[:, step + context_length : step + context_length + 1],
+                "timestamps_context": ts_batch[:, step : step + context_length],
+            }
+            tokens, spatial = model.encode_context(model_batch)
+            prediction = model.sample(
+                tokens,
+                spatial,
+                (batch_size, 1, patch_size, patch_size),
+                generator=generator,
+                clip_x0=delta.clip_for_sampler(base, clamp),
+            )
+            absolute = delta.to_absolute(prediction, base, clamp=clamp)
+            for tile_index, (y, x) in enumerate(chunk):
+                block = absolute[tile_index * num_scenarios : (tile_index + 1) * num_scenarios, 0]
+                output_sum[:, step, y : y + patch_size, x : x + patch_size] += block * blend
+
+            if remask:
+                fill = torch.randn_like(absolute) if mask_mode == "noise" else torch.zeros_like(absolute)
+                new_frame = absolute * mask + (1.0 - mask) * fill
+            else:
+                new_frame = absolute
+            context = torch.cat([context[:, 1:], new_frame], dim=1)
+            base = absolute
+
+        for y, x in chunk:
+            weight[y : y + patch_size, x : x + patch_size] += blend
+
+    return output_sum / weight.clamp(min=torch.finfo(output_sum.dtype).eps)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Evaluate DIFF-SPARSE v2 with autoregressive rollout.")
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--split", default="val", choices=["train", "val", "test"])
+    parser.add_argument("--num-scenarios", type=int)
+    parser.add_argument("--max-windows", type=int)
+    parser.add_argument("--tile-chunk", type=int, default=64, help="Max tiles*scenarios per model batch")
+    parser.add_argument(
+        "--tile-stride",
+        type=int,
+        help="Tile stride for rollout blending; V2 default is patch_size/2 (e.g. 32) for stronger seam suppression.",
+    )
+    parser.add_argument(
+        "--persistence-mode",
+        choices=["oracle", "sparse"],
+        default="oracle",
+    )
+    parser.add_argument("--missing-rate", type=float, help="Override eval sparsity (cross-sparsity evaluation)")
+    parser.add_argument(
+        "--no-clamp-physical",
+        action="store_true",
+        help="Disable the >=0 physical depth clamp (V2 default: clamp during sampling AND on final forecasts)",
+    )
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--save-maps", action="store_true")
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    if args.missing_rate is not None:
+        config.setdefault("masking", {})["missing_rate"] = float(args.missing_rate)
+        print(f"NOTE: eval missing_rate overridden to {args.missing_rate}")
+    seed = int(config.get("training", {}).get("seed", config.get("experiment", {}).get("seed", 42)))
+    set_seed(seed)
+
+    checkpoint = load_checkpoint(args.checkpoint)
+    stats = checkpoint["normalization_stats"]
+    water_stats = stats["channels"]["water"]
+    device = resolve_device(args.device)
+
+    dataset = build_diff_sparse_v2_dataset(
+        path_from_config(config, "dataset_root"),
+        config,
+        split=args.split,
+        normalization_stats=stats,
+        patch_mode="full",
+    )
+    model = DiffSparseV2Model(config).to(device)
+    use_ema = bool(config.get("evaluation", {}).get("use_ema", True)) and checkpoint.get("ema_state_dict")
+    if use_ema:
+        # EMA weights: keyed by parameter name; buffers come from the raw state dict.
+        model.load_state_dict(checkpoint["model_state_dict"], strict=True)
+        with torch.no_grad():
+            for name, parameter in model.named_parameters():
+                parameter.copy_(checkpoint["ema_state_dict"][name])
+    else:
+        model.load_state_dict(checkpoint["model_state_dict"], strict=True)
+    model.eval()
+
+    prediction_config = config.get("prediction", {})
+    delta_stats = checkpoint.get("delta_stats") or load_delta_stats(
+        Path(prediction_config["delta_stats_json"]) if prediction_config.get("delta_stats_json") else None
+    )
+    delta = DeltaSpec(str(prediction_config.get("target", "delta")), water_stats, delta_stats)
+
+    evaluation_config = config.get("evaluation", {})
+    default_scenarios = int(
+        evaluation_config.get("num_scenarios_test" if args.split == "test" else "num_scenarios_val", 2)
+    )
+    num_scenarios = int(args.num_scenarios or default_scenarios)
+    remask = bool(evaluation_config.get("rollout_remask", False))
+    clamp_physical = bool(evaluation_config.get("clip_x0_physical", True)) and not args.no_clamp_physical
+
+    if args.output_dir is not None:
+        output_base = resolve_path(args.output_dir, PROJECT_DIR)
+    else:
+        run_dir = path_from_config(config, "experiment_root") / args.checkpoint.parent.name
+        timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        output_base = run_dir / f"eval_rollout_{args.split}_{timestamp}"
+    output_dir = unique_dir(output_base)
+
+    total_windows = len(dataset)
+    windows = min(total_windows, args.max_windows) if args.max_windows else total_windows
+    patch_size = dataset.patch_size
+    tile_stride = int(args.tile_stride or max(1, patch_size // 2))
+    prediction_length = dataset.prediction_length
+
+    print(f"code_root: {PROJECT_DIR}")
+    print(f"checkpoint: {args.checkpoint} (epoch {checkpoint.get('epoch')}) ema: {bool(use_ema)}")
+    print(f"output_dir: {output_dir}")
+    print(f"split: {args.split} windows: {windows}/{total_windows}")
+    print(f"num_scenarios: {num_scenarios} missing_rate: {dataset.missing_rate} mask_mode: {dataset.mask_mode}")
+    print(
+        f"patch_size: {patch_size} tile_stride: {tile_stride} "
+        f"persistence_mode: {args.persistence_mode} rollout_remask: {remask} "
+        f"target_space: {delta.mode} (scale={delta.scale:.6g}) clamp_physical: {clamp_physical}"
+    )
+
+    model_metrics = MetricAccumulator(prediction_length)
+    persistence_metrics = MetricAccumulator(prediction_length)
+    official_overall_accumulator = OfficialMetricAccumulator(gammas=OFFICIAL_GAMMAS)
+    official_step_accumulators = {
+        step: OfficialMetricAccumulator(gammas=OFFICIAL_GAMMAS) for step in range(prediction_length)
+    }
+    path_accumulator = MultiHorizonPathAccumulator(prediction_length, gammas=OFFICIAL_GAMMAS)
+    # Scenario-majority decision masks via the per-pixel MEDIAN field: for every
+    # threshold gamma simultaneously, median > gamma <=> the majority of
+    # scenarios exceed gamma -- the optimal mask decision rule under the model's
+    # own uncertainty, vs thresholding the (front-smearing) mean.
+    path_accumulator_median = MultiHorizonPathAccumulator(prediction_length, gammas=OFFICIAL_GAMMAS)
+    official_step_accumulators_median = {
+        step: OfficialMetricAccumulator(gammas=OFFICIAL_GAMMAS) for step in range(prediction_length)
+    }
+    map_files: list[str] = []
+
+    for window_index in range(windows):
+        sample = dataset[window_index]
+        target = sample["target"].to(device)
+        generator = torch.Generator(device=device).manual_seed(seed * 1_000_003 + window_index)
+        predictions = rollout_window(
+            model,
+            sample,
+            num_scenarios=num_scenarios,
+            patch_size=patch_size,
+            tile_stride=tile_stride,
+            tile_chunk=args.tile_chunk,
+            remask=remask,
+            mask_mode=dataset.mask_mode,
+            delta=delta,
+            clamp=clamp_physical,
+            generator=generator,
+            device=device,
+        )
+        if not torch.isfinite(predictions).all():
+            raise FloatingPointError(f"Non-finite rollout predictions in window {window_index}")
+        mean_forecast = predictions.mean(dim=0)
+        median_forecast = predictions.median(dim=0).values if num_scenarios > 1 else mean_forecast
+        if clamp_physical:
+            floor = delta.floor_absolute
+            mean_forecast = mean_forecast.clamp(min=floor)
+            median_forecast = median_forecast.clamp(min=floor)
+            predictions = predictions.clamp(min=floor)
+        persistence = persistence_forecast(sample, prediction_length, device, args.persistence_mode)
+
+        model_metrics.update(mean_forecast, predictions, target)
+        persistence_metrics.update(persistence, None, target)
+        mean_forecast_physical = to_physical(mean_forecast, water_stats)
+        median_forecast_physical = to_physical(median_forecast, water_stats)
+        if clamp_physical:
+            mean_forecast_physical = mean_forecast_physical.clamp(min=0.0)
+            median_forecast_physical = median_forecast_physical.clamp(min=0.0)
+        target_physical = to_physical(target, water_stats)
+        official_overall_accumulator.update(mean_forecast_physical, target_physical)
+        for step in range(prediction_length):
+            official_step_accumulators[step].update(mean_forecast_physical[step], target_physical[step])
+            official_step_accumulators_median[step].update(median_forecast_physical[step], target_physical[step])
+        initial_physical = to_physical(sample["context_water_true"][-1].to(device), water_stats)
+        path_accumulator.update(mean_forecast_physical, target_physical, initial_physical)
+        path_accumulator_median.update(median_forecast_physical, target_physical, initial_physical)
+
+        if args.save_maps and window_index == 0:
+            sample_std = predictions.std(dim=0, unbiased=False) if num_scenarios > 1 else torch.zeros_like(mean_forecast)
+            for step in (0, prediction_length - 1):
+                map_files.extend(
+                    save_maps(
+                        output_dir,
+                        f"{args.split}_window000",
+                        target,
+                        mean_forecast,
+                        sample_std,
+                        persistence,
+                        step,
+                    )
+                )
+        print(f"window {window_index + 1}/{windows} done", flush=True)
+
+    water_std = float(water_stats["std"])
+    model_result = model_metrics.finalize(water_std)
+    persistence_result = persistence_metrics.finalize(water_std)
+
+    rows = []
+    for step in range(prediction_length):
+        model_step = model_result["per_step"][step]
+        persistence_step = persistence_result["per_step"][step]
+        rows.append(
+            {
+                "split": args.split,
+                "step": step + 1,
+                "horizon_label": f"h{dataset.context_length + step + 1}",
+                "nrmse": model_step["nrmse"],
+                "rmse_normalized": model_step["rmse_normalized"],
+                "mae_normalized": model_step["mae_normalized"],
+                "rmse_physical_m": model_step["rmse_physical_m"],
+                "mae_physical_m": model_step["mae_physical_m"],
+                "nacrps": model_step["nacrps"],
+                "persistence_nrmse": persistence_step["nrmse"],
+                "persistence_rmse_normalized": persistence_step["rmse_normalized"],
+                "persistence_mae_normalized": persistence_step["mae_normalized"],
+                "persistence_rmse_physical_m": persistence_step["rmse_physical_m"],
+            }
+        )
+    metrics_path = output_dir / "eval_metrics_per_step.csv"
+    with metrics_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=STEP_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    path_rows = path_accumulator.per_step_metrics()
+    path_rows_median = path_accumulator_median.per_step_metrics()
+    official_rows = []
+    for step in range(prediction_length):
+        horizon_label = f"h{dataset.context_length + step + 1}"
+        official_step = official_step_accumulators[step].compute()
+        official_step.update(
+            {
+                "checkpoint_name": args.checkpoint.parent.name,
+                "step": dataset.context_length + step + 1,
+                "rollout_step": step + 1,
+                "horizon_label": horizon_label,
+                "rollout_samples": windows,
+            }
+        )
+        # Merge path/propagation IoU into the same per-step official CSV so the
+        # dashboard can read everything from one artifact. _median columns are
+        # the scenario-majority (median-field) decision-mask variants.
+        official_step.update(
+            {key: value for key, value in path_rows[step].items() if key not in ("rollout_step", "samples")}
+        )
+        official_step.update(
+            {
+                f"{key}_median": value
+                for key, value in path_rows_median[step].items()
+                if key not in ("rollout_step", "samples")
+            }
+        )
+        median_step = official_step_accumulators_median[step].compute()
+        official_step.update(
+            {f"{key}_median": value for key, value in median_step.items() if key.startswith(("csi", "precision", "recall", "f1"))}
+        )
+        official_rows.append(official_step)
+    official_metrics_path = output_dir / "eval_metrics_official_per_step.csv"
+    write_dynamic_csv(official_metrics_path, official_rows)
+
+    official_overall = official_overall_accumulator.compute()
+    pooled_propagation = path_accumulator.pooled_propagation()
+    pooled_propagation_median = path_accumulator_median.pooled_propagation()
+
+    model_overall = model_result["overall"]
+    persistence_overall = persistence_result["overall"]
+    improvement = None
+    if persistence_overall["rmse_normalized"] > 0:
+        improvement = 100.0 * (
+            persistence_overall["rmse_normalized"] - model_overall["rmse_normalized"]
+        ) / persistence_overall["rmse_normalized"]
+
+    summary = {
+        "config_path": str(args.config),
+        "checkpoint_path": str(args.checkpoint),
+        "checkpoint_epoch": checkpoint.get("epoch"),
+        "checkpoint_metrics": checkpoint.get("metrics"),
+        "split": args.split,
+        "windows_evaluated": windows,
+        "windows_total": total_windows,
+        "num_scenarios": num_scenarios,
+        "missing_rate": dataset.missing_rate,
+        "mask_mode": dataset.mask_mode,
+        "eval_mask_bank_size": dataset.eval_mask_bank_size,
+        "context_length": dataset.context_length,
+        "prediction_length": prediction_length,
+        "patch_size": patch_size,
+        "tile_stride": tile_stride,
+        "tile_blending": "cell_centered_hann_distance_to_center",
+        "persistence_mode": args.persistence_mode,
+        "rollout_remask": remask,
+        "target_space": delta.mode,
+        "delta_scale_normalized": delta.scale,
+        "use_ema": bool(use_ema),
+        "clamp_physical": clamp_physical,
+        "clip_x0_floor_normalized": delta.floor_absolute if clamp_physical else None,
+        "device": str(device),
+        "model": model_result,
+        "persistence": persistence_result,
+        "official_metrics_physical": {
+            "units": "meters",
+            "gammas_m": OFFICIAL_GAMMAS,
+            "source": "mean DIFF-SPARSE v2 rollout forecast and target inverse-transformed with shared train water stats",
+            "overall": official_overall,
+            "per_step": official_rows,
+            "per_step_csv": str(official_metrics_path),
+            "pooled_propagation": pooled_propagation,
+            "pooled_propagation_median": pooled_propagation_median,
+            "median_columns_definition": (
+                "_median columns use the per-pixel median of scenarios: for every gamma, "
+                "median > gamma iff the majority of scenarios exceed gamma -- the "
+                "scenario-majority decision mask, vs thresholding the mean forecast"
+            ),
+        },
+        "rmse_improvement_percent_vs_persistence": improvement,
+        "eval_metrics_per_step_csv": str(metrics_path),
+        "eval_metrics_official_per_step_csv": str(official_metrics_path),
+        "map_files": map_files,
+        "output_directory": str(output_dir),
+        "metric_definitions": {
+            "nrmse": "paper eq. 15: RMSE / (max-min of observations over the evaluated set)",
+            "nacrps": "paper eq. 16: sum of empirical CRPS / sum |observation| (persistence uses MAE as point-forecast CRPS)",
+            "physical_units": "normalized errors scaled by train water std (meters)",
+            "path_iou": "IoU of cumulative newly-flooded-since-context area at each step, pred vs target",
+            "propagation_path_iou": "IoU of pixels newly flooded exactly at each step (vs previous step), pred vs target",
+        },
+        "command_reconstruction": command_reconstruction(),
+        "git_status_short": git_status_short(),
+        "cli_args": cli_args_for_summary(args),
+        "scientific_status": EVAL_STATUS,
+        "does_not_claim": DOES_NOT_CLAIM,
+    }
+    save_json(summary, output_dir / "eval_summary.json")
+    print("=== DIFF-SPARSE V2 ROLLOUT EVAL ===")
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -13,13 +13,12 @@
 # eligible windows per split instead of the canonical 14, reported by the
 # evaluator at run time.
 #
-# Scientific status: a single-window, single-seed, 2-scenario timing/sanity
-# pass (2026-07-05) confirmed the rollout stays numerically bounded through
-# h216 — classical_rmse grows smoothly and monotonically (~0.014 at h13 to
-# ~0.39 at h216), pred_min/max stay physically plausible, no blow-up or NaN.
-# It degrades progressively (as expected for any autoregressive rollout),
-# it does not degenerate. The full multi-window, full-scenario run below is
-# the first real result at this horizon.
+# Scientific status: the 2026-07-05 single-window sanity pass and the 3-seed
+# h216 rollout results predate the same-day architecture rewrite (temporal-
+# token conditioning via diffusers.UNet2DConditionModel, replacing the earlier
+# pixel-aligned custom cross-attention) and are STALE -- not valid evidence
+# for the current model. Re-run the sanity pass before trusting any h216
+# result produced under this config.
 
 experiment:
   name: fcb_diff_sparse_v1_highfid_60m_h216
@@ -66,14 +65,12 @@ model:
   name: diff_sparse_v1
   context_conv_channels: [16, 32, 64]
   context_embedding_dim: 32
-  covariate_dim: 16
+  context_groupnorm_groups: 8
   unet_channels: [16, 32, 32, 64]
   resnet_layers_per_block: 2
   cross_attention_blocks: 2
-  attention_heads: 4
-  groupnorm_groups: 8
-  time_embedding_dim: 128
-  conditioning: cross_attention_concat
+  groupnorm_groups: 16
+  dropout: 0.0
 
 diffusion:
   steps: 20
@@ -107,7 +104,7 @@ evaluation:
                           # rollout stays numerically bounded through h216
                           # and the cost is affordable at 4 eligible windows,
                           # so the full 8-scenario test protocol is kept.
-  rollout_remask: true
+  rollout_remask: false
   clip_x0: false
   metrics: [nrmse, nacrps, rmse, mae]
 
