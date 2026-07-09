@@ -72,11 +72,33 @@ class DeltaSpec:
     last context frame as observed (true values at sensor cells, train-mean
     fill = 0 normalized elsewhere; under missing_rate=0 this is exactly the
     true last frame, and from rollout step 2 onward the base is the model's
-    own dense previous prediction). scale = train delta std expressed in
-    normalized units, so the delta target is ~unit variance. Measured on this
-    dataset: delta std 0.0007 m vs water std ~0.29 m -- the actual per-step
-    signal is ~400x smaller than the absolute field a non-delta model spends
-    its capacity re-encoding.
+    own dense previous prediction).
+
+    The scale is REGIME-AWARE (final design after the 2026-07-09 pilots):
+      - base = OBSERVED last frame (standard training batches, rollout
+        step 1): per-pixel scale via scale_for_observed_base(). Observed
+        pixels carry the temporal-delta scale self.scale (~0.0024 normalized;
+        physical delta std 0.0007 m vs water std 0.29 m, ~400x smaller than
+        the absolute field); UNOBSERVED pixels carry the marginal field scale
+        (exactly 1.0 by construction of standardization, since base there is
+        the train-mean fill and the residual is the normalized absolute
+        value). Per pixel this interpolates between V1's absolute-space
+        prediction (unobserved) and V2's delta-space prediction (observed).
+        Dense input (mask == 1) reduces exactly to the scalar delta scale.
+      - base = the model's own dense prediction (pushforward step-2 batches,
+        rollout steps >= 2): scalar delta scale. The pushforward LOSS is
+        additionally restricted to observed pixels (see pushforward_batch).
+
+    Evidence behind each choice (12-14-epoch pilots, m50/m95):
+      - No per-pixel scale at step 1: O(1) reconstruction residuals at masked
+        pixels divided by the tiny delta std -> O(400) targets, divergence
+        (val_x0_rmse in the hundreds, NaN sampling) across seeds.
+      - Per-pixel scale at rollout steps >= 2 as well ("uniform" variant):
+        every rollout step becomes high-gain (O(1) moves) at masked pixels;
+        the model double-counts its own reconstruction and the rollout RMSE
+        GROWS across training (m50: 3.6 -> 11.3) while one-step val improves.
+        The scalar delta scale keeps steps >= 2 low-gain and the rollout
+        stable (m50 ~1.8 flat).
     """
 
     def __init__(self, mode: str, water_stats: dict[str, Any], delta_stats: dict[str, Any] | None) -> None:
@@ -103,8 +125,18 @@ class DeltaSpec:
             self.scale = float(delta_stats["delta_std_physical"]) / water_std
             if self.scale <= 0:
                 raise ValueError(f"Invalid delta scale {self.scale}")
+            # Bound for SYNTHETIC pushforward step-2 targets only (never real
+            # targets): no correction larger than 1.5x the largest physical
+            # frame-to-frame delta ever observed in training is a legitimate
+            # training signal -- early-training pushforward bases can otherwise
+            # produce arbitrarily large residuals in delta units.
+            abs_max = delta_stats.get("delta_abs_max_physical")
+            self.pushforward_target_bound = (
+                1.5 * float(abs_max) / float(delta_stats["delta_std_physical"]) if abs_max else None
+            )
         else:
             self.scale = 1.0
+            self.pushforward_target_bound = None
 
     def base_from_sample(self, context_water_true: torch.Tensor, sensor_mask: torch.Tensor) -> torch.Tensor:
         """Observed base frame: [.., H, W] -> [.., 1, H, W] (mean fill = 0 normalized)."""
@@ -112,18 +144,38 @@ class DeltaSpec:
         last_true = context_water_true[..., -1, :, :].unsqueeze(-3)
         return last_true * sensor_mask
 
-    def to_target_space(self, absolute: torch.Tensor, base: torch.Tensor) -> torch.Tensor:
+    def scale_for_observed_base(self, sensor_mask: torch.Tensor) -> torch.Tensor | None:
+        """Per-pixel target scale when the base is the OBSERVED last context
+        frame (standard training branch, rollout step 1). Observed pixels
+        carry the temporal-delta scale; unobserved pixels carry the marginal
+        field scale (1.0 normalized). None in absolute mode (scale unused)."""
+
+        if self.mode == "absolute":
+            return None
+        return sensor_mask * self.scale + (1.0 - sensor_mask)
+
+    def _scale(self, scale: torch.Tensor | float | None) -> torch.Tensor | float:
+        return self.scale if scale is None else scale
+
+    def to_target_space(
+        self, absolute: torch.Tensor, base: torch.Tensor, scale: torch.Tensor | float | None = None
+    ) -> torch.Tensor:
         if self.mode == "absolute":
             return absolute
-        return (absolute - base) / self.scale
+        return (absolute - base) / self._scale(scale)
 
     def to_absolute(
-        self, prediction: torch.Tensor, base: torch.Tensor, clamp: bool, bound_ceiling: bool = False
+        self,
+        prediction: torch.Tensor,
+        base: torch.Tensor,
+        clamp: bool,
+        bound_ceiling: bool = False,
+        scale: torch.Tensor | float | None = None,
     ) -> torch.Tensor:
         if self.mode == "absolute":
             absolute = prediction
         else:
-            absolute = base + self.scale * prediction
+            absolute = base + self._scale(scale) * prediction
         if clamp:
             absolute = absolute.clamp(min=self.floor_absolute)
         if bound_ceiling:
@@ -133,7 +185,7 @@ class DeltaSpec:
             absolute = absolute.clamp(max=self.ceiling_absolute)
         return absolute
 
-    def clip_for_sampler(self, base: torch.Tensor, enabled: bool):
+    def clip_for_sampler(self, base: torch.Tensor, enabled: bool, scale: torch.Tensor | float | None = None):
         """clip_x0 tuple for model.sample(): scalar floor in absolute mode,
         per-pixel tensor floor in delta mode."""
 
@@ -141,7 +193,7 @@ class DeltaSpec:
             return None
         if self.mode == "absolute":
             return (self.floor_absolute, None)
-        return ((self.floor_absolute - base) / self.scale, None)
+        return ((self.floor_absolute - base) / self._scale(scale), None)
 
 
 def change_weight_map(
@@ -173,6 +225,7 @@ def prepare_model_batch(
     + per-pixel change weights."""
 
     base = delta.base_from_sample(batch["context_water_true"], batch["sensor_mask"])
+    target_scale = delta.scale_for_observed_base(batch["sensor_mask"])
     target_absolute = batch["target"][:, 0:1]
     model_batch = {
         "context_water_masked": batch["context_water_masked"],
@@ -181,9 +234,10 @@ def prepare_model_batch(
         "rainfall_context": batch["rainfall"][:, :context_length],
         "rainfall_target": batch["rainfall"][:, context_length : context_length + 1],
         "timestamps_context": batch["timestamps"][:, :context_length],
-        "target": delta.to_target_space(target_absolute, base),
+        "target": delta.to_target_space(target_absolute, base, scale=target_scale),
         "base": base,
         "target_absolute": target_absolute,
+        "target_scale": target_scale,
     }
     weights = change_weight_map(target_absolute, base, wet_threshold_normalized, change_weight)
     if weights is not None:
@@ -223,11 +277,25 @@ def pushforward_batch(
         # (not full ancestral sampling), which can extrapolate to extreme
         # values early/mid training; an unclamped ceiling here previously
         # poisoned the training context and destabilized the run permanently
-        # (2026-07-06 pilot, epoch 52).
-        absolute_1 = delta.to_absolute(prediction, model_batch["base"], clamp=clamp, bound_ceiling=True)
+        # (2026-07-06 pilot, epoch 52). The step-1 prediction lives in the
+        # observed-base target space, so it is reconstructed with the same
+        # per-pixel scale.
+        absolute_1 = delta.to_absolute(
+            prediction, model_batch["base"], clamp=clamp, bound_ceiling=True,
+            scale=model_batch.get("target_scale"),
+        )
 
     context_2 = torch.cat([batch["context_water_masked"][:, 1:], absolute_1], dim=1)
     target_absolute_2 = batch["target"][:, 1:2]
+    # Step-2 base is a model prediction -> scalar delta scale, matching
+    # rollout steps >= 2 (see DeltaSpec docstring: the per-pixel scale at
+    # steps >= 2 made the rollout high-gain at masked pixels and diverged,
+    # 2026-07-09 pilot 2). The bound is a safety net for observed-pixel
+    # outliers early in training.
+    target_2 = delta.to_target_space(target_absolute_2, absolute_1)
+    if delta.pushforward_target_bound is not None:
+        bound = delta.pushforward_target_bound
+        target_2 = target_2.clamp(min=-bound, max=bound)
     step_batch = {
         "context_water_masked": context_2,
         "sensor_mask": batch["sensor_mask"],
@@ -235,13 +303,22 @@ def pushforward_batch(
         "rainfall_context": batch["rainfall"][:, 1 : 1 + context_length],
         "rainfall_target": batch["rainfall"][:, context_length + 1 : context_length + 2],
         "timestamps_context": batch["timestamps"][:, 1 : 1 + context_length],
-        "target": delta.to_target_space(target_absolute_2, absolute_1),
+        "target": target_2,
         "base": absolute_1,
         "target_absolute": target_absolute_2,
+        "target_scale": None,
     }
     weights = change_weight_map(target_absolute_2, absolute_1, wet_threshold_normalized, change_weight)
-    if weights is not None:
-        step_batch["pixel_weights"] = weights
+    if weights is None:
+        weights = torch.ones_like(target_2)
+    # Pushforward trains only OBSERVED pixels: at masked pixels the residual
+    # is the model's reconstruction error, which is not representable at the
+    # delta scale (it saturated the bound and spiked train_loss ~10^3 at
+    # m50/m95 the moment pushforward activated, 2026-07-09 pilot 1). At
+    # observed pixels the residual is genuinely delta-scaled -- exactly the
+    # exposure-bias signal pushforward exists to provide. Dense (mask == 1)
+    # is unaffected.
+    step_batch["pixel_weights"] = weights * batch["sensor_mask"]
     return step_batch
 
 
@@ -307,6 +384,7 @@ def run_epoch(
     loss_sum = 0.0
     rmse_sum = 0.0
     batches = 0
+    skipped = 0
     grad_context = torch.enable_grad() if train else torch.no_grad()
     with grad_context:
         for batch_index, batch in enumerate(loader):
@@ -332,7 +410,9 @@ def run_epoch(
                     t0 = torch.zeros(model_batch["target"].shape[0], dtype=torch.long, device=device)
                     x_noisy = model.q_sample(model_batch["target"], t0)
                     x0_hat = model.denoise(x_noisy, t0, tokens, spatial)
-                    absolute_hat = delta.to_absolute(x0_hat, model_batch["base"], clamp=False)
+                    absolute_hat = delta.to_absolute(
+                        x0_hat, model_batch["base"], clamp=False, scale=model_batch.get("target_scale")
+                    )
                     water_mean = float(water_stats["mean"])
                     water_std = float(water_stats["std"])
                     dem_mean = float(dem_stats["mean"])
@@ -340,20 +420,40 @@ def run_epoch(
                     inundation_physical = absolute_hat * water_std + water_mean
                     elevation_physical = model_batch["dem"] * dem_std + dem_mean
                     loss = loss + consistency_weight * consistency(inundation_physical, elevation_physical)
+            # Skip (never train on) non-finite batches: one tail-event batch
+            # must not poison the weights and kill a 300-epoch run (observed
+            # 2026-07-09: seed42 dense NaN from epoch 1). Counted and reported;
+            # an epoch that skips too much fails loudly below.
+            if not bool(torch.isfinite(loss.detach()).item()):
+                skipped += 1
+                if train:
+                    optimizer.zero_grad(set_to_none=True)
+                continue
             if train:
                 loss.backward()
                 if grad_clip_norm is not None and grad_clip_norm > 0:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), float(grad_clip_norm))
+                    total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float(grad_clip_norm))
+                    if not bool(torch.isfinite(total_norm).item()):
+                        skipped += 1
+                        optimizer.zero_grad(set_to_none=True)
+                        continue
                 optimizer.step()
                 if ema is not None:
                     ema.update(model)
             loss_sum += float(loss.detach().item())
             rmse_sum += float(diagnostics["x0_rmse"])
             batches += 1
+    total = batches + skipped
+    if skipped and total and skipped > 0.25 * total:
+        raise RuntimeError(
+            f"{skipped}/{total} batches skipped for non-finite loss/gradients; "
+            "training is numerically unstable, aborting instead of silently degrading"
+        )
     return {
         "loss": loss_sum / batches if batches else math.nan,
         "x0_rmse": rmse_sum / batches if batches else math.nan,
         "batches": float(batches),
+        "skipped": float(skipped),
     }
 
 
@@ -453,6 +553,11 @@ class RolloutValidator:
         base = self.delta.base_from_sample(context_true, mask)
 
         for step in range(self.prediction_length):
+            # Step 0: base is the observed masked frame -> per-pixel scale.
+            # Steps >= 1: base is the model's own dense prediction -> scalar
+            # delta scale (low-gain at masked pixels; the per-pixel scale at
+            # steps >= 1 made the rollout diverge, 2026-07-09 pilot 2).
+            scale = self.delta.scale_for_observed_base(mask) if step == 0 else None
             model_batch = {
                 "context_water_masked": context,
                 "sensor_mask": mask,
@@ -467,9 +572,9 @@ class RolloutValidator:
                 spatial,
                 (batch_size, 1, self.patch_size, self.patch_size),
                 generator=generator,
-                clip_x0=self.delta.clip_for_sampler(base, self.clamp),
+                clip_x0=self.delta.clip_for_sampler(base, self.clamp, scale=scale),
             )
-            absolute = self.delta.to_absolute(prediction, base, clamp=self.clamp)
+            absolute = self.delta.to_absolute(prediction, base, clamp=self.clamp, scale=scale)
             error = absolute[:, 0] - target[:, step]
             sq_sum += float(error.double().square().sum().item())
             count += float(error.numel())
@@ -648,6 +753,10 @@ def main() -> int:
     early_stop_patience = training_config.get("early_stop_patience")
     early_stop_patience = int(early_stop_patience) if early_stop_patience is not None else None
     pushforward_fraction = float(training_config.get("pushforward_fraction", 0.25))
+    # Pushforward needs a base worth correcting: with an untrained model the
+    # step-1 reconstruction is garbage and the synthetic step-2 residuals are
+    # training noise. Plain one-step training only for the first epochs.
+    pushforward_warmup_epochs = int(training_config.get("pushforward_warmup_epochs", 10))
     consistency_weight = float(training_config.get("consistency_loss_weight", 0.0))
     consistency = ConsistencyLoss().to(device) if consistency_weight > 0.0 else None
 
@@ -667,7 +776,10 @@ def main() -> int:
         clamp=clamp,
     )
     print(f"rollout_validator tiles: {len(rollout_validator.samples)} (every {rollout_val_every} epochs)")
-    print(f"clip floor (normalized 0m depth): {delta.floor_absolute:.6f} pushforward_fraction: {pushforward_fraction}")
+    print(
+        f"clip floor (normalized 0m depth): {delta.floor_absolute:.6f} "
+        f"pushforward_fraction: {pushforward_fraction} (warmup {pushforward_warmup_epochs} epochs)"
+    )
 
     metrics_path = experiment_dir / "metrics.csv"
     with metrics_path.open("w", newline="", encoding="utf-8") as file:
@@ -687,6 +799,7 @@ def main() -> int:
     best_epoch = None
     epochs_since_best = 0
     stopped_early_at = None
+    total_skipped_batches = 0
     for epoch in range(1, epochs + 1):
         start = time.perf_counter()
         train_metrics = run_epoch(
@@ -703,12 +816,13 @@ def main() -> int:
             ema=ema,
             max_batches=args.max_train_batches,
             grad_clip_norm=float(grad_clip_norm) if grad_clip_norm is not None else None,
-            pushforward_fraction=pushforward_fraction,
+            pushforward_fraction=pushforward_fraction if epoch > pushforward_warmup_epochs else 0.0,
             consistency=consistency,
             consistency_weight=consistency_weight,
             water_stats=water_stats,
             dem_stats=dem_stats,
         )
+        total_skipped_batches += int(train_metrics.get("skipped", 0))
         val_metrics = run_deterministic_validation(
             model,
             val_loader,
@@ -729,6 +843,12 @@ def main() -> int:
                 ema.swap_in(model)
             try:
                 rollout_val_rmse = rollout_validator.evaluate(model)
+            except FloatingPointError as error:
+                # A non-finite sampling state at a validation step must not
+                # kill a multi-day run: record inf (never selected as best;
+                # early stopping will end a permanently broken run).
+                print(f"WARNING epoch {epoch}: rollout validation non-finite ({error}); recording inf")
+                rollout_val_rmse = math.inf
             finally:
                 if ema is not None:
                     ema.swap_out(model)
@@ -770,10 +890,12 @@ def main() -> int:
             else:
                 epochs_since_best += rollout_val_every
         rollout_text = f" rollout_val_rmse={rollout_val_rmse:.6f}" if rollout_val_rmse is not None else ""
+        skipped_epoch = int(train_metrics.get("skipped", 0)) + int(val_metrics.get("skipped", 0))
+        skipped_text = f" skipped_batches={skipped_epoch}" if skipped_epoch else ""
         print(
             f"epoch={epoch} train_loss={row['train_loss']:.6f} val_loss={row['val_loss']:.6f} "
             f"val_x0_rmse={row['val_x0_rmse']:.6f}{rollout_text} lr={row['learning_rate']:.2e} "
-            f"elapsed={elapsed:.1f}s"
+            f"elapsed={elapsed:.1f}s{skipped_text}"
         )
 
         if early_stop_patience is not None and epochs_since_best >= early_stop_patience:
@@ -806,6 +928,8 @@ def main() -> int:
             "delta_scale_normalized": delta.scale,
             "change_weight": change_weight,
             "pushforward_fraction": pushforward_fraction,
+            "pushforward_warmup_epochs": pushforward_warmup_epochs,
+            "total_skipped_batches": total_skipped_batches,
             "ema_decay": ema_decay,
             "amp": amp_mode,
             "clip_x0_floor_normalized": delta.floor_absolute,

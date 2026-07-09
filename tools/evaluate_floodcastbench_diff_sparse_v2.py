@@ -250,6 +250,10 @@ def rollout_window(
         base = delta.base_from_sample(context_true_tiles, mask)
 
         for step in range(prediction_length):
+            # Step 0: base is the observed masked frame -> per-pixel scale.
+            # Steps >= 1: base is the model's own dense prediction -> scalar
+            # delta scale. Must mirror the training-time DeltaSpec contract.
+            scale = delta.scale_for_observed_base(mask) if step == 0 else None
             model_batch = {
                 "context_water_masked": context,
                 "sensor_mask": mask,
@@ -264,9 +268,9 @@ def rollout_window(
                 spatial,
                 (batch_size, 1, patch_size, patch_size),
                 generator=generator,
-                clip_x0=delta.clip_for_sampler(base, clamp),
+                clip_x0=delta.clip_for_sampler(base, clamp, scale=scale),
             )
-            absolute = delta.to_absolute(prediction, base, clamp=clamp)
+            absolute = delta.to_absolute(prediction, base, clamp=clamp, scale=scale)
             for tile_index, (y, x) in enumerate(chunk):
                 block = absolute[tile_index * num_scenarios : (tile_index + 1) * num_scenarios, 0]
                 output_sum[:, step, y : y + patch_size, x : x + patch_size] += block * blend

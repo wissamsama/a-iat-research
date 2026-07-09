@@ -201,6 +201,67 @@ per-epoch to drive the LR scheduler (patience 15, V1's validated setting).
   rollout-validator overhead, and bf16 stability — then the standard
   3-seed × 3-sparsity protocol with the V2 evaluator.
 
+## Incident 2026-07-09: sparse training divergence, root cause and fix
+
+First full-protocol launch (3 seeds x dense/m50/m95, P7): **every sparse run
+diverged and dense seed42 went NaN from epoch 1** (dense seed7 healthy --
+tail-event instability). Symptoms: val_x0_rmse in the hundreds at m50/m95 on
+both seeds tried, `FloatingPointError: Non-finite state after reverse
+diffusion step 39` during rollout validation.
+
+**Root cause (design flaw, not tuning):** `base_from_sample` fills unobserved
+pixels with the train mean (0 normalized). The delta target
+`(next - base)/scale` then divides an O(1) reconstruction residual at masked
+pixels by the dense-calibrated delta std (0.0024 normalized) -> O(400)
+targets, far outside anything the DDPM formalism or the loss can handle.
+Never caught earlier because every smoke/dry-run/pilot had been dense
+(missing_rate=0.0), where base is exact.
+
+**Fix -- regime-aware target scale, converged over two pilots:**
+
+- base = observed last frame (standard batches, rollout step 1): per-pixel
+  scale = `mask * scale_delta + (1-mask) * 1.0` -- observed pixels keep the
+  temporal-delta scale; masked pixels get the marginal field scale, exactly
+  1.0 by construction of standardization (no new statistics needed).
+- base = the model's own dense prediction (pushforward step-2, rollout
+  steps >= 2): scalar delta scale, with the pushforward LOSS restricted to
+  observed pixels (`pixel_weights *= sensor_mask`).
+
+Pilot evidence for the final shape (12-14 epochs, m50/m95):
+- Pilot 1 (per-pixel at step 1, scalar at steps >= 2, loss on all pixels):
+  training and rollout stable and O(1) everywhere -- until pushforward
+  activates (epoch 11), where masked-pixel residuals (reconstruction-scale)
+  saturate the delta-scale clamp and spike train_loss to ~2-4x10^3.
+- Pilot 2 (per-pixel scale in EVERY regime): train_loss stays O(1) at all
+  epochs, but rollout steps >= 2 become high-gain (O(1) moves per step) at
+  masked pixels; the model double-counts its own reconstruction and the
+  rollout RMSE GROWS across training (m50: 3.6 -> 8.1 -> 11.3; inverted
+  ordering m50 worse than m95) while one-step val improves -- divergence.
+- Final: pilot-1 scaling + pushforward loss masked to observed pixels. At
+  masked pixels the pushforward target is not representable at the delta
+  scale (it is the model's reconstruction error, orders of magnitude above
+  any physical delta), so it is not a training signal; at observed pixels
+  the residual is genuinely delta-scaled -- exactly the exposure-bias signal
+  pushforward exists to provide. Dense (mask == 1) is unaffected in all
+  branches.
+
+Per pixel this interpolates between V1's absolute-space prediction
+(unobserved) and V2's delta-space prediction (observed); dense inputs reduce
+exactly to the previous behavior, so dense results remain comparable.
+
+**Robustness hardening added in the same pass** (motivated by the dense
+seed42 NaN): `pushforward_warmup_epochs` (default 10 -- an untrained model's
+step-1 base makes synthetic step-2 residuals pure noise), pushforward
+step-2 targets clamped to 1.5x the largest physically observed delta,
+non-finite loss/grad batches skipped and counted (hard abort above 25% of an
+epoch), rollout validation returns inf instead of crashing the run on a
+non-finite sampling state.
+
+Regression tests: `test_sparse_target_scale_regression_m95` (the test that
+would have caught this before launch -- sparse targets must stay O(1)),
+`test_scale_for_observed_base_regimes`, `test_round_trip_with_tensor_scale`,
+`test_pushforward_target_bound_clamps_synthetic_targets`.
+
 ## Non-claims
 
 No performance claim of any kind until trained and evaluated; V2 is prepared,

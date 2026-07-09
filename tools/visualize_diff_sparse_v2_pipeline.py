@@ -103,7 +103,9 @@ def main() -> int:
 
     tokens, spatial = model.encode_context(model_batch)
     shape = model_batch["target"].shape
-    clip_x0 = delta.clip_for_sampler(base, enabled=True)
+    # Step-1 prediction from an observed base -> per-pixel regime scale.
+    target_scale = model_batch.get("target_scale")
+    clip_x0 = delta.clip_for_sampler(base, enabled=True, scale=target_scale)
 
     capture_steps = {model.diffusion_steps, 30, 20, 10, 3, 0}
     generator = torch.Generator(device=device).manual_seed(args.patch_seed * 1000 + 1)
@@ -114,7 +116,9 @@ def main() -> int:
         generator = torch.Generator(device=device).manual_seed(args.patch_seed * 1000 + 1 + scenario_index)
         prediction = model.sample(tokens, spatial, shape, generator=generator, clip_x0=clip_x0)
         scenario_preds.append(prediction)
-    scenarios_absolute = [delta.to_absolute(p, base, clamp=True)[0, 0].clone().cpu() for p in scenario_preds]
+    scenarios_absolute = [
+        delta.to_absolute(p, base, clamp=True, scale=target_scale)[0, 0].clone().cpu() for p in scenario_preds
+    ]
     mean_forecast_absolute = torch.stack(scenarios_absolute).mean(dim=0)
 
     def water_to_physical(normalized: torch.Tensor) -> np.ndarray:

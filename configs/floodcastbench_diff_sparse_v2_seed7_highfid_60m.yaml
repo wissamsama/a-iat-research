@@ -147,6 +147,10 @@ training:
   # model's own (no-grad, one-forward) step-1 prediction into the context and
   # train step 2 against the true frame relative to that imperfect base.
   pushforward_fraction: 0.25
+  # Pushforward starts only after this many epochs: an untrained model's
+  # step-1 base is garbage and produces synthetic residuals that are pure
+  # training noise (and, before the regime-aware scale fix, NaN batches).
+  pushforward_warmup_epochs: 10
   # Hydraulic spatial-coherence penalty (reference repo port). Ablation knob.
   consistency_loss_weight: 0.0
   val_seed: 1234
