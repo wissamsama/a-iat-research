@@ -374,6 +374,17 @@ partir dès M3 si une deadline se présente.
   les chiffres vont dans les CSV/rapports dédiés, pas en vrac ici.
 - Les deux machines (P7, Dell) travaillent depuis ce même document via git.
 
+## 11. Coordination P7 ↔ Dell (canal live, hors git)
+
+`experiments/FloodCastBench/coordination/` (NFS partagé) — protocole
+détaillé dans son `PROTOCOL.md`. Claude-P7 y dépose des instructions
+exécutables (`instructions/NNNN_slug.md`), Claude-Dell y répond
+(`reports/NNNN_slug_report.md`). Utilisé pour fractionner les WP entre les
+deux GPU sans dépendre du cycle commit/push/pull pour la coordination
+elle-même (le CODE reste git-only, règle R5 — ce canal ne sert qu'aux
+messages/instructions/comptes-rendus). Statut vivant : `status.md` dans ce
+même dossier.
+
 ### Changelog
 - 2026-07-10 — création (P7). État : WP0 en cours, WP1-WP8 définis,
   littérature vérifiée, règles R1-R8 codifiées.
