@@ -420,3 +420,20 @@ partir dès M3 si une deadline se présente.
     `.capitalize()` cassait "uk"→"Uk" dans l'outil delta-stats.
   - Vérifs : 54/54 tests (15 nouveaux) ; dry-runs GPU réels UK dense+m95 et
     V2.1 Manning m50 verts (R3).
+- 2026-07-10 (d) — **lot 3 : outillage papier** (P7) :
+  - `tools/aggregate_v2_family_results.py` : agrégateur d'évals → CSV long +
+    table markdown mean±std par (modèle × sparsité × structure de masque)
+    — les tables T2/T3 se génèrent d'une commande. Testé sur les 6 évals
+    réelles existantes.
+  - `tools/build_mechanism_figure.py` : figure F2 (mécanisme) depuis les
+    données brutes seules — ratios mesurés **×488 (Australie) et ×425 (UK)**,
+    le mécanisme tient sur les deux événements. Figure dans
+    `experiments/FloodCastBench/paper_figures/f2_mechanism.png`. (Bug
+    attrapé en route : sous-échantillonnage qui mesurait des deltas à 20 pas
+    au lieu d'adjacents — corrigé, chiffres recoupés avec les stats
+    officielles.)
+  - Smoke bout-en-bout jumeau M=1 à travers l'évaluateur complet : NACRPS
+    dégénère proprement en MAE, calibration sautée avec raison explicite.
+  - Il ne reste AUCUN code bloquant avant les lancements ; restent
+    l'édit dashboard post-WP0 et la vérification du schéma LULC (recherche,
+    pas du code).
