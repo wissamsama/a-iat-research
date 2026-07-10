@@ -57,20 +57,27 @@ from datasets.floodcastbench_diff_sparse_v1_dataset import (
 
 _SPATIAL_KEYS = ("context_water_masked", "context_water_true", "sensor_mask", "dem", "rainfall", "target")
 
-# Provisional Manning's n per LULC code (ESRI/Impact-Observatory 10-class
-# HYPOTHESIS -- master plan WP5 prerequisite: verify the scheme and, if
-# recoverable, replicate the benchmark's own LULC->Manning mapping). Values
-# are standard open-channel/floodplain ranges (Chow 1959, HEC-RAS defaults).
+# Manning's n per LULC code (ESRI/Impact-Observatory 10-class scheme).
+# WP5 verification (coordination/reports/0003_lulc_scheme_verification_report.md):
+# our observed codes {1,2,4,5,7,8,9,10,11,+15=nodata} match this scheme's
+# distinctive "codes 3 and 6 skipped" numbering exactly, and the FloodCastBench
+# paper (Nature Scientific Data, s41597-025-04725-2) itself cites a Sentinel-2
+# LULC source and per-class Manning's n values matching these class names.
+# CAVEAT: the 7 non-fallback values below are transcribed from a web-search
+# summary of the paper (Nature full text is paywalled, ResearchGate 403'd,
+# arXiv PDF exceeded fetch size) -- not a primary-source-verified table read.
+# snow/ice and clouds/nodata are not given by the paper (not real land cover
+# in these flood events) and keep their prior HEC-RAS-default placeholders.
 DEFAULT_MANNING_LOOKUP: dict[int, float] = {
-    1: 0.030,   # water
-    2: 0.120,   # trees
-    4: 0.070,   # flooded vegetation
-    5: 0.040,   # crops
-    7: 0.015,   # built area
-    8: 0.030,   # bare ground
-    9: 0.025,   # snow/ice
-    10: 0.050,  # clouds (nodata-ish) -> floodplain default
-    11: 0.045,  # rangeland
+    1: 0.0350,  # water (paper)
+    2: 0.1200,  # trees (paper)
+    4: 0.0800,  # flooded vegetation (paper)
+    5: 0.0350,  # crops (paper)
+    7: 0.3750,  # built area (paper) -- was 0.015, ~25x too low/backwards
+    8: 0.0265,  # bare ground (paper)
+    9: 0.025,   # snow/ice -- not in paper, unverified HEC-RAS-default placeholder
+    10: 0.050,  # clouds (nodata-ish) -- not real land cover, floodplain fallback
+    11: 0.0375, # rangeland (paper)
 }
 # The official simulator's floodplain constant (saint_venant.py); used for
 # any unmapped/nodata code.

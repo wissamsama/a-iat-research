@@ -142,5 +142,9 @@ def test_manning_missing_raises_when_enabled() -> None:
 
 
 def test_default_manning_lookup_values_are_physical() -> None:
+    # Upper bound widened 0.2 -> 0.4 for WP5 (coordination/reports/
+    # 0003_lulc_scheme_verification_report.md): built area = 0.375 per the
+    # FloodCastBench paper's own reported Manning's n, a legitimate value for
+    # heavily-obstructed urban floodplain, not an error.
     for code, value in DEFAULT_MANNING_LOOKUP.items():
-        assert 0.01 <= value <= 0.2, (code, value)
+        assert 0.01 <= value <= 0.4, (code, value)
