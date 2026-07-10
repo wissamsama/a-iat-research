@@ -377,3 +377,19 @@ partir dès M3 si une deadline se présente.
 ### Changelog
 - 2026-07-10 — création (P7). État : WP0 en cours, WP1-WP8 définis,
   littérature vérifiée, règles R1-R8 codifiées.
+- 2026-07-10 (b) — **code WP1/WP2/WP4/WP6 prêt à lancer** (P7) :
+  - WP1 : `models/deterministic_twin.py` (sous-classe V2, parité de
+    paramètres exacte vérifiée par test ; bruit=zéros, t=0, régression
+    pondérée ; interface identique → trainer/évaluateur/pushforward V2
+    réutilisés tels quels via `build_v2_family_model`), configs 3 seeds,
+    `tests/test_det_twin_smoke.py` (6 tests), dry-run GPU 3 régimes OK.
+    Coût mesuré : ~11s/epoch (~3x plus rapide que V2).
+  - WP2 : config ctx12. WP4 : knob `model.spatial_features_scale` + 6
+    configs d'ablation (absolute/notargetrain/nospatial/nochangeweight/
+    nopushforward/steps20). WP6 : flag CLI `--early-stop-patience`.
+  - Infra : `scripts/run_training_queue.sh` générique (remplace le script
+    /tmp), mêmes commandes sur les deux PC — exemples d'usage par WP dans
+    l'en-tête du script.
+  - Reste à coder (prochain lot) : accumulateur de calibration dans
+    l'évaluateur (WP3), masques structurés (WP7), plomberie LULC/Manning
+    (WP5), stats+config UK (WP8).

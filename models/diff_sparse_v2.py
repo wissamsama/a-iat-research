@@ -347,6 +347,11 @@ class DiffSparseV2Model(nn.Module):
         self.context_encoder = TemporalContextEncoder(config)
         self.spatial_encoder = SpatialContextEncoder(config)
         self.embedding_dim = self.context_encoder.embedding_dim
+        # Ablation knob (paper master plan WP4-c): 0.0 zeroes the pixel-aligned
+        # spatial features at the UNet input, reducing conditioning to the
+        # temporal tokens alone (V1-style attention-only) while keeping the
+        # architecture and parameter count strictly unchanged.
+        self.spatial_features_scale = float(model_config.get("spatial_features_scale", 1.0))
 
         unet_channels = [int(c) for c in model_config.get("unet_channels", [32, 64, 64, 128])]
         if len(unet_channels) != 4:
@@ -389,6 +394,8 @@ class DiffSparseV2Model(nn.Module):
             batch.get("rainfall_context"),
             batch.get("rainfall_target"),
         )
+        if self.spatial_features_scale != 1.0:
+            spatial = spatial * self.spatial_features_scale
         return tokens, spatial
 
     def denoise(

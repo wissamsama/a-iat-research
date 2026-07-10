@@ -16,6 +16,7 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 from datasets.floodcastbench_diff_sparse_v2_dataset import build_diff_sparse_v2_dataset  # noqa: E402
+from models.deterministic_twin import build_v2_family_model  # noqa: E402
 from models.diff_sparse_v2 import DiffSparseV2Model  # noqa: E402
 from tools.evaluate_floodcastbench_fno_plus_official_v1_long_horizon_rollout import (  # noqa: E402
     MetricAccumulator as OfficialMetricAccumulator,
@@ -337,7 +338,8 @@ def main() -> int:
         normalization_stats=stats,
         patch_mode="full",
     )
-    model = DiffSparseV2Model(config).to(device)
+    model = build_v2_family_model(config).to(device)
+    print(f"model class: {type(model).__name__}")
     use_ema = bool(config.get("evaluation", {}).get("use_ema", True)) and checkpoint.get("ema_state_dict")
     if use_ema:
         # EMA weights: keyed by parameter name; buffers come from the raw state dict.

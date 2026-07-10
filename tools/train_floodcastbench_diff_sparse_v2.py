@@ -20,6 +20,7 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 from datasets.floodcastbench_diff_sparse_v2_dataset import build_diff_sparse_v2_dataset  # noqa: E402
+from models.deterministic_twin import build_v2_family_model  # noqa: E402
 from models.diff_sparse_v2 import ConsistencyLoss, DiffSparseV2Model  # noqa: E402
 from tools.train_floodcastbench_diff_sparse_v1 import (  # noqa: E402
     apply_overrides,
@@ -635,6 +636,7 @@ def main() -> int:
     parser.add_argument("--checkpoint-root", type=Path)
     parser.add_argument("--log-root", type=Path)
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--early-stop-patience", type=int, help="Override training.early_stop_patience (WP6 extended-budget reruns)")
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--num-workers", type=int)
     parser.add_argument("--missing-rate", type=float)
@@ -647,6 +649,8 @@ def main() -> int:
     args = parser.parse_args()
 
     config = apply_overrides(load_config(args.config), args)
+    if getattr(args, "early_stop_patience", None) is not None:
+        config.setdefault("training", {})["early_stop_patience"] = int(args.early_stop_patience)
     seed = int(config.get("training", {}).get("seed", config.get("experiment", {}).get("seed", 42)))
     set_seed(seed)
 
@@ -679,7 +683,8 @@ def main() -> int:
         root, config, split="val", normalization_stats=stats, patch_mode="random"
     )
     device = resolve_device(config.get("training", {}).get("device", "auto"))
-    model = DiffSparseV2Model(config).to(device)
+    model = build_v2_family_model(config).to(device)
+    print(f"model class: {type(model).__name__}")
 
     training_config = config.get("training", {})
     amp_mode = str(training_config.get("amp", "bf16")).lower()
