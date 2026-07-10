@@ -87,14 +87,16 @@ DIFF_SPARSE_DENSE_SEED_EVAL_DIRS = [
 
 # DIFF-SPARSE v2 (performance variant: delta prediction, hybrid conditioning,
 # context 24 / 40 diffusion steps -- see reports/diff_sparse_v2_design.md).
-# PILOT result only: single seed, checkpoint_best from a 60-epoch pilot run
-# (not the full 300-epoch protocol), val split, dense (missing_rate=0.0),
-# living in the session scratchpad -- update this path once a real
-# experiments/-rooted evaluation exists.
+# Long-horizon (h216-equivalent, h228 for v2's context=24) rollout eval, test
+# split, dense (missing_rate=0.0), from the corrected post-2026-07-09-incident
+# 3-seed x 3-sparsity queue. Lives under experiments/ (NFS-shared, persistent
+# across machines/sessions) -- NOT /tmp, which does not survive a WSL
+# export/import (see reports/diff_sparse_v2_design.md "Incident 2026-07-09"
+# for why the previous /tmp-scratchpad-rooted default silently went stale).
 DIFF_SPARSE_V2_EVAL_DIRS: list[Path] = [
     Path(
-        "/tmp/claude-1001/-home-wissam-utem-workspace/d3fe234b-dc01-46fd-9c36-7503c2c975f9/"
-        "scratchpad/v2_pilot1_eval_val"
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "diff_sparse_v2_h216_eval/seed42_m0.0_h216"
     ),
 ]
 
@@ -649,14 +651,15 @@ def build_data(
         )
         n_v2_seeds = len(diff_sparse_v2_eval_dirs)
         v2_status = (
-            f"PILOT result, N={n_v2_seeds} seed(s), single checkpoint (epoch 50/90, before the full "
-            "300-epoch protocol), dense (missing_rate=0.0), val split (not test), context 24 / 40 "
-            "diffusion steps / delta-space prediction -- see reports/diff_sparse_v2_design.md. "
-            "NOT the final multi-seed result."
+            f"N={n_v2_seeds} seed(s), corrected post-2026-07-09-incident 3-seed x 3-sparsity queue "
+            "(regime-aware delta scale fix -- see reports/diff_sparse_v2_design.md \"Incident "
+            "2026-07-09\"), dense (missing_rate=0.0), test split, context 24 / 40 diffusion steps / "
+            "delta-space prediction, h216-equivalent long-horizon rollout (h228 given context=24). "
+            "Not yet averaged over all 3 seeds if N<3 -- check series name."
         )
         series.append(
             curve_series(
-                f"DIFF-SPARSE v2 — rollout, step by step (dense, pilot, N={n_v2_seeds})",
+                f"DIFF-SPARSE v2 — rollout, step by step (dense, N={n_v2_seeds})",
                 v2_status,
                 COLOR_DIFFSPARSE_V2,
                 2.4,
