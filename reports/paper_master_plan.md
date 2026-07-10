@@ -199,6 +199,21 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
 - **Sortie papier** : Table T3.
 
 ### WP5 — LULC / Manning (V2.1, entrée causale vérifiée)
+
+**Schéma confirmé 2026-07-10 (Dell, instruction coordination 0003, commit
+`a7b6c0a`)** : ESRI/Impact-Observatory 10-classes Sentinel-2 — nos codes
+observés {1,2,4,5,7,8,9,10,11,+15=nodata} reproduisent exactement la
+signature "codes 3 et 6 sautés" du schéma, et le papier FloodCastBench
+(Nature Sci Data, s41597-025-04725-2) cite une source Sentinel-2 LULC avec
+Manning par classe aux mêmes noms. `DEFAULT_MANNING_LOOKUP` mis à jour avec
+les valeurs du papier. **Anomalie corrigée** : "built area" était à 0.015
+(quasi lisse) dans le lookup provisoire, contre 0.375 dans le papier (zone
+urbaine dense très obstruée) — sens physique inversé, facteur ×25. Aucun
+run V2.1 n'avait encore utilisé l'ancien lookup, donc rien à invalider.
+**Réserve à lever avant citation finale** : les 7 valeurs du papier ont été
+transcrites depuis un résumé de recherche web (Nature payant, ResearchGate
+403, PDF arXiv trop volumineux) — pas une lecture directe de la table
+source. Revérifier si accès VPN institutionnel disponible.
 - **Prérequis** :
   1. Vérifier le schéma de classes LULC contre la source officielle
      (hypothèse ESRI 10-classes NON confirmée — codes observés
