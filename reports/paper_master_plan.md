@@ -102,6 +102,13 @@ Toutes les valeurs : test split, Australie 60m high-fidelity, protocole natif
     restreinte aux pixels observés) — 3 pilotes documentés.
 - **Incident 2026-07-09** : divergence sparse (défaut d'échelle) + NaN dense
   seed42 — corrigé, testé (24/24 smoke), documenté. Leçon codifiée §8-R3.
+- **WP1 jumeau, seed42 (3/9 runs faits)** : `rollout_val_rmse` (proxy interne
+  UNIQUEMENT, pas une comparaison valide — voir §4-WP1 et §8-R9) : dense
+  0.00185 (epoch 300) vs V2 0.00541 ; m50 1.026 (epoch 45) vs V2 1.331 ; m95
+  0.732 (epoch 300) vs V2 1.864. Jumeau devant sur ce proxy aux 3 sparsités —
+  attendu vu le biais statistique, ne préjuge PAS du résultat sur la vraie
+  comparaison (moyenne-8-scénarios). Éval test réelle du jumeau : pas encore
+  faite. Vagues seed7/seed123 en cours (2026-07-11).
 - **Infra** : P7 (RTX 6000 Ada 49GB) = machine principale ; Dell (A4000) =
   secondaire ; `experiments/checkpoints/logs` partagés NFS depuis P7 ;
   `data/` locale identique ; code sync par git uniquement (§8-R5).
@@ -136,23 +143,49 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   timestep fixe ou embedding retiré, loss MSE sur la même cible delta avec la
   même échelle par régime, mêmes clamps physiques, même pushforward (il
   s'applique aussi au déterministe), même EMA, même budget d'entraînement,
-  même sélection de checkpoint (rollout_val_rmse). Paramétrage aussi proche
-  que possible de 5.5M params.
-- **Fichiers à créer** : `models/deterministic_twin.py`,
-  `tools/train_floodcastbench_det_twin.py` (dérivé du trainer V2),
-  `tools/evaluate_floodcastbench_det_twin.py` (rollout 1 scénario),
-  `configs/floodcastbench_det_twin_highfid_60m*.yaml`,
-  `tests/test_det_twin_smoke.py`.
+  même sélection de checkpoint (rollout_val_rmse en interne — voir piège
+  ci-dessous pour la comparaison FINALE). Parité de paramètres exacte
+  (testée), pas juste approximative.
+- **Fichiers** : `models/deterministic_twin.py` (`DeterministicTwinModel`,
+  sous-classe de `DiffSparseV2Model`) + `build_v2_family_model()` (dispatch
+  sur `model.name`). **Pas d'évaluateur séparé** : le jumeau est piloté par
+  `tools/train_floodcastbench_diff_sparse_v2.py` et
+  `tools/evaluate_floodcastbench_diff_sparse_v2.py` existants, inchangés
+  (interface `denoise`/`sample`/`training_step_loss` identique à V2) — évite
+  toute divergence de protocole entre les deux bras de la comparaison.
+  Configs : `configs/floodcastbench_det_twin_highfid_60m*.yaml`.
+  Tests : `tests/test_det_twin_smoke.py`.
 - **Runs** : 3 seeds × 3 sparsités = 9 runs (structure de queue identique à
   V2 ; smoke AVANT queue sur les 3 régimes — §8-R3).
-- **Évals** : identiques à V2 (test, 13 fenêtres à terme, stride 48) sans
-  métriques probabilistes.
-- **Critères de décision (écrits avant de voir les résultats)** :
-  - V2 > jumeau en sparse ET jumeau ≥ V2 en dense → thèse confirmée,
-    narratif principal.
-  - Jumeau ≥ V2 partout → la thèse échoue → pivot honnête : "le déterministe
-    suffit même sous sparsité ; la valeur du génératif est ailleurs
-    (calibration) ou nulle" — publiable aussi, l'écrire tel quel.
+
+- **⚠ PIÈGE MÉTHODOLOGIQUE (découvert 2026-07-11, voir aussi §8-R9)** :
+  `rollout_val_rmse` (le proxy interne servant à la sélection de checkpoint,
+  1 seul scénario tiré, 8 tuiles val) **NE DOIT JAMAIS SERVIR DE MÉTRIQUE DE
+  COMPARAISON FINALE** entre le jumeau et V2. Raison statistique, pas un
+  détail d'implémentation : pour toute distribution postérieure,
+  E[(échantillon − vérité)²] = Var(postérieure) + E[(moyenne − vérité)²] ≥
+  E[(moyenne − vérité)²]. Un régresseur déterministe cible directement la
+  moyenne (l'estimateur qui minimise le RMSE par construction) ; un tirage
+  UNIQUE de diffusion porte en plus la variance de la postérieure. Comparer
+  1 tirage de diffusion à une sortie déterministe sur du RMSE favorise
+  mathématiquement le déterministe, indépendamment de la validité de la
+  thèse. **Preuve empirique déjà observée** : jumeau seed42 bat V2 seed42
+  sur `rollout_val_rmse` aux 3 sparsités (dense ×2.9, m50 ×1.3, m95 ×2.5) —
+  signal attendu sur cette métrique précise, PAS une réfutation de la thèse.
+- **La comparaison qui compte** (protocole d'éval réel, §5) : jumeau
+  (sortie unique, `num_scenarios=1` forcé) **vs V2 moyenne-DE-8-scénarios**
+  (`num_scenarios_test=8`, déjà le protocole standard). C'est là, et
+  seulement là, que la thèse se juge. Éval test réelle sur les checkpoints
+  jumeau (même commande que pour V2, `--tile-stride 48`) obligatoire avant
+  toute conclusion — pas encore faite au moment d'écrire ceci.
+- **Critères de décision (écrits avant de voir les résultats de l'éval
+  réelle — le proxy `rollout_val_rmse` ci-dessus ne compte pas comme
+  résultat pour ces critères)** :
+  - V2 (moyenne-8) > jumeau en sparse ET jumeau ≥ V2 en dense → thèse
+    confirmée, narratif principal.
+  - Jumeau ≥ V2 (moyenne-8) partout → la thèse échoue → pivot honnête : "le
+    déterministe suffit même sous sparsité ; la valeur du génératif est
+    ailleurs (calibration) ou nulle" — publiable aussi, l'écrire tel quel.
   - Mixte → analyse par régime/métrique, pas de claim général.
 - **Sortie papier** : Figure principale (F3), Table T2.
 
@@ -355,6 +388,14 @@ suffisent pour la version workshop).
 - **R7** : `kill -TERM`, jamais `kill -STOP`, pour libérer le GPU.
 - **R8** : les résultats négatifs sont des résultats — ils vont dans le
   rapport et, si pertinents, dans le papier.
+- **R9** : ne jamais comparer un tirage/proxy à échantillon unique (ex.
+  `rollout_val_rmse` de sélection de checkpoint) entre un modèle génératif
+  et un modèle déterministe comme métrique de décision finale — biais
+  statistique garanti en faveur du déterministe (E[(tirage-vérité)²] ≥
+  E[(moyenne-vérité)²] pour toute distribution). La comparaison qui compte
+  est toujours : sortie déterministe vs moyenne/médiane sur N≥2 scénarios
+  du protocole d'éval réel (§5). Découvert sur WP1 (§4), voir le piège
+  documenté dans sa section.
 
 ---
 
@@ -463,3 +504,22 @@ même dossier.
   - Il ne reste AUCUN code bloquant avant les lancements ; restent
     l'édit dashboard post-WP0 et la vérification du schéma LULC (recherche,
     pas du code).
+- 2026-07-11 — **WP1 : piège méthodologique trouvé et corrigé avant qu'il ne
+  fausse une conclusion.** Premiers résultats seed42 (proxy interne
+  `rollout_val_rmse`) montraient le jumeau devant V2 aux 3 sparsités —
+  analysé plutôt qu'accepté tel quel : comparer un tirage unique de
+  diffusion à une sortie déterministe sur RMSE est biaisé par construction
+  statistique en faveur du déterministe (E[tirage²] ≥ E[moyenne²] pour toute
+  distribution). Nouvelle règle **R9** (§8) codifie ça pour la suite du
+  projet. WP1 (§4) mis à jour : comparaison finale = jumeau vs V2
+  moyenne-8-scénarios (protocole réel), pas le proxy d'entraînement — éval
+  réelle du jumeau encore à faire. Corrigé aussi une inexactitude du plan
+  (pas d'évaluateur séparé pour le jumeau, il réutilise celui de V2 via
+  `build_v2_family_model`).
+  - Par ailleurs : bug opérationnel trouvé et corrigé — l'orchestrateur de
+    la queue jumeau est resté bloqué ~4h30 sans lancer la vague 2 (bug de
+    `wait` bash provoqué par un `| head -30` sur le tout premier lancement
+    manuel) ; les 3 runs de la vague seed42 avaient bien fini normalement.
+    Relancé proprement (vagues seed7/seed123 en cours). Règle : ne plus
+    jamais piper la sortie d'un orchestrateur `nohup ... &` à travers un
+    filtre externe qui peut se fermer avant le script.
