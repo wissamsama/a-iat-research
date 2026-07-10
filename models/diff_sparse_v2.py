@@ -99,13 +99,17 @@ class TemporalContextEncoder(nn.Module):
         self.context_length = int(dataset_config.get("context_length", 12))
         self.include_dem = bool(dataset_config.get("include_dem", True))
         self.include_rainfall = bool(dataset_config.get("include_rainfall", True))
+        self.include_manning = bool(dataset_config.get("include_manning", False))
         self.include_covariates = bool(dataset_config.get("include_covariates", True))
         self.embedding_dim = int(model_config.get("context_embedding_dim", 64))
         groups = int(model_config.get("context_groupnorm_groups", 8))
         conv_channels = [int(c) for c in model_config.get("context_conv_channels", [16, 32, 64])]
         patch_size = int(dataset_config.get("patch_size", 64))
 
-        in_channels = 1 + (1 if self.include_dem else 0) + 1 + (1 if self.include_rainfall else 0)
+        in_channels = (
+            1 + (1 if self.include_dem else 0) + 1 + (1 if self.include_rainfall else 0)
+            + (1 if self.include_manning else 0)
+        )
         blocks = []
         current = in_channels
         for out_channels in conv_channels:
@@ -141,6 +145,7 @@ class TemporalContextEncoder(nn.Module):
         dem: torch.Tensor,
         rainfall_context: torch.Tensor | None,
         timestamps_context: torch.Tensor | None,
+        manning: torch.Tensor | None = None,
     ) -> torch.Tensor:
         batch, length, height, width = context_water_masked.shape
         parts = [context_water_masked.unsqueeze(1)]
@@ -151,6 +156,10 @@ class TemporalContextEncoder(nn.Module):
             if rainfall_context is None:
                 raise ValueError("rainfall_context is required when include_rainfall is true")
             parts.append(rainfall_context.unsqueeze(1))
+        if self.include_manning:
+            if manning is None:
+                raise ValueError("manning is required when include_manning is true")
+            parts.append(manning.unsqueeze(2).expand(batch, 1, length, height, width))
         x = torch.cat(parts, dim=1)
         for block in self.blocks:
             x = block(x)
@@ -190,6 +199,7 @@ class SpatialContextEncoder(nn.Module):
         self.context_length = int(dataset_config.get("context_length", 12))
         self.include_dem = bool(dataset_config.get("include_dem", True))
         self.include_rainfall = bool(dataset_config.get("include_rainfall", True))
+        self.include_manning = bool(dataset_config.get("include_manning", False))
         self.include_target_rainfall = bool(model_config.get("include_target_rainfall", True))
         self.include_context_deltas = bool(model_config.get("include_context_deltas", True))
         self.out_channels = int(model_config.get("spatial_context_channels", 16))
@@ -198,6 +208,8 @@ class SpatialContextEncoder(nn.Module):
 
         in_channels = self.context_length + 1  # masked water history + sensor mask
         if self.include_dem:
+            in_channels += 1
+        if self.include_manning:
             in_channels += 1
         if self.include_rainfall:
             in_channels += self.context_length
@@ -225,10 +237,15 @@ class SpatialContextEncoder(nn.Module):
         dem: torch.Tensor,
         rainfall_context: torch.Tensor | None,
         rainfall_target: torch.Tensor | None,
+        manning: torch.Tensor | None = None,
     ) -> torch.Tensor:
         parts = [context_water_masked, sensor_mask]
         if self.include_dem:
             parts.append(dem)
+        if self.include_manning:
+            if manning is None:
+                raise ValueError("manning is required when include_manning is true")
+            parts.append(manning)
         if self.include_rainfall:
             if rainfall_context is None:
                 raise ValueError("rainfall_context is required when include_rainfall is true")
@@ -386,6 +403,7 @@ class DiffSparseV2Model(nn.Module):
             batch["dem"],
             batch.get("rainfall_context"),
             batch.get("timestamps_context"),
+            manning=batch.get("manning"),
         )
         spatial = self.spatial_encoder(
             batch["context_water_masked"],
@@ -393,6 +411,7 @@ class DiffSparseV2Model(nn.Module):
             batch["dem"],
             batch.get("rainfall_context"),
             batch.get("rainfall_target"),
+            manning=batch.get("manning"),
         )
         if self.spatial_features_scale != 1.0:
             spatial = spatial * self.spatial_features_scale

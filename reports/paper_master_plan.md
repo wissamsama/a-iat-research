@@ -393,3 +393,30 @@ partir dès M3 si une deadline se présente.
   - Reste à coder (prochain lot) : accumulateur de calibration dans
     l'évaluateur (WP3), masques structurés (WP7), plomberie LULC/Manning
     (WP5), stats+config UK (WP8).
+- 2026-07-10 (c) — **lot 2 codé : WP3/WP5/WP7/WP8 prêts à lancer** (P7) :
+  - WP3 : `CalibrationAccumulator` dans l'évaluateur V2 (reliability aux
+    M+1 niveaux exacts, coverage 50/90%, rank histogram tous/actifs,
+    spread–skill par bins log) + `eval_calibration.json` + outil de figures
+    `tools/analyze_v2_calibration.py`. Actif par défaut dès M≥2
+    (`--no-calibration` pour couper). ⚠ Piège attrapé par test : biais
+    d'ensemble fini — la couverture attendue d'un ensemble M=8 parfait est
+    (hi−lo)·(M−1)/(M+1) (ex. "90%" → 70%) ; le JSON expose
+    `nominal_finite_ensemble`, c'est LUI la référence du papier.
+  - WP7 : `generate_gauge_mask` (∝ carte d'occupation d'eau du train,
+    cachée sur disque) et `generate_cluster_mask` (blobs compacts, budget
+    exact) ; `masking.eval_mask_structure` + override CLI `--mask-structure`
+    dans l'évaluateur. Masques d'entraînement inchangés (protocole d'éval).
+  - WP5 : canal Manning complet — chargement LULC réel (resize NEAREST,
+    catégoriel), table code→n configurable (provisoire Chow/HEC-RAS,
+    fallback 0.05 = constante du simulateur), standardisation propre,
+    câblé dans les DEUX encodeurs + tous les chemins batch (trainer,
+    pushforward, RolloutValidator, évaluateur). Config
+    `floodcastbench_diff_sparse_v2_1_manning_highfid_60m.yaml`
+    (5 538 978 params, +432 vs V2). Prérequis vérification schéma inchangé.
+  - WP8 : config UK (`event: uk`, splits 35/4/4 → 3 fenêtres éligibles/split,
+    grille 85×137), delta-stats UK calculées
+    (`diff_sparse_v2_uk_delta_stats.json` : delta_std 0.00083 m — le
+    mécanisme signal≪champ tient aussi sur UK). Bug corrigé au passage :
+    `.capitalize()` cassait "uk"→"Uk" dans l'outil delta-stats.
+  - Vérifs : 54/54 tests (15 nouveaux) ; dry-runs GPU réels UK dense+m95 et
+    V2.1 Manning m50 verts (R3).

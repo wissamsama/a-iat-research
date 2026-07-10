@@ -240,6 +240,8 @@ def prepare_model_batch(
         "target_absolute": target_absolute,
         "target_scale": target_scale,
     }
+    if "manning" in batch:
+        model_batch["manning"] = batch["manning"]
     weights = change_weight_map(target_absolute, base, wet_threshold_normalized, change_weight)
     if weights is not None:
         model_batch["pixel_weights"] = weights
@@ -309,6 +311,8 @@ def pushforward_batch(
         "target_absolute": target_absolute_2,
         "target_scale": None,
     }
+    if "manning" in batch:
+        step_batch["manning"] = batch["manning"]
     weights = change_weight_map(target_absolute_2, absolute_1, wet_threshold_normalized, change_weight)
     if weights is None:
         weights = torch.ones_like(target_2)
@@ -535,6 +539,8 @@ class RolloutValidator:
                     "timestamps": sample["timestamps"].clone(),
                     "target": sample["target"][..., y0 : y0 + patch_size, x0 : x0 + patch_size].clone(),
                 }
+                if "manning" in sample:
+                    crop["manning"] = sample["manning"][..., y0 : y0 + patch_size, x0 : x0 + patch_size].clone()
                 self.samples.append(crop)
 
     @torch.no_grad()
@@ -550,6 +556,10 @@ class RolloutValidator:
         rain = torch.stack([s["rainfall"] for s in self.samples]).to(self.device)
         timestamps = torch.stack([s["timestamps"] for s in self.samples]).to(self.device)
         target = torch.stack([s["target"] for s in self.samples]).to(self.device)
+        manning = (
+            torch.stack([s["manning"] for s in self.samples]).to(self.device)
+            if "manning" in self.samples[0] else None
+        )
         batch_size = context.shape[0]
         base = self.delta.base_from_sample(context_true, mask)
 
@@ -567,6 +577,8 @@ class RolloutValidator:
                 "rainfall_target": rain[:, step + self.context_length : step + self.context_length + 1],
                 "timestamps_context": timestamps[:, step : step + self.context_length],
             }
+            if manning is not None:
+                model_batch["manning"] = manning
             tokens, spatial = model.encode_context(model_batch)
             prediction = model.sample(
                 tokens,

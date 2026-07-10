@@ -1,0 +1,11 @@
+{
+  "version": "diff_sparse_v2_train_delta_stats",
+  "train_frame_range": [
+    0,
+    700
+  ],
+  "num_deltas": 699,
+  "delta_mean_physical": 0.0001493201142812948,
+  "delta_std_physical": 0.0008304136769224256,
+  "delta_abs_max_physical": 0.08143162727355957
+}

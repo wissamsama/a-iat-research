@@ -36,7 +36,10 @@ def compute_delta_stats(config: dict) -> dict:
     root = path_from_config(config, "dataset_root")
     fidelity = str(dataset_config.get("fidelity", "high")).lower()
     resolution = str(dataset_config.get("resolution", "60m")).lower()
-    event = str(dataset_config.get("event", "australia")).capitalize()
+    # EVENTS maps the canonical lowercase key to the exact folder name --
+    # .capitalize() broke "uk" -> "Uk" (the folder is "UK").
+    from datasets.floodcastbench_fno_dataset import EVENTS
+    event = EVENTS[str(dataset_config.get("event", "australia")).lower()]
     family = "High-fidelity flood forecasting" if fidelity == "high" else "Low-fidelity flood forecasting"
     water_dir = root / family / resolution / event
     frames = _load_frames(water_dir)

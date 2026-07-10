@@ -93,6 +93,180 @@ def load_checkpoint(path: Path) -> dict[str, Any]:
     return checkpoint
 
 
+class CalibrationAccumulator:
+    """Probabilistic calibration of the scenario ensemble (master plan WP3).
+
+    Everything is computed in PHYSICAL units (meters) from the M rollout
+    scenarios vs the single deterministic ground truth. With a deterministic
+    simulator target, what is measurable is the calibration of the model's
+    RECONSTRUCTION/forecast ambiguity, not of physical aleatoric uncertainty
+    -- state this in the paper (master plan §2 caveat a).
+
+    Accumulated:
+      - reliability, per flood threshold gamma: forecast probability of
+        "wet" is the fraction k/M of scenarios >= gamma; per (step, k) we
+        count pixels and how often the target was actually wet. M+1 discrete
+        probability levels -- no binning artifacts.
+      - central-interval coverage (50% and 90%) from per-pixel ensemble
+        quantiles, per step.
+      - rank histogram (target's rank among the M members, uniform random
+        tie-breaking with a fixed seed), pooled over steps; an 'active'
+        variant restricted to pixels where the target or any member is wet
+        at the smallest gamma (dry-everywhere pixels otherwise dominate).
+      - spread-skill: pixels bucketed by ensemble std (log-spaced physical
+        bins); per bucket, mean spread vs MAE/RMSE of the ensemble mean.
+
+    Requires M >= 2; the deterministic twin (M=1) skips calibration entirely.
+    """
+
+    def __init__(self, prediction_length: int, gammas: list[float], num_members: int) -> None:
+        if num_members < 2:
+            raise ValueError("CalibrationAccumulator requires >= 2 scenarios")
+        self.length = int(prediction_length)
+        self.gammas = [float(g) for g in gammas]
+        self.members = int(num_members)
+        self.reliability_counts = {
+            g: torch.zeros(self.length, self.members + 1, dtype=torch.float64) for g in self.gammas
+        }
+        self.reliability_wet = {
+            g: torch.zeros(self.length, self.members + 1, dtype=torch.float64) for g in self.gammas
+        }
+        self.intervals = {"50": (0.25, 0.75), "90": (0.05, 0.95)}
+        self.coverage_inside = {k: torch.zeros(self.length, dtype=torch.float64) for k in self.intervals}
+        self.coverage_total = torch.zeros(self.length, dtype=torch.float64)
+        self.rank_counts = torch.zeros(self.members + 1, dtype=torch.float64)
+        self.rank_counts_active = torch.zeros(self.members + 1, dtype=torch.float64)
+        # First edge catches the exactly-collapsed (std == 0) population.
+        self.spread_edges = torch.cat(
+            [torch.tensor([0.0, 1e-6]), torch.logspace(-5, 0.5, steps=12, dtype=torch.float64)]
+        )
+        bins = self.spread_edges.numel() - 1
+        self.spread_n = torch.zeros(bins, dtype=torch.float64)
+        self.spread_sum_std = torch.zeros(bins, dtype=torch.float64)
+        self.spread_sum_abs_err = torch.zeros(bins, dtype=torch.float64)
+        self.spread_sum_sq_err = torch.zeros(bins, dtype=torch.float64)
+
+    @torch.no_grad()
+    def update(self, scenarios_physical: torch.Tensor, target_physical: torch.Tensor, window_index: int) -> None:
+        if scenarios_physical.ndim != 4 or scenarios_physical.shape[0] != self.members:
+            raise ValueError(f"Expected scenarios [M={self.members}, l, H, W], got {tuple(scenarios_physical.shape)}")
+        if scenarios_physical.shape[1:] != target_physical.shape:
+            raise ValueError("scenarios/target shape mismatch")
+        scenarios = scenarios_physical.double()
+        target = target_physical.double()
+
+        for gamma in self.gammas:
+            wet_members = (scenarios >= gamma).sum(dim=0)  # [l, H, W] in 0..M
+            target_wet = target >= gamma
+            for step in range(self.length):
+                k = wet_members[step].flatten()
+                obs = target_wet[step].flatten().double()
+                self.reliability_counts[gamma][step] += torch.bincount(
+                    k, minlength=self.members + 1
+                ).double().cpu()
+                self.reliability_wet[gamma][step] += torch.bincount(
+                    k, weights=obs, minlength=self.members + 1
+                ).double().cpu()
+
+        quantile_points = torch.tensor(
+            sorted({q for pair in self.intervals.values() for q in pair}),
+            device=scenarios.device, dtype=scenarios.dtype,
+        )
+        quantiles = torch.quantile(scenarios, quantile_points, dim=0)  # [Q, l, H, W]
+        q_index = {float(q): i for i, q in enumerate(quantile_points.tolist())}
+        pixels_per_step = float(target[0].numel())
+        for name, (lo, hi) in self.intervals.items():
+            inside = (target >= quantiles[q_index[lo]]) & (target <= quantiles[q_index[hi]])
+            self.coverage_inside[name] += inside.sum(dim=(1, 2)).double().cpu()
+        self.coverage_total += pixels_per_step
+
+        below = (scenarios < target.unsqueeze(0)).sum(dim=0)  # [l, H, W]
+        ties = (scenarios == target.unsqueeze(0)).sum(dim=0)
+        tie_generator = torch.Generator(device="cpu").manual_seed(97 + window_index)
+        jitter = torch.rand(ties.shape, generator=tie_generator).to(ties.device)
+        rank = (below + (jitter * (ties + 1).double()).floor().long()).clamp(0, self.members)
+        self.rank_counts += torch.bincount(rank.flatten(), minlength=self.members + 1).double().cpu()
+        smallest_gamma = min(self.gammas)
+        active = (target >= smallest_gamma) | ((scenarios >= smallest_gamma).any(dim=0))
+        if bool(active.any()):
+            self.rank_counts_active += torch.bincount(
+                rank[active].flatten(), minlength=self.members + 1
+            ).double().cpu()
+
+        spread = scenarios.std(dim=0, unbiased=False)
+        error = (scenarios.mean(dim=0) - target).abs()
+        bucket = torch.bucketize(spread.flatten().cpu(), self.spread_edges[1:-1])
+        bins = self.spread_edges.numel() - 1
+        flat_spread = spread.flatten().cpu()
+        flat_error = error.flatten().cpu()
+        self.spread_n += torch.bincount(bucket, minlength=bins).double()
+        self.spread_sum_std += torch.bincount(bucket, weights=flat_spread, minlength=bins)
+        self.spread_sum_abs_err += torch.bincount(bucket, weights=flat_error, minlength=bins)
+        self.spread_sum_sq_err += torch.bincount(bucket, weights=flat_error.square(), minlength=bins)
+
+    def summary(self) -> dict[str, Any]:
+        reliability = {}
+        for gamma in self.gammas:
+            counts = self.reliability_counts[gamma]
+            wet = self.reliability_wet[gamma]
+            pooled_counts = counts.sum(dim=0)
+            pooled_wet = wet.sum(dim=0)
+            reliability[f"gamma_{gamma}"] = {
+                "forecast_probability": [k / self.members for k in range(self.members + 1)],
+                "pooled_count": pooled_counts.tolist(),
+                "pooled_observed_frequency": (
+                    pooled_wet / pooled_counts.clamp(min=1.0)
+                ).tolist(),
+                "per_step_count": counts.tolist(),
+                "per_step_observed_frequency": (wet / counts.clamp(min=1.0)).tolist(),
+            }
+        coverage = {}
+        for name, (lo, hi) in self.intervals.items():
+            # Finite-ensemble bias: with M members and linearly-interpolated
+            # empirical quantiles, a perfectly calibrated new draw falls inside
+            # the (lo, hi) interval with probability (hi-lo)*(M-1)/(M+1), NOT
+            # (hi-lo) -- e.g. the "90%" interval of an M=8 ensemble covers only
+            # 70% in expectation. Compare 'pooled' against
+            # 'nominal_finite_ensemble', not 'nominal'.
+            coverage[name] = {
+                "nominal": hi - lo,
+                "nominal_finite_ensemble": (hi - lo) * (self.members - 1) / (self.members + 1),
+                "per_step": (self.coverage_inside[name] / self.coverage_total.clamp(min=1.0)).tolist(),
+                "pooled": float(self.coverage_inside[name].sum() / self.coverage_total.sum().clamp(min=1.0)),
+            }
+        rank_total = self.rank_counts.sum().clamp(min=1.0)
+        rank_active_total = self.rank_counts_active.sum().clamp(min=1.0)
+        spread_bins = []
+        for i in range(self.spread_edges.numel() - 1):
+            n = float(self.spread_n[i])
+            spread_bins.append({
+                "edge_low_m": float(self.spread_edges[i]),
+                "edge_high_m": float(self.spread_edges[i + 1]),
+                "count": n,
+                "mean_spread_m": float(self.spread_sum_std[i] / max(n, 1.0)),
+                "mae_m": float(self.spread_sum_abs_err[i] / max(n, 1.0)),
+                "rmse_m": math.sqrt(float(self.spread_sum_sq_err[i] / max(n, 1.0))),
+            })
+        return {
+            "num_members": self.members,
+            "units": "meters",
+            "caveat": (
+                "single deterministic simulation target: this measures calibration of the "
+                "model's reconstruction/forecast ambiguity, not physical aleatoric uncertainty"
+            ),
+            "reliability": reliability,
+            "coverage": coverage,
+            "rank_histogram": {
+                "counts": self.rank_counts.tolist(),
+                "frequency": (self.rank_counts / rank_total).tolist(),
+                "active_counts": self.rank_counts_active.tolist(),
+                "active_frequency": (self.rank_counts_active / rank_active_total).tolist(),
+                "uniform_reference": 1.0 / (self.members + 1),
+            },
+            "spread_skill": spread_bins,
+        }
+
+
 class MultiHorizonPathAccumulator:
     """Path IoU and propagation-path IoU at EVERY rollout step.
 
@@ -220,6 +394,7 @@ def rollout_window(
     dem = sample["dem"].to(device)
     rainfall = sample["rainfall"].to(device)
     timestamps = sample["timestamps"].to(device)
+    manning = sample["manning"].to(device) if "manning" in sample else None
     context_length, height, width = context_masked.shape
     prediction_length = sample["target"].shape[0]
 
@@ -247,6 +422,7 @@ def rollout_window(
         mask = stack_tiles(sensor_mask)
         dem_tiles = stack_tiles(dem)
         rain_tiles = stack_tiles(rainfall)
+        manning_tiles = stack_tiles(manning) if manning is not None else None
         ts_batch = timestamps.unsqueeze(0).expand(batch_size, -1)
         base = delta.base_from_sample(context_true_tiles, mask)
 
@@ -263,6 +439,8 @@ def rollout_window(
                 "rainfall_target": rain_tiles[:, step + context_length : step + context_length + 1],
                 "timestamps_context": ts_batch[:, step : step + context_length],
             }
+            if manning_tiles is not None:
+                model_batch["manning"] = manning_tiles
             tokens, spatial = model.encode_context(model_batch)
             prediction = model.sample(
                 tokens,
@@ -310,6 +488,11 @@ def main() -> int:
     )
     parser.add_argument("--missing-rate", type=float, help="Override eval sparsity (cross-sparsity evaluation)")
     parser.add_argument(
+        "--mask-structure",
+        choices=["random", "gauge", "cluster"],
+        help="Override masking.eval_mask_structure (WP7: structured sensor layouts, same budget)",
+    )
+    parser.add_argument(
         "--no-clamp-physical",
         action="store_true",
         help="Disable the >=0 physical depth clamp (V2 default: clamp during sampling AND on final forecasts)",
@@ -317,12 +500,20 @@ def main() -> int:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--save-maps", action="store_true")
+    parser.add_argument(
+        "--no-calibration",
+        action="store_true",
+        help="Skip the WP3 calibration accumulator (on by default whenever num_scenarios >= 2)",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
     if args.missing_rate is not None:
         config.setdefault("masking", {})["missing_rate"] = float(args.missing_rate)
         print(f"NOTE: eval missing_rate overridden to {args.missing_rate}")
+    if args.mask_structure is not None:
+        config.setdefault("masking", {})["eval_mask_structure"] = args.mask_structure
+        print(f"NOTE: eval mask structure overridden to {args.mask_structure}")
     seed = int(config.get("training", {}).get("seed", config.get("experiment", {}).get("seed", 42)))
     set_seed(seed)
 
@@ -405,6 +596,11 @@ def main() -> int:
     official_step_accumulators_median = {
         step: OfficialMetricAccumulator(gammas=OFFICIAL_GAMMAS) for step in range(prediction_length)
     }
+    calibration_accumulator = (
+        CalibrationAccumulator(prediction_length, gammas=OFFICIAL_GAMMAS, num_members=num_scenarios)
+        if num_scenarios >= 2 and not args.no_calibration
+        else None
+    )
     map_files: list[str] = []
 
     for window_index in range(windows):
@@ -451,6 +647,11 @@ def main() -> int:
         initial_physical = to_physical(sample["context_water_true"][-1].to(device), water_stats)
         path_accumulator.update(mean_forecast_physical, target_physical, initial_physical)
         path_accumulator_median.update(median_forecast_physical, target_physical, initial_physical)
+        if calibration_accumulator is not None:
+            scenarios_physical = to_physical(predictions, water_stats)
+            if clamp_physical:
+                scenarios_physical = scenarios_physical.clamp(min=0.0)
+            calibration_accumulator.update(scenarios_physical, target_physical, window_index)
 
         if args.save_maps and window_index == 0:
             sample_std = predictions.std(dim=0, unbiased=False) if num_scenarios > 1 else torch.zeros_like(mean_forecast)
@@ -607,6 +808,19 @@ def main() -> int:
         "scientific_status": EVAL_STATUS,
         "does_not_claim": DOES_NOT_CLAIM,
     }
+    if calibration_accumulator is not None:
+        calibration = calibration_accumulator.summary()
+        save_json(calibration, output_dir / "eval_calibration.json")
+        summary["calibration"] = {
+            "file": str(output_dir / "eval_calibration.json"),
+            "num_members": calibration["num_members"],
+            "coverage_pooled": {name: entry["pooled"] for name, entry in calibration["coverage"].items()},
+            "caveat": calibration["caveat"],
+        }
+    else:
+        summary["calibration"] = {
+            "skipped": "num_scenarios < 2 (deterministic forecast)" if num_scenarios < 2 else "--no-calibration"
+        }
     save_json(summary, output_dir / "eval_summary.json")
     print("=== DIFF-SPARSE V2 ROLLOUT EVAL ===")
     print(json.dumps(summary, indent=2))
