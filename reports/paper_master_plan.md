@@ -189,6 +189,43 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   - Mixte → analyse par régime/métrique, pas de claim général.
 - **Sortie papier** : Figure principale (F3), Table T2.
 
+- **RÉSULTAT RÉEL 2026-07-11 (2/3 seeds, test 4/13 fenêtres, stride 48,
+  protocole correct : jumeau vs V2 moyenne-8-scénarios) :**
+
+  | Sparsité | V2 (moy. seed42+seed7) | Jumeau (moy. seed42+seed7) | Ratio |
+  |---|---|---|---|
+  | dense | 0.001115 | 0.00046 | jumeau ×2.42 |
+  | m50 | 0.39164 | 0.33723 | jumeau ×1.16 |
+  | m95 | 0.56388 | 0.33679 | jumeau ×1.67 |
+
+  **Branche de décision déclenchée : "jumeau ≥ V2 partout"** (6/6 conditions
+  seed42+seed7 × dense/m50/m95, gagnées par le jumeau) — la thèse forte
+  ("le génératif se justifie sous sparsité") **ne tient pas** sur ce
+  périmètre. À écrire tel quel, pas de narratif forcé.
+
+  **Nuance à garder** : l'écart n'est PAS monotone décroissant avec la
+  sparsité comme l'attendu naïf — il s'effondre à m50 (×1.16, quasi-tie)
+  puis se rouvre à m95 (×1.67), en U. Robuste aux 2 seeds (pas un artefact
+  seed42 seul, vérifié en comparant seed42 et seed7 séparément avant de
+  moyenner). Mécanisme non identifié — piste à explorer : interaction avec
+  l'échelle par régime R9 (le switch delta/marginal par pixel change de
+  proportion entre m50 et m95, pas juste de magnitude).
+
+  **Pivot honnête pour le papier, si confirmé à 3 seeds (seed123 en cours)** :
+  le déterministe suffit en précision brute, y compris sous sparsité, sur
+  cet événement/résolution. La valeur potentielle du génératif se déplace
+  entièrement vers la **calibration** (WP3) — le jumeau ne peut structurellement
+  pas en fournir (`num_scenarios=1`) ; si V2 est bien calibré (à mesurer,
+  pas encore fait en comparaison directe), c'est la seule justification
+  restante et devient le narratif central. Si V2 n'est PAS bien calibré non
+  plus (les évals WP7 sur le Dell montrent déjà une sous-couverture sévère,
+  §4-WP7) → thèse à reformuler plus largement, pas juste pivoter.
+
+  **Réserves avant d'écrire quoi que ce soit de définitif** : seed123
+  (jumeau + V2) en cours d'éval réelle au moment d'écrire ceci — 3e point
+  obligatoire avant R1. 4/13 fenêtres seulement, pas le protocole test
+  complet.
+
 ### WP2 — Ablation contexte (tuer le confondant ctx24/ctx12)
 - **Runs** : V2 @ `context_length: 12`, seed 42, × 3 sparsités (3 runs).
   Option si résultats serrés : +2 seeds sur m50.
