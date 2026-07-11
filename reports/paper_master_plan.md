@@ -288,6 +288,30 @@ source. Revérifier si accès VPN institutionnel disponible.
   retraining" du papier DIFF-SPARSE, testé plus durement.)
 - **Sortie papier** : Figure/Table F8 + discussion déploiement.
 
+**Premiers résultats 2026-07-11 (Dell, instruction coordination 0002,
+seed42 V2 uniquement, test 4/13 fenêtres)** — vérifiés source par source :
+
+| Masque | m50 relRMSE | m95 relRMSE | vs aléatoire (m50 ~0.395 / m95 ~0.567) |
+|---|---|---|---|
+| gauge | 0.393 | 0.585 | **quasi identique** |
+| cluster | 0.609 | 0.706 | **+54% / +25%, net** |
+
+Signal net et physiquement interprétable, pas un artefact (pas de NaN, JSON
+propres) : le masque **gauge** reste distribué spatialement (juste pondéré
+par l'occupation d'eau) → généralise ~parfaitement depuis l'entraînement sur
+masques i.i.d. Le masque **cluster** laisse de larges zones contiguës
+totalement non observées → régime spatial jamais vu à l'entraînement →
+dégrade nettement, surtout à m50 (NSE cluster 0.49 vs gauge 0.79). Limite
+de généralisation réelle à documenter dans le papier — mais **1 seed, 4
+fenêtres seulement, pas encore un résultat statistiquement établi** (R1).
+Suite recommandée si budget dispo : refaire sur les 3 seeds et test complet
+(13 fenêtres), au moins pour le cas cluster.
+
+Anomalie non résolue, notée pour référence : les évals m0.95 ont pris ~2x
+plus longtemps que m0.5 à fenêtres égales (~2h57 vs ~1h28) sans explication
+trouvée (mêmes patch/steps/scénarios) — pas creusé, sans impact sur la
+validité des résultats.
+
 ### WP8 — Deuxième événement : UK 2015 (60m high-fidelity)
 - **Étapes** : stats de normalisation UK, delta stats UK, vérifier la grille
   (536×536 ? ranges de frames ?), config dédiée ; smoke 3 régimes ; runs
