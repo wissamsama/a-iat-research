@@ -554,3 +554,15 @@ Détail complet dans `PROTOCOL.md`.
     Relancé proprement (vagues seed7/seed123 en cours). Règle : ne plus
     jamais piper la sortie d'un orchestrateur `nohup ... &` à travers un
     filtre externe qui peut se fermer avant le script.
+  - **Root cause trouvée et corrigée (`scripts/run_training_queue.sh`,
+    commit `8a1bd73`)** : le blocage s'est reproduit une 2e fois (vague
+    seed7 finie proprement, 300/300/early-stop-150, orchestrateur bloqué
+    quand même) — ce n'était donc pas le `| head -30`, mais un bug du
+    script lui-même. `wait` nu attend TOUS les jobs en arrière-plan du
+    shell, y compris le sous-processus `tee` créé par
+    `exec > >(tee -a "$ORCH_LOG") 2>&1`, qui ne se termine jamais de
+    lui-même (deadlock : `tee` attend la fermeture de son stdin, qui
+    n'arrive qu'à la sortie du script, qui elle-même attend `wait`).
+    Corrigé en capturant les PID des jobs d'entraînement et en faisant
+    `wait "${pids[@]}"` au lieu d'un `wait` nu. Vérifié par un relancement
+    court en direct avant de relancer la vraie vague 3 (seed123).
