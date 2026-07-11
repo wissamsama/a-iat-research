@@ -66,15 +66,24 @@ for cfg in "${CONFIGS[@]}"; do
     [ -f "$cfg" ] || { echo "FATAL: config not found: $cfg"; exit 3; }
     wave_name="$(basename "$cfg" .yaml)"
     echo "--- wave $wave_name starting at $(date -Is) ---"
+    pids=()
     for mr in $RATES; do
         run_log="$LOG_ROOT/${TAG}_${wave_name}_mr${mr}_$(date +%d-%m-%Y_%H-%M-%S).log"
         echo "launching: $cfg mr=$mr log=$run_log"
         "$PY" tools/train_floodcastbench_diff_sparse_v2.py \
             --config "$cfg" --missing-rate "$mr" --device cuda \
             "${EXTRA_ARGS[@]}" > "$run_log" 2>&1 &
+        pids+=("$!")
         sleep 3  # run-dir names are second-granular; avoid collisions
     done
-    wait
+    # Wait on the CAPTURED training PIDs only -- a bare `wait` also blocks on
+    # the tee subprocess from the `exec > >(...)` process substitution above,
+    # which never exits on its own (its stdin only closes when this script's
+    # own stdout closes, which can't happen before `wait` returns: a
+    # deadlock). Observed live 2026-07-11: two separate 9-run queues each
+    # left ~4-12h idle GPU time after their first wave finished cleanly,
+    # because the orchestrator was still blocked in `wait` waiting on tee.
+    wait "${pids[@]}"
     echo "--- wave $wave_name finished at $(date -Is) ---"
 done
 echo "=== queue '$TAG' finished at $(date -Is) ==="
