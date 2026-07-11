@@ -465,6 +465,13 @@ elle-même (le CODE reste git-only, règle R5 — ce canal ne sert qu'aux
 messages/instructions/comptes-rendus). Statut vivant : `status.md` dans ce
 même dossier.
 
+**Mode autonome (2026-07-11)** : le Dell tourne en `/loop` sans prompt
+humain à chaque itération — toute instruction doit donc être 100%
+mécanique (chemins absolus déjà vérifiés, zéro exploration/déduction
+requise) et sobre en crédits (le Dell lit `status.md` seul en premier ;
+rien en `pending` → fin d'itération immédiate, pas de re-lecture du repo).
+Détail complet dans `PROTOCOL.md`.
+
 ### Changelog
 - 2026-07-10 — création (P7). État : WP0 en cours, WP1-WP8 définis,
   littérature vérifiée, règles R1-R8 codifiées.
