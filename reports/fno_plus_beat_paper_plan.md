@@ -394,12 +394,24 @@ more input information" explanation is directly weakened — V2's advantage
 looks more architectural than context-driven. **Action**: add this number to
 `reports/paper_master_plan.md`'s V2-vs-FNO+ discussion as a control point.
 
-**Not launched**: the 3-seed confirmation (WPB0 ledger row 2). The effect
-size on seed 42 alone (~8.4 std) is large enough relative to the known
-vanilla inter-seed noise floor that a full 3-seed re-run is not the most
-valuable next use of compute — WPB1 (cheap hyperparameter screening) and
-WPB3 (Mamba diagnostic, zero retraining) are cheaper and more informative
-next steps. Revisit if a later result depends on WPB0's exact magnitude.
+**Update 2026-07-13**: the user asked to confirm at 3 seeds anyway and also
+to produce the long-horizon rollout curves (not just the native-protocol
+number), so both were launched. Coordination instruction 0007 (Dell) chains:
+seed42 long-horizon eval (the one thing missing for the already-trained seed)
+→ train seed7 → native+long-horizon eval seed7 → train seed123 →
+native+long-horizon eval seed123, via `scripts/run_wpb0_context24_remaining_seeds.sh`.
+This required extending `tools/evaluate_floodcastbench_fno_plus_official_v1_long_horizon_rollout.py`
+(previously hardcoded for context_length=0) to support the rolling
+context-window convention: a history buffer of the last `context_length`
+frames, real at first and blending into the model's own past predictions as
+the rollout advances past its original start (never re-reading ground truth
+beyond that point, which would leak information a real deployment wouldn't
+have) — regression-tested (`context_length=0` unchanged bit-for-bit) and
+sanity-checked against the real seed-42 checkpoint (horizon=19 CSI@0.001
+matched the already-known native eval to 4 decimal places: 0.8968 vs
+0.8967). Dashboard gained a dedicated `FNO_CONTEXT24_SEED_RUN_DIRS` curve,
+guarded to skip until each seed's long-horizon output exists. Commits
+`f13ef51`, `3ff3a35`.
 
 ### WPB1 — Vanilla FNO+ hyperparameter boost (cheapest, do first)
 
