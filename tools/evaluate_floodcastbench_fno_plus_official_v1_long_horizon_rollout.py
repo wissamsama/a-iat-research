@@ -66,7 +66,7 @@ def build_model(config: dict[str, Any]) -> torch.nn.Module:
         "fourier_layers": int(model_config.get("fourier_layers", 4)),
     }
     if "mamba" not in model_name:
-        return FNOPlusOfficial3d(**common_kwargs)
+        return FNOPlusOfficial3d(**common_kwargs, output_offset=int(model_config.get("output_offset", 1)))
 
     mamba_config = model_config.get("mamba", {})
     return FNOPlusOfficial3dMamba(
@@ -195,6 +195,7 @@ def build_raw_dataset(config: dict[str, Any], root: Path, split: str, stride: in
         sample_length=int(dataset_config.get("sample_length", 20)),
         stride=stride,
         split_counts=split_counts,
+        context_length=int(dataset_config.get("context_length", 0)),
     )
 
 
@@ -227,6 +228,10 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     # Compatibility check: instantiate the official-v1 test dataset using the exact run stats.
     _ = build_fno_plus_official_v1_dataset(dataset_root, config, "test", normalization_stats)
 
+    context_length = int(config.get("dataset", {}).get("context_length", 0))
+    sample_length = int(config.get("dataset", {}).get("sample_length", 20))
+    window_length = context_length + sample_length
+
     test_raw = build_raw_dataset(
         config,
         dataset_root,
@@ -240,23 +245,25 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         dataset_root,
         split="train",
         stride=1,
-        split_counts={"train": water_frame_count - int(config.get("dataset", {}).get("sample_length", 20)) + 1, "val": 0, "test": 0},
+        split_counts={"train": water_frame_count - window_length + 1, "val": 0, "test": 0},
     )
 
-    test_starts = [int(test_raw[index][2]["global_sample_index"]) * stride for index in range(len(test_raw))]
+    test_starts = [
+        int(test_raw[index][2]["global_sample_index"]) * stride + context_length for index in range(len(test_raw))
+    ]
     horizons = [int(horizon) for horizon in args.horizons]
     horizon_labels = {
         horizon: "T+20_paper_t20_direct" if horizon == 19 else f"T+{horizon}"
         for horizon in horizons
     }
-    sample_length = int(config.get("dataset", {}).get("sample_length", 20))
     output_steps = int(config.get("model", {}).get("output_steps", 19))
 
     def is_valid_rollout_start(start: int, horizon: int) -> bool:
         target_exists = start + horizon < water_frame_count
         last_chunk_start = start + ((horizon - 1) // output_steps) * output_steps
         last_input_window_exists = last_chunk_start + sample_length <= water_frame_count
-        return target_exists and last_input_window_exists
+        has_history = start >= context_length
+        return target_exists and last_input_window_exists and has_history
 
     valid_starts = {
         horizon_labels[horizon]: [start for start in test_starts if is_valid_rollout_start(start, horizon)]
@@ -273,11 +280,28 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         target_stats = stats[TARGET_KEY]
         return tensor * float(target_stats["std"]) + float(target_stats["mean"])
 
-    def make_rollout_input(start_index: int, current_depth: torch.Tensor) -> torch.Tensor:
-        x, _, _ = full_raw[start_index]
+    def make_rollout_input(
+        window_start: int, history_frames: list[torch.Tensor], current_depth: torch.Tensor
+    ) -> torch.Tensor:
+        # window_start (= current_start - context_length) is only used to pull
+        # DEM/rainfall/X/Y/T -- channels that are always known regardless of
+        # rollout progress. The depth channel is built explicitly from
+        # `history_frames` (a rolling buffer of the last context_length
+        # frames, real at first and increasingly the model's OWN past
+        # predictions as the rollout advances past the original start -- see
+        # the caller) plus `current_depth` broadcast across the current+target
+        # positions, exactly mirroring the training-time convention (see
+        # FloodCastBenchFNOPlusOfficialDataset.__getitem__). Never re-reads
+        # ground truth for positions beyond the rollout's original start --
+        # that would leak future information a real deployment wouldn't have.
+        x, _, _ = full_raw[window_start]
         x = x.clone()
-        initial_channel = PHYSICAL_INPUT_CHANNELS["initial_depth"]
-        x[initial_channel] = current_depth.unsqueeze(-1).expand(-1, -1, x.shape[-1])
+        depth_channel = PHYSICAL_INPUT_CHANNELS["initial_depth"]
+        if context_length > 0:
+            x[depth_channel, :, :, :context_length] = torch.stack(history_frames, dim=-1)
+        x[depth_channel, :, :, context_length:] = current_depth.unsqueeze(-1).expand(
+            -1, -1, x.shape[-1] - context_length
+        )
         for name, channel_index in PHYSICAL_INPUT_CHANNELS.items():
             x[channel_index] = normalize_channel(name, x[channel_index])
         return x
@@ -311,16 +335,27 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         for start in sorted(needed_by_start):
             steps = min(needed_by_start[start], water_frame_count - start - 1)
             current_depth = load_water_frame(full_raw, start)
+            history_frames = [
+                load_water_frame(full_raw, start - context_length + offset) for offset in range(context_length)
+            ]
             current_start = start
             produced = 0
             pred_chunks: list[torch.Tensor] = []
             while produced < steps:
-                x = make_rollout_input(current_start, current_depth).unsqueeze(0).to(device)
+                window_start = current_start - context_length
+                x = make_rollout_input(window_start, history_frames, current_depth).unsqueeze(0).to(device)
                 pred_norm = model(x).squeeze(0).squeeze(0)
                 pred_physical = inverse_target(pred_norm).detach().float().cpu().permute(2, 0, 1)
                 take = min(pred_physical.shape[0], steps - produced)
                 pred_chunks.append(pred_physical[:take])
                 produced += take
+                if context_length > 0:
+                    # Roll the history buffer forward: the old current_depth
+                    # plus all but the last of this chunk's predictions become
+                    # the new (self-predicted, once past the original start)
+                    # history, keeping only the most recent context_length.
+                    combined = history_frames + [current_depth] + [pred_physical[j] for j in range(take - 1)]
+                    history_frames = combined[-context_length:]
                 current_depth = pred_physical[take - 1]
                 current_start += take
             rollouts[start] = {

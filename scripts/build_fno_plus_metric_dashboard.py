@@ -60,6 +60,22 @@ FNO_SEED_RUN_DIRS = [
     ),
 ]
 
+# FNO+ WPB0 "context24" variant (see reports/fno_plus_beat_paper_plan.md
+# WPB0): same architecture, but input context extended from 1 to 24 real
+# frames (context_length=24, matching DIFF-SPARSE v2's own context). Seed 42
+# already trained (Dell, coordination instruction 0006) and beat by vanilla,
+# not the other way around -- seeds 7/123 pending, add their run dirs here
+# once trained. Each entry needs a `long_horizon_rollout_eval_dense_v2/
+# checkpoint_best/` subfolder from
+# evaluate_floodcastbench_fno_plus_official_v1_long_horizon_rollout.py,
+# same convention as FNO_SEED_RUN_DIRS above.
+FNO_CONTEXT24_SEED_RUN_DIRS: list[Path] = [
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "12-07-2026_16-00-14_fcb_fno_plus_official_v1_context24_highfid_60m"
+    ),
+]
+
 # The 3 DIFF-SPARSE v1 dense (missing_rate=0.0) seed runs under the
 # 300-epoch reference-architecture rewrite protocol (see
 # reports/diff_sparse_v1_paper_fidelity_audit.md). Each entry is the
@@ -550,6 +566,7 @@ COLOR_TARGET = {"light": "#e34948", "dark": "#e66767"}  # slot 6 red — the ben
 COLOR_PROTOCOL = {"light": "#eb6834", "dark": "#d95926"}  # slot 8 orange — same-protocol fairness check
 COLOR_DIFFSPARSE = {"light": "#4a3aa7", "dark": "#9085e9"}  # slot 5 violet — DIFF-SPARSE comparison
 COLOR_DIFFSPARSE_V2 = {"light": "#1f9e6d", "dark": "#3ecf94"}  # slot 3 green — DIFF-SPARSE v2 (pilot)
+COLOR_FNO_CONTEXT24 = {"light": "#b23a86", "dark": "#e06bb4"}  # slot 4 magenta — FNO+ WPB0 context24
 
 
 def build_data(
@@ -558,6 +575,7 @@ def build_data(
     fno_seed_run_dirs: list[Path] | None = None,
     diff_sparse_train_run_dirs: list[Path] | None = None,
     diff_sparse_v2_eval_dirs: list[Path] | None = None,
+    fno_context24_seed_run_dirs: list[Path] | None = None,
 ) -> dict[str, Any]:
     rollout_dir = run_dir / "long_horizon_rollout_eval_dense_v2"
 
@@ -597,6 +615,37 @@ def build_data(
             fno_pooled["std"],
         ),
     ]
+
+    fno_context24_seed_run_dirs = (
+        fno_context24_seed_run_dirs if fno_context24_seed_run_dirs is not None else FNO_CONTEXT24_SEED_RUN_DIRS
+    )
+    context24_ready = [
+        d
+        for d in fno_context24_seed_run_dirs
+        if (d / "long_horizon_rollout_eval_dense_v2" / "checkpoint_best" / "long_horizon_metrics_per_step.csv").exists()
+    ]
+    if context24_ready:
+        n_context24_seeds = len(context24_ready)
+        context24_mean_by_step, context24_std_by_step, context24_n_by_step, context24_mean_path = (
+            average_fno_per_step(context24_ready)
+        )
+        if context24_mean_by_step:
+            series.append(
+                curve_series(
+                    f"FNO+ context24 (WPB0, N={n_context24_seeds}) — rollout, step by step",
+                    f"same architecture as vanilla FNO+, input context extended from 1 to 24 real frames "
+                    f"(matches DIFF-SPARSE v2's own context_length) -- N={n_context24_seeds} seed(s). "
+                    "Native-protocol result (seed 42): WORSE than vanilla (relRMSE 0.007822 vs 0.006694), "
+                    "not better -- see reports/fno_plus_beat_paper_plan.md WPB0.",
+                    COLOR_FNO_CONTEXT24,
+                    2.5,
+                    context24_mean_by_step,
+                    context24_mean_path,
+                    sorted(context24_mean_by_step),
+                    std_by_step=context24_std_by_step,
+                    n_by_step=context24_n_by_step,
+                )
+            )
 
     horizon_note = None
     if diff_sparse_eval_dirs is not None:
@@ -715,6 +764,8 @@ def build_data(
         source_files["diff_sparse_eval_dirs"] = [str(d) for d in chosen_diff_sparse_dirs]
     if diff_sparse_v2_eval_dirs:
         source_files["diff_sparse_v2_eval_dirs"] = [str(d) for d in diff_sparse_v2_eval_dirs]
+    if context24_ready:
+        source_files["fno_context24_seed_run_dirs"] = [str(d) for d in context24_ready]
 
     return {
         "title": "FloodCastBench FNO+ baseline metrics",
