@@ -102,7 +102,10 @@ DIFF_SPARSE_V2_EVAL_DIRS: list[Path] = [
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
         "diff_sparse_v2_h216_eval/seed123_m0.0_h216"
     ),
-    # seed7 pending -- retry launched 2026-07-12, add here once complete.
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "diff_sparse_v2_h216_eval/seed7_m0.0_h216"
+    ),
 ]
 
 # Same 3 seeds' training run directories, used to auto-discover each seed's

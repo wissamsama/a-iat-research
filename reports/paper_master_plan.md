@@ -122,17 +122,30 @@ Toutes les valeurs : test split, Australie 60m high-fidelity, protocole natif
 Priorité stricte : WP1 > WP2 > WP3 > WP4 ≈ WP6 > WP5 ≈ WP7 > WP8.
 WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enregistrement informel).
 
-### WP0 — Long-horizon h216 dense (EN COURS)
+### WP0 — Long-horizon h216 dense (TERMINÉ à 3 seeds, 2026-07-13)
 - **Runs** : éval h216 (204 étapes) des checkpoints dense V2, 3 seeds,
-  test split, stride 48, 8 scénarios. seed42 en cours, seed7+seed123 en
-  parallèle derrière.
-- **Puis** : copier les 3 dossiers d'éval vers
-  `experiments/FloodCastBench/diff_sparse_v2_h216_eval/` (JAMAIS laisser dans
-  /tmp — §8-R4), mettre à jour `DIFF_SPARSE_V2_EVAL_DIRS` (3 dirs) dans
-  `scripts/build_fno_plus_metric_dashboard.py`, régénérer le dashboard
-  (⚠ coordonner avec le Dell : pas de régénération concurrente), commit.
-- **Analyse** : forme de la courbe V2 vs V1 vs FNO+ par étape ; le plateau
-  plat observé sur 12 étapes tient-il sur 204 ? Où V2 croise-t-il FNO+ ?
+  test split, stride 48, 8 scénarios. **Les 3 seeds sont faites** (seed42
+  puis seed123 sans incident ; seed7 a nécessité une relance après un échec
+  silencieux du script veilleur — voir changelog).
+
+  | Seed | relRMSE (pooled, h216) | CSI@0.001 | NSE |
+  |---|---:|---:|---:|
+  | 42 | 0.045 | 0.909 | — |
+  | 123 | 0.073 | 0.910 | 0.993 |
+  | 7 | 0.062 | 0.860 | 0.995 |
+
+- **Fait** : les 3 dossiers d'éval copiés vers
+  `experiments/FloodCastBench/diff_sparse_v2_h216_eval/` (jamais laissés dans
+  /tmp — §8-R4), `DIFF_SPARSE_V2_EVAL_DIRS` mis à jour (3 dirs) dans
+  `scripts/build_fno_plus_metric_dashboard.py`, dashboard régénéré (courbe
+  V2 désormais N=3, comme V1 et FNO+). Courbes V1 et V2 aussi rebasées sur un
+  axe h=1 commun (première prédiction réelle, contexte exclu) le 2026-07-11,
+  au lieu de l'ancien axe en frame absolue qui laissait un trou de contexte
+  au début du tracé.
+- **Analyse restante** : forme de la courbe V2 vs V1 vs FNO+ par étape ; le
+  plateau plat observé sur 12 étapes tient-il sur 204 ? Où V2 croise-t-il
+  FNO+ ? — à faire en lisant le dashboard régénéré, pas encore fait
+  formellement.
 - **Sortie papier** : Figure long-horizon (F4).
 
 ### WP1 — Jumeau déterministe (LE contrôle existentiel)
@@ -243,6 +256,20 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
 - **Décision** : si V2@12 ≈ V1 → le "×2 sparse" était surtout du contexte →
   le dire et recentrer sur WP1. Si V2@12 ≫ V1 → gain d'architecture réel.
 - **Sortie papier** : ligne de T3 (ablations) + phrase de fair-comparison.
+
+- **Point de contrôle croisé 2026-07-13 (papier 2, WPB0)** : le même
+  confondant de contexte a été testé côté FNO+ — un FNO+ recevant les mêmes
+  24 frames de contexte que V2 (au lieu d'1 seule), même seed 42, protocole
+  identique sinon. Résultat : **relRMSE 0.007822, PIRE que le FNO+ vanilla
+  (0.006694)**, pas meilleur (écart ~8.4× l'écart-type inter-seed vanilla —
+  effet réel, pas du bruit). Détails : `reports/fno_plus_beat_paper_plan.md`
+  §WPB0. **Conséquence pour ce papier** : ça renforce l'argument "V2 bat
+  FNO+ ce n'est pas juste parce que V2 voit plus d'historique" — donner le
+  même budget d'information à FNO+ ne l'a pas aidé, donc l'avantage de V2
+  (là où on le compare à FNO+, hors périmètre du jumeau) semble plus
+  architectural que dû au contexte. Ne remplace pas WP2 (qui reste
+  nécessaire pour la comparaison V2@12 vs V1@12 propre côté sparsité), mais
+  fournit un point de comparaison externe supplémentaire, déjà acquis.
 
 ### WP3 — Calibration probabiliste (zéro GPU d'entraînement)
 - **Analyses** (nouveau `tools/analyze_v2_calibration.py`) :

@@ -210,8 +210,8 @@ per Paper 1's precedent of accepting honest negative results):
 | — | vanilla v1 baseline | 7 | 0.006426 | 0.999944 | 0.999972 | 0.810893 | 0.996355 | `03-07-2026_17-43-06_...` | done |
 | — | vanilla v1 baseline | 123 | 0.006530 | 0.999942 | 0.999972 | 0.887944 | 0.995453 | `03-07-2026_22-38-40_...` | done |
 | — | mamba (1 layer, naive) | 42 | 0.009464 | 0.999878 | 0.999940 | 0.879792 | 0.994427 | `29-06-2026_16-04-36_...` | done, worse than vanilla |
-| WPB0 | context=24 (matched to V2), seed 42 | 42 | | | | | | | code done + tested, launched on Dell 2026-07-12 |
-| WPB0 | context=24 (matched to V2), 3 seeds | 42/7/123 | | | | | | | pending, conditional on WPB0 seed-42 result |
+| WPB0 | context=24 (matched to V2), seed 42 | 42 | 0.007822 | 0.999916 | 0.999960 | 0.896730 | 0.992231 | `12-07-2026_16-00-14_..._context24_...` | **done — worse than vanilla, not better** |
+| WPB0 | context=24 (matched to V2), 3 seeds | 42/7/123 | | | | | | | not launched — effect (+8.4 std) is large enough on 1 seed to not prioritize a 3-seed confirmation ahead of WPB1/WPB3-4 |
 | WPB3 | mamba diagnostic (dry-region check) | 42 | | | | | | | pending |
 | WPB1 | batch size sweep | 42 | | | | | | | pending |
 | WPB1 | width/modes/layers sweep | 42 | | | | | | | pending |
@@ -360,6 +360,46 @@ and is not launched pre-emptively.
   536, 536, 44]` as expected, and a 1-epoch/1-batch CPU smoke run (real data,
   `/tmp` scratch output dirs) completed a full train+val+checkpoint+eval
   cycle with no errors.
+
+**Result, 2026-07-13 (Dell, coordination instruction 0006, seed 42, 100/100
+epochs, clean run, best checkpoint epoch 70)**: relRMSE 0.007822 vs vanilla
+seed42 0.006694 — **context24 is WORSE, not better**, by +0.00113 (~8.4x the
+vanilla 3-seed std of 0.000135 — a real effect, not noise on one seed). NSE,
+Pearson r, CSI@0.001, CSI@0.01 all slightly worse too; only CSI@0.01 stays
+close.
+
+**Interpretation — the initial WPB0 hypothesis (giving FNO+ V2's context
+would help it, since it directly removes a known information-budget
+confound) is refuted, at least for this naive implementation.** Plausible
+reasons, not yet distinguished: (a) FNO+ vanilla was already near-saturated
+(NSE 0.999939, i.e. already explaining ~99.994% of target variance) with 1
+frame of context on this benchmark — the marginal value of more input
+history may simply be near zero regardless of architecture, so there was no
+real headroom to unlock; (b) T growing from 20 to 44 with the same
+`modes=12`/`width=20`/`fourier_layers=4` and unchanged `batch_size=1` /
+learning-rate schedule may just be a harder optimization problem (more
+parameters exposed to the FFT operator, same budget) rather than a
+capacity-vs-information story — i.e. this may be confounded with WPB1's
+untested hyperparameter axes, not a clean read on "does context help." Not
+distinguished here; flagged as a caveat, not resolved.
+
+**Consequence for Paper 1 (the sparsity paper)**: this result is actually
+good news for that paper's honesty, not bad news for this one — it
+strengthens (does not weaken) the "V2 clearly beats FNO+" comparison
+reported there. V2 dense (3-seed mean relRMSE 0.001576, `context_length=24`)
+already beat FNO+ vanilla (0.006550) by ×4.2 even before this result; now
+that FNO+ has ALSO been given the exact same context budget and still came
+out worse than its own 1-frame version, the "V2 wins because it just gets
+more input information" explanation is directly weakened — V2's advantage
+looks more architectural than context-driven. **Action**: add this number to
+`reports/paper_master_plan.md`'s V2-vs-FNO+ discussion as a control point.
+
+**Not launched**: the 3-seed confirmation (WPB0 ledger row 2). The effect
+size on seed 42 alone (~8.4 std) is large enough relative to the known
+vanilla inter-seed noise floor that a full 3-seed re-run is not the most
+valuable next use of compute — WPB1 (cheap hyperparameter screening) and
+WPB3 (Mamba diagnostic, zero retraining) are cheaper and more informative
+next steps. Revisit if a later result depends on WPB0's exact magnitude.
 
 ### WPB1 — Vanilla FNO+ hyperparameter boost (cheapest, do first)
 
@@ -534,3 +574,12 @@ chat. This file is the source of truth for Paper 2 going forward.
   recommendation to run WPB0's validation/confirmation runs on P7, not the
   Dell (violates the established small-task-only rule for Dell; A4000
   hardware gap alone could push a single run past half a day).
+- 2026-07-13: WPB0 seed-42 result in (Dell, instruction 0006, exception
+  approved by the user since P7 was handed to another student for 4 days
+  starting 2026-07-12 midnight) — context24 relRMSE 0.007822, WORSE than
+  vanilla (0.006694), refuting the initial "more context helps FNO+"
+  hypothesis (effect size ~8.4x vanilla inter-seed std, not noise). Marked
+  done; 3-seed confirmation deprioritized in favor of WPB1/WPB3 given the
+  clear single-seed effect size. Flagged as a positive control point for
+  Paper 1's V2-vs-FNO+ comparison (V2's advantage isn't explained by context
+  budget alone, since giving FNO+ the same budget didn't help it).
