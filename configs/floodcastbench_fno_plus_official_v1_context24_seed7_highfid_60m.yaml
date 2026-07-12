@@ -1,0 +1,63 @@
+experiment:
+  name: fcb_fno_plus_official_v1_context24_seed7_highfid_60m
+paths:
+  dataset_root: /home/wissam/utem-workspace/data/FloodCastBench
+  experiment_root: /home/wissam/utem-workspace/experiments/FloodCastBench
+  checkpoint_root: /home/wissam/utem-workspace/checkpoints/FloodCastBench
+  log_root: /home/wissam/utem-workspace/logs/FloodCastBench
+dataset:
+  name: floodcastbench
+  task: fno_plus_official_reproduction_attempt_v1_context24
+  fidelity: high
+  event: australia
+  resolution: 60m
+  sample_length: 20
+  context_length: 24
+  stride: 44
+  split_counts:
+    train: 52
+    val: 6
+    test: 7
+normalization:
+  fit_split: train
+  method: standardization
+  min_std: 1.0e-06
+  normalize_input_channels:
+  - initial_depth
+  - dem
+  - rainfall
+  normalize_target: true
+  leave_unchanged:
+  - x_coordinate
+  - y_coordinate
+  - t_coordinate
+model:
+  name: fno_plus_official_v1_context24
+  input_channels: 6
+  modes: 12
+  width: 20
+  fourier_layers: 4
+  output_steps: 19
+  output_offset: 25
+loader:
+  batch_size: 1
+  num_workers: 2
+  pin_memory: true
+training:
+  epochs: 100
+  learning_rate: 0.001
+  betas:
+  - 0.9
+  - 0.999
+  weight_decay: 0.0001
+  scheduler: cosine
+  min_learning_rate: 0.0
+  loss: mse_on_normalized_target
+  selection_metric: val_current_relative_rmse
+  device: auto
+  seed: 7
+evaluation:
+  metric_units: physical_after_inverse_transform
+  gammas:
+  - 0.001
+  - 0.01
