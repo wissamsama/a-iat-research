@@ -69,6 +69,7 @@ def compute_train_normalization_stats(
         sample_length=int(dataset_config.get("sample_length", 20)),
         stride=int(dataset_config.get("stride", 20)),
         split_counts=dataset_config.get("split_counts"),
+        context_length=int(dataset_config.get("context_length", 0)),
     )
     accumulators = {
         "initial_depth": _empty_accumulator(),
@@ -151,5 +152,6 @@ def build_fno_plus_official_v1_dataset(
         sample_length=int(dataset_config.get("sample_length", 20)),
         stride=int(dataset_config.get("stride", 20)),
         split_counts=dataset_config.get("split_counts"),
+        context_length=int(dataset_config.get("context_length", 0)),
         normalization_stats=normalization_stats,
     )

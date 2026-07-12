@@ -189,42 +189,51 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   - Mixte → analyse par régime/métrique, pas de claim général.
 - **Sortie papier** : Figure principale (F3), Table T2.
 
-- **RÉSULTAT RÉEL 2026-07-11 (2/3 seeds, test 4/13 fenêtres, stride 48,
-  protocole correct : jumeau vs V2 moyenne-8-scénarios) :**
+- **RÉSULTAT RÉEL 2026-07-11, CONFIRMÉ À 3/3 SEEDS (seed42/seed7/seed123,
+  test 4/13 fenêtres, stride 48, protocole correct : jumeau vs V2
+  moyenne-8-scénarios) — respecte R1 (≥3 seeds avant claim établi) :**
 
-  | Sparsité | V2 (moy. seed42+seed7) | Jumeau (moy. seed42+seed7) | Ratio |
-  |---|---|---|---|
-  | dense | 0.001115 | 0.00046 | jumeau ×2.42 |
-  | m50 | 0.39164 | 0.33723 | jumeau ×1.16 |
-  | m95 | 0.56388 | 0.33679 | jumeau ×1.67 |
+  | Sparsité | V2 seed42 | V2 seed7 | V2 seed123 | V2 moy. | Jumeau seed42 | Jumeau seed7 | Jumeau seed123 | Jumeau moy. | Gagnant (moyenne) |
+  |---|---|---|---|---|---|---|---|---|---|
+  | dense | 0.001311 | 0.000923 | 0.002490 | 0.001574 | 0.000420 | 0.000499 | 0.000410 | 0.000443 | **jumeau ×3.55** (3/3 seeds) |
+  | m50 | 0.395202 | 0.388081 | 0.251160 | 0.344814 | 0.381563 | 0.292901 | 0.375410 | 0.349958 | **quasi-tie, V2 ×1.015** (2/3 seeds jumeau, 1/3 V2 nettement) |
+  | m95 | 0.567427 | 0.560316 | 0.453630 | 0.527124 | 0.342173 | 0.331412 | 0.335170 | 0.336252 | **jumeau ×1.57** (3/3 seeds) |
 
-  **Branche de décision déclenchée : "jumeau ≥ V2 partout"** (6/6 conditions
-  seed42+seed7 × dense/m50/m95, gagnées par le jumeau) — la thèse forte
-  ("le génératif se justifie sous sparsité") **ne tient pas** sur ce
-  périmètre. À écrire tel quel, pas de narratif forcé.
+  **Révision de la branche de décision (seed123 change la conclusion m50)** :
+  dense et m95 restent robustes 3/3 seeds en faveur du jumeau (pas
+  d'ambiguïté, écarts larges et stables). **m50 n'est PAS "jumeau ≥ V2
+  partout" comme le laissaient penser les 2 premiers seeds** — seed123
+  inverse nettement le résultat à m50 (V2 0.2512 vs jumeau 0.3754, V2 gagne
+  cette fois par ×1.49), et la moyenne à 3 seeds devient un quasi-tie
+  (écart 1.5%, dans le bruit inter-seed). **Branche de décision réellement
+  déclenchée : "mixte" (pas "jumeau ≥ V2 partout")** — pas de claim général
+  du type "le déterministe suffit partout." Formulation correcte pour le
+  papier : *le jumeau domine nettement en dense et en sparsité extrême
+  (m95), mais à sparsité intermédiaire (m50) le résultat est indécis entre
+  les deux architectures sur ces 3 seeds — aucune conclusion générale sur
+  m50 sans creuser plus (WP2 ablation contexte pourrait éclairer si c'est un
+  effet du contexte long, ou variance intrinsèque au régime m50).*
 
-  **Nuance à garder** : l'écart n'est PAS monotone décroissant avec la
-  sparsité comme l'attendu naïf — il s'effondre à m50 (×1.16, quasi-tie)
-  puis se rouvre à m95 (×1.67), en U. Robuste aux 2 seeds (pas un artefact
-  seed42 seul, vérifié en comparant seed42 et seed7 séparément avant de
-  moyenner). Mécanisme non identifié — piste à explorer : interaction avec
-  l'échelle par régime R9 (le switch delta/marginal par pixel change de
-  proportion entre m50 et m95, pas juste de magnitude).
+  **Nuance dense/m95 déjà en U conservée** : l'écart jumeau/V2 n'est pas
+  monotone en fonction de la sparsité — fort en dense, se resserre à m50,
+  se rouvre à m95. Le fait que m50 soit précisément le point où le signe
+  du gagnant peut s'inverser d'un seed à l'autre (contrairement à dense/m95,
+  stables) suggère que m50 est une zone de transition/instabilité réelle du
+  système, pas juste un point de la courbe en U — piste d'analyse pour la
+  Figure F3 (afficher les 3 seeds individuellement à m50, pas seulement la
+  moyenne, pour rendre cette instabilité visible plutôt que la lisser).
 
-  **Pivot honnête pour le papier, si confirmé à 3 seeds (seed123 en cours)** :
-  le déterministe suffit en précision brute, y compris sous sparsité, sur
-  cet événement/résolution. La valeur potentielle du génératif se déplace
-  entièrement vers la **calibration** (WP3) — le jumeau ne peut structurellement
-  pas en fournir (`num_scenarios=1`) ; si V2 est bien calibré (à mesurer,
-  pas encore fait en comparaison directe), c'est la seule justification
-  restante et devient le narratif central. Si V2 n'est PAS bien calibré non
-  plus (les évals WP7 sur le Dell montrent déjà une sous-couverture sévère,
-  §4-WP7) → thèse à reformuler plus largement, pas juste pivoter.
-
-  **Réserves avant d'écrire quoi que ce soit de définitif** : seed123
-  (jumeau + V2) en cours d'éval réelle au moment d'écrire ceci — 3e point
-  obligatoire avant R1. 4/13 fenêtres seulement, pas le protocole test
-  complet.
+  **Conséquence sur le narratif papier** : la thèse forte ("le génératif se
+  justifie sous sparsité") ne tient toujours pas comme narratif principal
+  (dense et m95 sont clairement en faveur du déterministe, qui est aussi la
+  condition la plus commentée/la plus simple). Mais le narratif n'est plus
+  "le déterministe gagne partout" — c'est plus nuancé et, si creusé,
+  potentiellement plus intéressant : *où exactement, et pourquoi, l'avantage
+  du déterministe s'estompe-t-il ?* Le pivot vers la calibration (WP3) comme
+  justification de la valeur du génératif reste la piste principale
+  indépendamment de ce nuancement m50, MAIS ce nuancement doit être écrit
+  tel quel dans les résultats (T2), pas lissé pour paraître plus propre que
+  ça ne l'est.
 
 ### WP2 — Ablation contexte (tuer le confondant ctx24/ctx12)
 - **Runs** : V2 @ `context_length: 12`, seed 42, × 3 sparsités (3 runs).
@@ -348,6 +357,38 @@ Anomalie non résolue, notée pour référence : les évals m0.95 ont pris ~2x
 plus longtemps que m0.5 à fenêtres égales (~2h57 vs ~1h28) sans explication
 trouvée (mêmes patch/steps/scénarios) — pas creusé, sans impact sur la
 validité des résultats.
+
+**Extension 2e seed 2026-07-11 (Dell, instruction coordination 0005,
+cluster m50, seed7)** : relRMSE 0.597, NSE 0.512, CSI@0.001 0.776 — quasi
+identique à seed42 (relRMSE 0.609, NSE 0.494). **Le signal de dégradation
+cluster n'est pas un artefact seed42** : confirmé à 2/3 seeds sur le point le
+plus fort (cluster m50, +54% vs aléatoire). Couverture calibration
+cohérente aussi : cov50=0.109/cov90=0.230 (seed7) vs cov50=0.092/cov90=0.209
+(seed42) — même sous-couverture sévère, même ordre de grandeur.
+
+**Analyse calibration WP3 sur les 4 conditions WP7 (Dell, instruction
+0004)** — rank histogram + spread-skill construits
+(`experiments/FloodCastBench/paper_figures/f5_calibration_wp7.png`) :
+- Sous-couverture confirmée visuellement (rank histogram en U/J), mais
+  **deux axes orthogonaux, pas un seul classement** : la **sparsité domine**
+  (m95 mieux calibré que m50 pour gauge ET cluster — contre-intuitif) et la
+  **structure a un effet secondaire mais cohérent** (gauge toujours mieux
+  calibré que cluster à sparsité égale). Explique la non-monotonie
+  apparente (cluster_m95 > gauge_m50 en couverture) : ce n'est pas du bruit,
+  c'est l'axe sparsité qui domine l'axe structure en amplitude.
+- Spread-skill : l'erreur reste quasi plate (~0.01-0.05m) sur toute la
+  plage de spread faible (1e-8 à ~1e-2), le spread ne redevient informatif
+  sur l'erreur réelle qu'à l'extrémité haute (probablement les pas de
+  rollout avancés, incertitude composée). Le spread n'est donc pas
+  simplement "trop petit" partout — il est **non-informatif** en dessous
+  d'un seuil, pas juste sous-dimensionné uniformément. Point à creuser
+  (zoom log-log) pour la discussion papier, pas urgent.
+- Confirme et durcit la conclusion du §4-WP3/WP1 : V2 n'est pas bien
+  calibré (sous-couverture sévère, systématique), ce qui pèse sur le pivot
+  "la valeur du génératif est dans la calibration" — cette justification de
+  repli n'est PAS acquise automatiquement, elle reste à établir/nuancer,
+  potentiellement seulement pour certains régimes (m95 moins mal calibré
+  que m50 dans ces 4 conditions).
 
 ### WP8 — Deuxième événement : UK 2015 (60m high-fidelity)
 - **Étapes** : stats de normalisation UK, delta stats UK, vérifier la grille

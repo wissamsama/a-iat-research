@@ -86,6 +86,7 @@ class FNOPlusOfficial3d(nn.Module):
         modes: int = 12,
         width: int = 20,
         fourier_layers: int = 4,
+        output_offset: int = 1,
     ) -> None:
         super().__init__()
         self.input_channels = int(input_channels)
@@ -93,6 +94,7 @@ class FNOPlusOfficial3d(nn.Module):
         self.modes = int(modes)
         self.width = int(width)
         self.fourier_layers = int(fourier_layers)
+        self.output_offset = int(output_offset)
 
         if self.input_channels < 1:
             raise ValueError("input_channels must be >= 1")
@@ -100,6 +102,8 @@ class FNOPlusOfficial3d(nn.Module):
             raise ValueError("output_steps must be >= 1")
         if self.fourier_layers < 1:
             raise ValueError("fourier_layers must be >= 1")
+        if self.output_offset < 0:
+            raise ValueError("output_offset must be >= 0")
 
         self.lift = nn.Conv3d(self.input_channels, self.width, kernel_size=1)
         self.spectral_layers = nn.ModuleList(
@@ -116,12 +120,12 @@ class FNOPlusOfficial3d(nn.Module):
             raise ValueError(f"Expected [B, C, H, W, T], got {tuple(x.shape)}")
         if x.shape[1] != self.input_channels:
             raise ValueError(f"Expected {self.input_channels} input channels, got {x.shape[1]}")
-        if x.shape[-1] < self.output_steps + 1:
-            raise ValueError("Input time dimension must include t=1 plus requested output steps")
+        if x.shape[-1] < self.output_offset + self.output_steps:
+            raise ValueError("Input time dimension must include output_offset plus requested output steps")
 
         x = self.lift(x)
         for spectral, pointwise in zip(self.spectral_layers, self.pointwise_layers):
             x = F.gelu(spectral(x) + pointwise(x))
         x = F.gelu(self.proj1(x))
         x = self.proj2(x)
-        return x[..., 1 : self.output_steps + 1]
+        return x[..., self.output_offset : self.output_offset + self.output_steps]

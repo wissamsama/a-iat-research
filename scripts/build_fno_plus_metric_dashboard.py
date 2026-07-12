@@ -98,6 +98,11 @@ DIFF_SPARSE_V2_EVAL_DIRS: list[Path] = [
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
         "diff_sparse_v2_h216_eval/seed42_m0.0_h216"
     ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "diff_sparse_v2_h216_eval/seed123_m0.0_h216"
+    ),
+    # seed7 pending -- retry launched 2026-07-12, add here once complete.
 ]
 
 # Same 3 seeds' training run directories, used to auto-discover each seed's
@@ -627,11 +632,26 @@ def build_data(
         for step in common_path_steps:
             keys = set.intersection(*(set(p[step].keys()) for p in path_per_seed))
             diff_sparse_path[step] = {k: statistics.mean(p[step][k] for p in path_per_seed) for k in keys}
+        # Rebase from absolute frame index (context=12 -> first prediction at
+        # frame 13, native protocol) to rollout-step-since-first-prediction
+        # (h=1), matching FNO+'s own step convention and DIFF-SPARSE v2's
+        # rebasing below -- keeps both DIFF-SPARSE curves on the same x-axis
+        # meaning ("h=1" = first predicted frame) instead of leaving a
+        # context-length gap at the start of the plot.
+        v1_rebase_note = ""
+        if mean_by_step:
+            v1_offset = min(mean_by_step) - 1
+            if v1_offset:
+                mean_by_step = {step - v1_offset: values for step, values in mean_by_step.items()}
+                std_by_step = {step - v1_offset: values for step, values in std_by_step.items()}
+                n_by_step = {step - v1_offset: value for step, value in n_by_step.items()}
+                diff_sparse_path = {step - v1_offset: values for step, values in diff_sparse_path.items()}
+                v1_rebase_note = " Step axis rebased to rollout-step-since-first-prediction (h=1 = first predicted frame)."
         series.append(
             curve_series(
                 f"DIFF-SPARSE v1 — rollout, step by step (dense, mean of {n_ds_seeds} seeds)",
                 f"dense (missing_rate=0.0) DIFF-SPARSE v1, 300-epoch reference-architecture rewrite, mean +/- std across "
-                f"N={n_ds_seeds} seeds, shared physical metrics, {horizon_note}",
+                f"N={n_ds_seeds} seeds, shared physical metrics, {horizon_note}.{v1_rebase_note}",
                 COLOR_DIFFSPARSE,
                 2.4,
                 mean_by_step,
@@ -649,13 +669,25 @@ def build_data(
         v2_mean_by_step, v2_std_by_step, v2_n_by_step = average_diff_sparse_per_step(
             diff_sparse_v2_eval_dirs, reader=read_diff_sparse_v2_official_per_step
         )
+        # Rebase from absolute frame index (context=24 -> first prediction at
+        # frame 25) to rollout-step-since-first-prediction (h=1, matching the
+        # convention already used for FNO+'s own curve, whose t=2..20 output
+        # is relabeled step 1..19). Without this, the curve starts ~24 steps
+        # into an otherwise-empty x-axis instead of at the left edge.
+        if v2_mean_by_step:
+            v2_offset = min(v2_mean_by_step) - 1
+            v2_mean_by_step = {step - v2_offset: values for step, values in v2_mean_by_step.items()}
+            v2_std_by_step = {step - v2_offset: values for step, values in v2_std_by_step.items()}
+            v2_n_by_step = {step - v2_offset: value for step, value in v2_n_by_step.items()}
         n_v2_seeds = len(diff_sparse_v2_eval_dirs)
         v2_status = (
             f"N={n_v2_seeds} seed(s), corrected post-2026-07-09-incident 3-seed x 3-sparsity queue "
             "(regime-aware delta scale fix -- see reports/diff_sparse_v2_design.md \"Incident "
             "2026-07-09\"), dense (missing_rate=0.0), test split, context 24 / 40 diffusion steps / "
             "delta-space prediction, h216-equivalent long-horizon rollout (h228 given context=24). "
-            "Not yet averaged over all 3 seeds if N<3 -- check series name."
+            "Step axis rebased to rollout-step-since-first-prediction (h=1 = first predicted frame, "
+            "context frames 1..24 excluded), matching FNO+'s own step convention. Not yet averaged "
+            "over all 3 seeds if N<3 -- check series name."
         )
         series.append(
             curve_series(

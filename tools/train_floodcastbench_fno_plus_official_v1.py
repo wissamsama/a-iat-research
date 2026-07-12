@@ -153,6 +153,7 @@ def build_model(config: dict) -> FNOPlusOfficial3d:
         modes=int(model_config.get("modes", 12)),
         width=int(model_config.get("width", 20)),
         fourier_layers=int(model_config.get("fourier_layers", 4)),
+        output_offset=int(model_config.get("output_offset", 1)),
     )
 
 
@@ -332,7 +333,8 @@ def dry_run(config: dict) -> None:
     print(f"checkpoint_root: {path_from_config(config, 'checkpoint_root')}")
     print(f"train_samples: {len(train_dataset)}")
     print(f"val_samples: {len(val_dataset)}")
-    print(f"input_shape: [6, {train_dataset.height}, {train_dataset.width}, 20]")
+    print(f"context_length: {train_dataset.context_length}")
+    print(f"input_shape: [6, {train_dataset.height}, {train_dataset.width}, {train_dataset.window_length}]")
     print(f"target_shape: [1, {train_dataset.height}, {train_dataset.width}, 19]")
     print("normalization_stats:")
     print(json.dumps(stats["channels"], indent=2))

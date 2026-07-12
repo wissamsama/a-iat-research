@@ -31,6 +31,7 @@ def build_model(config: dict) -> FNOPlusOfficial3d:
         modes=int(model_config.get("modes", 12)),
         width=int(model_config.get("width", 20)),
         fourier_layers=int(model_config.get("fourier_layers", 4)),
+        output_offset=int(model_config.get("output_offset", 1)),
     )
 
 
