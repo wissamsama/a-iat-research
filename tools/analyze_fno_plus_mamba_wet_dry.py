@@ -100,6 +100,7 @@ def build_model(config: dict) -> torch.nn.Module:
         expand=int(mamba_config.get("expand", 2)),
         residual=bool(mamba_config.get("residual", True)),
         layer_norm=bool(mamba_config.get("layer_norm", True)),
+        layer_scale_init=mamba_config.get("layer_scale_init"),
     )
 
 

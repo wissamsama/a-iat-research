@@ -113,3 +113,77 @@ def test_mamba_model_supports_arbitrary_compatible_time_axis(time_steps: int) ->
     x = torch.randn(1, 6, 8, 8, time_steps, device=device)
     pred = model(x)
     assert pred.shape == (1, 1, 8, 8, 19)
+
+
+# --- WPB4: LayerScale/ReZero gate on the Mamba residual branch ---
+# (reports/fno_plus_beat_paper_plan.md WPB3 measured the naive/ungated
+# variant's val_rrmse curve to be 2-3x rougher than vanilla FNO+'s own
+# curve over 100 epochs -- these tests cover the fix's three required
+# properties: unchanged default behavior, exact identity at gate=0, and
+# that the gate still receives gradient despite starting at 0.)
+
+
+def test_mamba_layer_scale_default_is_backward_compatible() -> None:
+    """layer_scale_init=None (the default) must reproduce the original
+    unscaled/ungated forward exactly -- no behavior change for the
+    already-trained naive checkpoint."""
+    device = _device()
+    torch.manual_seed(0)
+    block_default = TemporalMambaResidual(width=8, d_state=8, d_conv=4, expand=2).to(device)
+    torch.manual_seed(0)
+    block_explicit_none = TemporalMambaResidual(
+        width=8, d_state=8, d_conv=4, expand=2, layer_scale_init=None
+    ).to(device)
+    assert block_explicit_none.layer_scale is None
+    z = torch.randn(1, 8, 4, 4, 20, device=device)
+    torch.manual_seed(1)
+    out_default = block_default(z)
+    torch.manual_seed(1)
+    out_none = block_explicit_none(z)
+    assert torch.equal(out_default, out_none)
+
+
+def test_mamba_layer_scale_zero_init_is_exact_identity() -> None:
+    """With layer_scale_init=0.0 and residual=True, the block must be an
+    exact identity function at init (update * 0 = 0, z_seq + 0 = z_seq) --
+    the whole point of the fix: an untrained Mamba branch must not perturb
+    the (already trainable) FNO latent on the very first forward pass."""
+    device = _device()
+    block = TemporalMambaResidual(width=8, d_state=8, d_conv=4, expand=2, layer_scale_init=0.0).to(device)
+    z = torch.randn(1, 8, 4, 4, 20, device=device)
+    out = block(z)
+    assert torch.equal(out, z)
+
+
+def test_mamba_layer_scale_receives_gradient_despite_zero_init() -> None:
+    """The gate must still be trainable from a zero start: d(loss)/d(gate)
+    = update * upstream_grad, which is nonzero even though gate itself is
+    0 at init (this is what makes it LayerScale/ReZero rather than a dead
+    branch that never turns on)."""
+    device = _device()
+    block = TemporalMambaResidual(width=8, d_state=8, d_conv=4, expand=2, layer_scale_init=0.0).to(device)
+    z = torch.randn(1, 8, 4, 4, 20, device=device)
+    out = block(z)
+    loss = out.pow(2).sum()
+    loss.backward()
+    assert block.layer_scale.grad is not None
+    assert torch.isfinite(block.layer_scale.grad).all()
+    assert block.layer_scale.grad.abs().sum().item() > 0
+
+
+def test_fno_plus_mamba_model_threads_layer_scale_init() -> None:
+    model = FNOPlusOfficial3dMamba(
+        input_channels=6,
+        output_steps=19,
+        modes=3,
+        width=8,
+        fourier_layers=2,
+        mamba_layers=2,
+        d_state=8,
+        d_conv=4,
+        expand=2,
+        layer_scale_init=0.0,
+    )
+    for block in model.temporal_mamba:
+        assert block.layer_scale is not None
+        assert torch.equal(block.layer_scale, torch.zeros(8))

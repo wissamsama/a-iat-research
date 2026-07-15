@@ -28,6 +28,7 @@ class TemporalMambaResidual(nn.Module):
         expand: int = 2,
         layer_norm: bool = True,
         residual: bool = True,
+        layer_scale_init: float | None = None,
     ) -> None:
         super().__init__()
         self.width = int(width)
@@ -43,6 +44,27 @@ class TemporalMambaResidual(nn.Module):
             d_conv=int(d_conv),
             expand=int(expand),
         )
+        # LayerScale/ReZero-style gate (Touvron et al. 2021; Bachlechner et al.
+        # 2020): mamba_ssm's default init gives the residual branch full
+        # weight from step 1, i.e. an untrained transform perturbs an
+        # already-trainable FNO latent at full strength from the first
+        # gradient step. WPB3 (reports/fno_plus_beat_paper_plan.md) measured
+        # this naive (layer_scale_init=None) config's val_rrmse curve to be
+        # 2-3x rougher (spike count, peak, std) than the vanilla FNO+'s own
+        # curve over the same 100 epochs -- a genuine optimization/stability
+        # signature, not just a worse optimum. A learnable per-channel gate
+        # initialized near zero makes the block start as an identity
+        # function (forward pass unaffected) while remaining fully
+        # trainable (the gate's gradient is update * upstream_grad, nonzero
+        # even at gate=0), letting the network learn how much to trust the
+        # Mamba branch instead of being forced to absorb it immediately.
+        # None (default) preserves the exact original unscaled behavior --
+        # backward compatible with the already-trained naive checkpoint.
+        self.layer_scale_init = layer_scale_init
+        if layer_scale_init is not None:
+            self.layer_scale = nn.Parameter(torch.full((self.width,), float(layer_scale_init)))
+        else:
+            self.layer_scale = None
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         if z.ndim != 5:
@@ -55,6 +77,8 @@ class TemporalMambaResidual(nn.Module):
         update = self.mamba(self.norm(z_seq))
         if update.shape != z_seq.shape:
             raise RuntimeError(f"Mamba changed sequence shape from {tuple(z_seq.shape)} to {tuple(update.shape)}")
+        if self.layer_scale is not None:
+            update = update * self.layer_scale
         z_seq = z_seq + update if self.residual else update
         return z_seq.reshape(batch, height, width, time_steps, channels).permute(0, 4, 1, 2, 3).contiguous()
 
@@ -80,6 +104,7 @@ class FNOPlusOfficial3dMamba(nn.Module):
         expand: int = 2,
         layer_norm: bool = True,
         residual: bool = True,
+        layer_scale_init: float | None = None,
     ) -> None:
         super().__init__()
         self.input_channels = int(input_channels)
@@ -113,6 +138,7 @@ class FNOPlusOfficial3dMamba(nn.Module):
                 expand=expand,
                 layer_norm=layer_norm,
                 residual=residual,
+                layer_scale_init=layer_scale_init,
             )
             for _ in range(self.mamba_layers)
         )
