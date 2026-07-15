@@ -257,6 +257,35 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   le dire et recentrer sur WP1. Si V2@12 ≫ V1 → gain d'architecture réel.
 - **Sortie papier** : ligne de T3 (ablations) + phrase de fair-comparison.
 
+- **RÉSULTAT RÉEL 2026-07-16 (seed42 uniquement, lecture rapide 4/13
+  fenêtres — single-seed, R1 : pas encore un claim établi, mais l'écart est
+  déjà décisif)** :
+
+  | Sparsité | V1 (3 seeds, protocole complet, `official_overall_current_relative_rmse`) | V2@12 (seed42, lecture rapide) | Ratio |
+  |---|---:|---:|---:|
+  | dense | 0.862 | 0.000889 | **V2@12 ×970** |
+  | m50 | 0.898 | 0.230 | **V2@12 ×3.9** |
+  | m95 | 1.007 | 0.526 | **V2@12 ×1.9** |
+
+  **Branche de décision déclenchée : "V2@12 ≫ V1" — le gain de V2 est un
+  gain architectural réel**, pas seulement l'effet du contexte plus long :
+  même en retirant l'avantage de contexte (24→12, remis au niveau de V1),
+  V2 écrase toujours V1 à toutes les sparsités, par un facteur énorme en
+  dense. Réserve avant claim final : comparaison single-seed (V2@12) contre
+  moyenne 3 seeds (V1) sur des tailles d'échantillon test différentes (4 vs
+  13 fenêtres) — l'écart est cependant bien trop large (×970 en dense) pour
+  être un artefact de ces différences ; à confirmer sur 2 seeds
+  supplémentaires si un chiffre publiable est requis, mais la direction ne
+  fait pas de doute.
+
+  **Point secondaire inattendu** : V2@12 seed42 dense (0.000889) est même
+  légèrement *meilleur* que V2@24 seed42 dense (0.001311, déjà connu) — le
+  contexte plus long n'aide pas ici, il pourrait même très légèrement gêner
+  sur cette lecture rapide. Pas assez de données pour en tirer une
+  conclusion (1 seed, à recouper avec m50/m95 de V2@24 si besoin), mais ça
+  va dans le même sens que le résultat WPB0 côté FNO+ : le contexte long
+  n'est pas la martingale qu'on aurait pu supposer.
+
 - **Point de contrôle croisé, CONFIRMÉ À 3/3 SEEDS 2026-07-15 (papier 2,
   WPB0)** : le même confondant de contexte a été testé côté FNO+ — un FNO+
   recevant les mêmes 24 frames de contexte que V2 (au lieu d'1 seule),
