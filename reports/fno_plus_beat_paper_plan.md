@@ -220,7 +220,8 @@ per Paper 1's precedent of accepting honest negative results):
 | WPB1 | LR/schedule sweep | 42 | | | | | | | pending |
 | WPB1 | padding ablation | 42 | | | | | | | pending |
 | WPB2 | best-vanilla-config, 3 seeds | 42/7/123 | | | | | | | pending |
-| WPB4 | mamba placement/size sweep | 42 | | | | | | | pending |
+| WPB4 | mamba + LayerScale gate, seed 42 | 42 | 0.006442 | 0.999943 | 0.999977 | 0.872149 | 0.995074 | `15-07-2026_21-28-37_..._mamba_layerscale_...` | done — see note below |
+| WPB4 | mamba + LayerScale gate, 3 seeds | 42/7/123 | | | | | | | launched 2026-07-16 (autonomous overnight run), `scripts/run_wpb4_mamba_layerscale_confirmation.sh` |
 | WPB5 | best-mamba-config, 3 seeds | 42/7/123 | | | | | | | pending |
 
 ## 4. Work Packages
@@ -605,6 +606,50 @@ init, threading through the model. New config
 (`layer_scale_init: 0.0`, identical to the naive config otherwise) —
 real-data dry-run + CPU/GPU smoke both pass; queued to actually train (seed
 42 first, screening run per this WP's own protocol) once the GPU is free.
+
+**Result, seed 42, 2026-07-16 (100/100 epochs, clean run, best checkpoint
+epoch 58)**:
+
+| Metric | Vanilla seed42 | Naive Mamba seed42 | LayerScale Mamba seed42 |
+|---|---:|---:|---:|
+| relRMSE (pooled) | 0.006694 | 0.009464 (+41%) | **0.006442** (-3.8% vs vanilla) |
+| NSE | 0.999939 | 0.999878 | 0.999943 |
+| Pearson r | 0.999971 | 0.999940 | 0.999977 |
+| CSI@0.001 | 0.909009 | 0.879792 | 0.872149 |
+| CSI@0.01 | 0.993807 | 0.994427 | 0.995074 |
+| wet-pixel classical RMSE (m) | 0.005726 | 0.008227 (+43.7%) | **0.005554** (-3.0% vs vanilla) |
+
+**The fix works as diagnosed.** The instability is resolved (no retraining
+crash, clean convergence) and the wet-pixel classical RMSE prediction from
+WPB3 is confirmed directly: LayerScale Mamba beats vanilla specifically on
+the metric WPB3 flagged as the real locus of the naive variant's damage,
+not just "less bad than naive" — it's now *better than vanilla* there
+(0.005554 vs 0.005726), a clean reversal from the naive variant's +43.7%
+damage on the same stratum.
+
+**Whether this clears the pre-registered pooled-relRMSE bar is
+genuinely ambiguous on 1 seed — recorded honestly, not rounded up.**
+The bar (WPB1's criterion, reused here per WPB4's own text: "beat the
+baseline by more than 1 baseline-seed-std") is relRMSE < 0.006415
+(0.006550 - 0.000135). LayerScale Mamba's 0.006442 beats vanilla seed42
+directly (0.006694) and beats the vanilla 3-seed mean (0.006550), but the
+margin under the mean (0.000108) is only ~0.80x the vanilla std, not
+>1x — technically short of the bar as literally written. CSI@0.001 is
+also marginally below vanilla's (0.872 vs 0.909 seed42 / 0.869 mean,
+within the vanilla seed-to-seed CSI@0.001 spread of 0.81-0.91 already
+documented as unusually noisy in §1.3).
+
+**Decision**: rather than force a read off one seed either way, launched
+the 3-seed confirmation immediately (seeds 7, 123 — `scripts/
+run_wpb4_mamba_layerscale_confirmation.sh`, autonomous overnight run
+2026-07-16) instead of the WPB1-style "drop if it doesn't clear the bar"
+default. Justified departure from that default because: (a) the wet-pixel
+classical-RMSE win was predicted in advance by WPB3's diagnosis, not found
+by fishing after the fact; (b) the pooled-relRMSE result is close enough
+(0.80 std) that seed noise could plausibly move it either way, unlike a
+clearly-failed variant; (c) this result most directly answers Paper 2's
+central question and a proper 3-seed mean settles it either way instead of
+leaving an ambiguous single-seed read in the ledger.
 
 ### WPB5 — Best Mamba config, 3-seed confirmation
 
