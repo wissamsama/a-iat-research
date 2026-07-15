@@ -523,6 +523,25 @@ Same decision criterion structure as WPB1 (beat the current best-known
 baseline's relRMSE by more than 1 baseline-seed-std, pre-registered before
 running).
 
+**Stability fix implemented, 2026-07-15 (code, not yet trained/evaluated)**:
+`TemporalMambaResidual` gained a LayerScale/ReZero-style gate
+(`layer_scale_init` param, `models/fno_plus_official_mamba.py`) — a
+learnable per-channel scale on the Mamba branch's output before the
+residual add, initialized at 0 so the block starts as an exact identity
+function and only gradually learns to trust the Mamba transform, instead of
+an untrained transform perturbing the FNO latent at full strength from
+step 1. Directly motivated by WPB3's training-curve finding (naive variant
+2-3x rougher than vanilla). `layer_scale_init=None` (default) is an exact
+regression match to the original ungated behavior — the already-trained
+naive checkpoint's numbers in this ledger are unaffected. 4 new tests
+(`tests/test_fno_plus_official_v1_mamba_smoke.py`): backward-compat
+equality, exact identity at gate=0, gradient still flows despite zero
+init, threading through the model. New config
+`configs/floodcastbench_fno_plus_official_v1_mamba_layerscale_highfid_60m.yaml`
+(`layer_scale_init: 0.0`, identical to the naive config otherwise) —
+real-data dry-run + CPU/GPU smoke both pass; queued to actually train (seed
+42 first, screening run per this WP's own protocol) once the GPU is free.
+
 ### WPB5 — Best Mamba config, 3-seed confirmation
 
 Same structure as WPB2, for whichever Mamba variant clears WPB4's bar.
