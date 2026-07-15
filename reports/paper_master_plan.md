@@ -257,19 +257,22 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   le dire et recentrer sur WP1. Si V2@12 ≫ V1 → gain d'architecture réel.
 - **Sortie papier** : ligne de T3 (ablations) + phrase de fair-comparison.
 
-- **Point de contrôle croisé 2026-07-13 (papier 2, WPB0)** : le même
-  confondant de contexte a été testé côté FNO+ — un FNO+ recevant les mêmes
-  24 frames de contexte que V2 (au lieu d'1 seule), même seed 42, protocole
-  identique sinon. Résultat : **relRMSE 0.007822, PIRE que le FNO+ vanilla
-  (0.006694)**, pas meilleur (écart ~8.4× l'écart-type inter-seed vanilla —
-  effet réel, pas du bruit). Détails : `reports/fno_plus_beat_paper_plan.md`
+- **Point de contrôle croisé, CONFIRMÉ À 3/3 SEEDS 2026-07-15 (papier 2,
+  WPB0)** : le même confondant de contexte a été testé côté FNO+ — un FNO+
+  recevant les mêmes 24 frames de contexte que V2 (au lieu d'1 seule),
+  protocole identique sinon. Résultat à 3 seeds (R1 respecté) : **relRMSE
+  moyen 0.007529±0.000328, toujours PIRE que le FNO+ vanilla
+  (0.006550±0.000135)**, écart ~7.3× l'écart-type vanilla, individuellement
+  cohérent sur les 3 seeds (0.007822 / 0.007591 / 0.007175, tous au-dessus
+  du pire seed vanilla). Détails : `reports/fno_plus_beat_paper_plan.md`
   §WPB0. **Conséquence pour ce papier** : ça renforce l'argument "V2 bat
   FNO+ ce n'est pas juste parce que V2 voit plus d'historique" — donner le
   même budget d'information à FNO+ ne l'a pas aidé, donc l'avantage de V2
   (là où on le compare à FNO+, hors périmètre du jumeau) semble plus
   architectural que dû au contexte. Ne remplace pas WP2 (qui reste
   nécessaire pour la comparaison V2@12 vs V1@12 propre côté sparsité), mais
-  fournit un point de comparaison externe supplémentaire, déjà acquis.
+  fournit un point de comparaison externe supplémentaire, désormais
+  solidement établi (pas juste single-seed).
 
 ### WP3 — Calibration probabiliste (zéro GPU d'entraînement)
 - **Analyses** (nouveau `tools/analyze_v2_calibration.py`) :

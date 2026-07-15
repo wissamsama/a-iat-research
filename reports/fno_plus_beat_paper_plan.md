@@ -210,8 +210,10 @@ per Paper 1's precedent of accepting honest negative results):
 | — | vanilla v1 baseline | 7 | 0.006426 | 0.999944 | 0.999972 | 0.810893 | 0.996355 | `03-07-2026_17-43-06_...` | done |
 | — | vanilla v1 baseline | 123 | 0.006530 | 0.999942 | 0.999972 | 0.887944 | 0.995453 | `03-07-2026_22-38-40_...` | done |
 | — | mamba (1 layer, naive) | 42 | 0.009464 | 0.999878 | 0.999940 | 0.879792 | 0.994427 | `29-06-2026_16-04-36_...` | done, worse than vanilla |
-| WPB0 | context=24 (matched to V2), seed 42 | 42 | 0.007822 | 0.999916 | 0.999960 | 0.896730 | 0.992231 | `12-07-2026_16-00-14_..._context24_...` | **done — worse than vanilla, not better** |
-| WPB0 | context=24 (matched to V2), 3 seeds | 42/7/123 | | | | | | | not launched — effect (+8.4 std) is large enough on 1 seed to not prioritize a 3-seed confirmation ahead of WPB1/WPB3-4 |
+| WPB0 | context=24 (matched to V2), seed 42 | 42 | 0.007822 | 0.999916 | 0.999960 | 0.896730 | 0.992231 | `12-07-2026_16-00-14_..._context24_...` | done |
+| WPB0 | context=24 (matched to V2), seed 7 | 7 | 0.007591 | 0.999921 | 0.999962 | 0.875093 | 0.995100 | `13-07-2026_04-04-20_..._context24_seed7_...` | done |
+| WPB0 | context=24 (matched to V2), seed 123 | 123 | 0.007175 | 0.999930 | 0.999968 | 0.888203 | 0.994551 | `15-07-2026_17-08-00_..._context24_seed123_...` | done |
+| WPB0 | context=24 (matched to V2), 3-seed mean | 42/7/123 | **0.007529±0.000328** | 0.999922±0.000007 | 0.999963±0.000004 | 0.886676±0.010899 | 0.993961±0.001523 | — | **CONFIRMED at 3/3 seeds (R1) — worse than vanilla, not better** |
 | WPB3 | mamba diagnostic (dry-region check) | 42 | | | | | | | pending |
 | WPB1 | batch size sweep | 42 | | | | | | | pending |
 | WPB1 | width/modes/layers sweep | 42 | | | | | | | pending |
@@ -412,6 +414,34 @@ matched the already-known native eval to 4 decimal places: 0.8968 vs
 0.8967). Dashboard gained a dedicated `FNO_CONTEXT24_SEED_RUN_DIRS` curve,
 guarded to skip until each seed's long-horizon output exists. Commits
 `f13ef51`, `3ff3a35`.
+
+**Interruption and recovery, 2026-07-13 → 2026-07-15**: instruction 0007
+partially failed on the Dell — seed7 trained cleanly but both its evals hit
+a relative-path bug in the orchestrator script (fixed, commit `55e364a`),
+and seed123's training then died silently at epoch 26/100. Root cause
+confirmed empirically: the Dell's `experiments`/`checkpoints`/`logs` are
+NFS-mounted from the P7 (`/etc/exports`), and the P7 was shut down (loaned
+to another student) at 2026-07-13 12:10 — the exact minute of seed123's
+last checkpoint write. A process blocked on a dead NFS write hangs silently
+rather than crashing, hence 2+ days with no error and no progress. Recorded
+as PROTOCOL.md rule 7 (never write a long unsupervised job's live state
+directly to an NFS path the P7 itself might unmount). Once the P7 returned
+(2026-07-15), the remaining work (seed7's 2 evals against its already-good
+checkpoint, seed123 full retrain + its 2 evals) was redone on the P7 itself
+via `scripts/run_wpb0_context24_recovery.sh` — clean run, no further
+issues.
+
+**Final 3-seed result, 2026-07-15 (R1 satisfied)**: mean relRMSE
+0.007529±0.000328 vs vanilla's 0.006550±0.000135 — **context24 confirmed
+worse at 3/3 seeds**, mean gap ~7.3x the vanilla std, individually
+consistent (0.007822 / 0.007591 / 0.007175, all above vanilla's highest
+single seed 0.006694). NSE/Pearson r also consistently worse; CSI@0.01
+stays close (0.994 vs vanilla's 0.995). **This closes WPB0**: the "more
+context helps FNO+" hypothesis is refuted with the same rigor as the rest
+of this project's negative results (§8's R1/R8 analogues), not just a
+single-seed read. Long-horizon rollout data now exists for all 3 seeds
+(`long_horizon_rollout_eval_dense_v2/checkpoint_best/` under each seed's run
+dir) — dashboard curve ready to regenerate.
 
 ### WPB1 — Vanilla FNO+ hyperparameter boost (cheapest, do first)
 

@@ -74,6 +74,14 @@ FNO_CONTEXT24_SEED_RUN_DIRS: list[Path] = [
         "/home/wissam/utem-workspace/experiments/FloodCastBench/"
         "12-07-2026_16-00-14_fcb_fno_plus_official_v1_context24_highfid_60m"
     ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "13-07-2026_04-04-20_fcb_fno_plus_official_v1_context24_seed7_highfid_60m"
+    ),
+    Path(
+        "/home/wissam/utem-workspace/experiments/FloodCastBench/"
+        "15-07-2026_17-08-00_fcb_fno_plus_official_v1_context24_seed123_highfid_60m"
+    ),
 ]
 
 # The 3 DIFF-SPARSE v1 dense (missing_rate=0.0) seed runs under the
@@ -635,8 +643,9 @@ def build_data(
                     f"FNO+ context24 (WPB0, N={n_context24_seeds}) — rollout, step by step",
                     f"same architecture as vanilla FNO+, input context extended from 1 to 24 real frames "
                     f"(matches DIFF-SPARSE v2's own context_length) -- N={n_context24_seeds} seed(s). "
-                    "Native-protocol result (seed 42): WORSE than vanilla (relRMSE 0.007822 vs 0.006694), "
-                    "not better -- see reports/fno_plus_beat_paper_plan.md WPB0.",
+                    "Native-protocol result, confirmed at 3/3 seeds: WORSE than vanilla "
+                    "(mean relRMSE 0.007529+/-0.000328 vs vanilla 0.006550+/-0.000135), not better -- "
+                    "see reports/fno_plus_beat_paper_plan.md WPB0.",
                     COLOR_FNO_CONTEXT24,
                     2.5,
                     context24_mean_by_step,
