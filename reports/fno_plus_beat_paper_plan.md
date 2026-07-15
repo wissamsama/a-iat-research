@@ -531,11 +531,45 @@ placement or capacity limitation. This favors starting WPB4 from the
 stability-fix branch (smaller residual init, lower Mamba-branch LR, added
 regularization) before trying alternative placements.
 
-**Wet/dry stratified breakdown**: tool written
-(`tools/analyze_fno_plus_mamba_wet_dry.py`, splits pooled/wet/dry relRMSE +
-negative_prediction_ratio for both checkpoints in one eval pass each) —
-queued to run once GPU is free (WPB0's seed123 retrain is using it as of
-2026-07-15 17:xx). Result pending.
+**Wet/dry stratified breakdown, run 2026-07-15** — `tools/analyze_fno_plus_mamba_wet_dry.py`,
+full result: `experiments/FloodCastBench/wpb3_mamba_wet_dry_diagnostic.json`.
+`current_relative_rmse` on the dry stratum is not usable (near-zero
+denominator inflates it to 3.5-4.4 regardless of model, a known artifact
+already documented for this metric elsewhere in the repo) — read
+`classical_rmse` (absolute, meters) and `negative_prediction_ratio` instead:
+
+| | Vanilla | Mamba (naive) | Mamba vs vanilla |
+|---|---:|---:|---:|
+| classical RMSE, wet pixels | 0.005726 | **0.008227** | **+43.7% worse** |
+| classical RMSE, dry pixels | 0.001707 | 0.001376 | -19.4% (Mamba slightly better) |
+| negative_prediction_ratio, wet | 1.54% | 0.89% | Mamba slightly cleaner |
+| negative_prediction_ratio, dry | 68.4% | 53.7% | Mamba slightly cleaner |
+
+**This corrects, rather than confirms, this WP's original working
+hypothesis.** §1.5 flagged Mamba's pooled `negative_prediction_ratio=0.196`
+as a lead toward "Mamba destabilizes dry-region predictions specifically" —
+but that comparison was incomplete: vanilla's own pooled ratio, measured
+here for the first time, is 0.253 (25.3%), i.e. **higher** than Mamba's.
+Mamba is not dirtier in dry regions than vanilla; if anything it's
+marginally cleaner there. The real, now directly measured gap is in **wet
+(flooded) pixels, in absolute terms**: Mamba's classical RMSE there is 44%
+worse than vanilla's, and wet pixels dominate the pooled relRMSE (denominator
+`sum(y^2)` is wet-pixel-dominated), which is why the pooled relRMSE gap
+(+41%, §1.5) tracks the wet-pixel gap almost exactly, not a dry-region
+artifact.
+
+**Combined with the training-curve finding above** (2-3x rougher val_rrmse
+curve throughout all 100 epochs, not just early on): the coherent picture
+is a genuine optimization-stability problem that specifically corrupts
+learning on the harder, information-dense wet regions -- not a dry-region
+noise/magnitude issue. This is exactly what the LayerScale fix already
+implemented above targets (a stable identity-preserving start lets the
+network learn to use the Mamba branch gradually instead of absorbing an
+untrained, full-strength perturbation from step 1), so no design change to
+WPB4 is needed from this result -- it sharpens the diagnosis and predicts
+the fix should show up mainly as a wet-pixel classical-RMSE improvement,
+which the eventual WPB4 run should check explicitly (not just pooled
+relRMSE).
 
 ### WPB4 — Mamba placement/hyperparameter sweep
 
