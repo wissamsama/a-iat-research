@@ -46,13 +46,33 @@ SEED42_RUN=/home/wissam/utem-workspace/experiments/FloodCastBench/12-07-2026_16-
 SEED42_CKPT=/home/wissam/utem-workspace/checkpoints/FloodCastBench/12-07-2026_16-00-14_fcb_fno_plus_official_v1_context24_highfid_60m/checkpoint_best.pth
 run_long_horizon "$SEED42_RUN" "$SEED42_CKPT"
 
+EXPERIMENT_ROOT=/home/wissam/utem-workspace/experiments/FloodCastBench
+CHECKPOINT_ROOT=/home/wissam/utem-workspace/checkpoints/FloodCastBench
+
+require_run_dir () {
+    # ls -dt against a glob that matches nothing silently returns empty
+    # under `set -u` here (no nullglob), which then makes every downstream
+    # absolute-looking path (e.g. "$(sed ...)/checkpoint_best.pth") resolve
+    # to a bogus root-relative path instead of failing loudly -- exactly
+    # what happened 2026-07-13 (seed7's evals silently ran against
+    # "config.yaml" / "/long_horizon_rollout_eval_dense_v2" instead of real
+    # paths, and the script kept going into seed123's training regardless).
+    # Fail fast instead.
+    local run_dir="$1" label="$2"
+    if [ -z "$run_dir" ] || [ ! -d "$run_dir" ]; then
+        echo "FATAL: could not resolve $label run dir (got '$run_dir')" >&2
+        exit 1
+    fi
+}
+
 # --- Seed 7: train, native eval, long-horizon eval. ---
 echo "--- training seed7 starting at $(date -Is) ---"
 "$PY" tools/train_floodcastbench_fno_plus_official_v1.py \
     --config configs/floodcastbench_fno_plus_official_v1_context24_seed7_highfid_60m.yaml --device cuda
 echo "--- training seed7 finished at $(date -Is) ---"
-SEED7_RUN=$(ls -dt experiments/FloodCastBench/*_fcb_fno_plus_official_v1_context24_seed7_highfid_60m 2>/dev/null | head -1)
-SEED7_CKPT="$(echo "$SEED7_RUN" | sed 's#/experiments/#/checkpoints/#')/checkpoint_best.pth"
+SEED7_RUN=$(ls -dt "$EXPERIMENT_ROOT"/*_fcb_fno_plus_official_v1_context24_seed7_highfid_60m 2>/dev/null | head -1)
+require_run_dir "$SEED7_RUN" seed7
+SEED7_CKPT="$CHECKPOINT_ROOT/$(basename "$SEED7_RUN")/checkpoint_best.pth"
 run_native_eval "$SEED7_RUN" "$SEED7_CKPT"
 run_long_horizon "$SEED7_RUN" "$SEED7_CKPT"
 
@@ -61,8 +81,9 @@ echo "--- training seed123 starting at $(date -Is) ---"
 "$PY" tools/train_floodcastbench_fno_plus_official_v1.py \
     --config configs/floodcastbench_fno_plus_official_v1_context24_seed123_highfid_60m.yaml --device cuda
 echo "--- training seed123 finished at $(date -Is) ---"
-SEED123_RUN=$(ls -dt experiments/FloodCastBench/*_fcb_fno_plus_official_v1_context24_seed123_highfid_60m 2>/dev/null | head -1)
-SEED123_CKPT="$(echo "$SEED123_RUN" | sed 's#/experiments/#/checkpoints/#')/checkpoint_best.pth"
+SEED123_RUN=$(ls -dt "$EXPERIMENT_ROOT"/*_fcb_fno_plus_official_v1_context24_seed123_highfid_60m 2>/dev/null | head -1)
+require_run_dir "$SEED123_RUN" seed123
+SEED123_CKPT="$CHECKPOINT_ROOT/$(basename "$SEED123_RUN")/checkpoint_best.pth"
 run_native_eval "$SEED123_RUN" "$SEED123_CKPT"
 run_long_horizon "$SEED123_RUN" "$SEED123_CKPT"
 
