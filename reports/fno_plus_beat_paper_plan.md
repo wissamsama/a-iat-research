@@ -482,6 +482,31 @@ different placement" (e.g. Mamba before the Fourier backbone instead of
 after, Mamba interleaved between Fourier layers instead of as one block at
 the end, Mamba only on a subset of latent channels).
 
+**Training-curve instability check, done 2026-07-15 (zero GPU, pure
+`metrics.csv` analysis)** — direct evidence for the "stability issue, not
+just placement" branch:
+
+| | Vanilla seed42 | Mamba seed42 | Ratio |
+|---|---:|---:|---:|
+| val_rrmse spikes (>3x median epoch-to-epoch jump) | 18 | **37** | ×2.1 |
+| max val_rrmse reached (100 epochs) | 0.171 | **0.505** | ×3.0 |
+| val_rrmse std across 100 epochs | 0.020 | **0.057** | ×2.9 |
+| best epoch | 71 | 87 | — |
+
+The Mamba run isn't just converging to a worse optimum — its validation
+curve is measurably rougher throughout training (2-3x more spikes, 3x
+higher peak error, 3x higher variance), consistent with a genuine
+optimization/stability problem introduced by the Mamba branch, not merely a
+placement or capacity limitation. This favors starting WPB4 from the
+stability-fix branch (smaller residual init, lower Mamba-branch LR, added
+regularization) before trying alternative placements.
+
+**Wet/dry stratified breakdown**: tool written
+(`tools/analyze_fno_plus_mamba_wet_dry.py`, splits pooled/wet/dry relRMSE +
+negative_prediction_ratio for both checkpoints in one eval pass each) —
+queued to run once GPU is free (WPB0's seed123 retrain is using it as of
+2026-07-15 17:xx). Result pending.
+
 ### WPB4 — Mamba placement/hyperparameter sweep
 
 Informed by WPB3. Single-seed (42) screening runs against the WPB2 best
