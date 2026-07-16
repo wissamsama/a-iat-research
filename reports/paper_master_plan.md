@@ -405,7 +405,27 @@ source. Revérifier si accès VPN institutionnel disponible.
 - **Règle** : toute comparaison finale du papier utilise les checkpoints
   au budget rallongé ; documenter les courbes de convergence en annexe.
 
-### WP7 — Masques structurés réalistes (éval, quasi gratuit)
+- **RÉSULTAT PARTIEL 2026-07-16 (seed42 m50 fait, 3 runs restants en
+  cours)** : hypothèse confirmée, et pas seulement pour seed123. Le run
+  seed42/m50 relancé avec budget 600 epochs / patience 120 a trouvé un
+  bien meilleur checkpoint que le run original (300 epochs, patience par
+  défaut) :
+
+  | | Budget normal | Budget rallongé |
+  |---|---:|---:|
+  | Meilleure epoch | 65 | **120** |
+  | `rollout_val_rmse` (proxy interne) | 1.331 | **1.004** (-24.6%) |
+
+  **Conséquence importante** : le run V2/m50/seed42 utilisé pour la
+  comparaison WP1 (jumeau vs V2, résultat "quasi-tie" à m50) tournait sur
+  un checkpoint sous-entraîné — ce n'est pas juste le cas seed123 qui était
+  affecté. **Le résultat "quasi-tie à m50" de WP1 doit être réévalué sur ce
+  nouveau checkpoint (et les 3 autres runs WP6 une fois finis) avant d'être
+  considéré définitif** — possible que ça déplace la conclusion, pas
+  seulement resserre l'incertitude. À faire dès que WP6 est fini côté P7 :
+  réévaluer tous les checkpoints rallongés (V2 ET si besoin le jumeau, si
+  le même problème de convergence l'affecte aussi — à vérifier, pas encore
+  fait) sur le protocole test réel, mettre à jour le tableau WP1.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
