@@ -503,6 +503,28 @@ this bar moves to WPB2 (3-seed confirmation). Variants that don't clear it
 are recorded in the ledger and dropped, not re-tried with minor tweaks
 (avoid unbounded fishing).
 
+**Launched 2026-07-16, on the Dell** (autonomous, `scripts/
+run_wpb1_hyperparameter_sweep.sh`, coordination instruction 0008): 7 of
+the 8 originally-scoped axes, all config-only (no new model/dataset code,
+unlike the padding ablation below) — batch size {2,4,8}, width 32, modes
+16, fourier_layers 6, lr 3e-4, and a 200-epoch longer-training run. All 8
+configs dry-run validated on real data before dispatch. Dell was chosen
+over P7 for this batch specifically because every variant is config-only
+and pre-validated (no risk of handing the Dell an untested code path,
+unlike WPB0/WPB4 earlier which needed real architecture changes done on
+P7 first) — the earlier "Dell = small tasks only" caution was about
+*risk of an untested long job*, not about GPU speed per se; this batch
+carries that risk down to near zero. The Dell's NFS mount issue (silently
+unmounted, not in `/etc/fstab` — root cause of WPB0's seed123 death) was
+found and fixed the same day (`coordination/PROTOCOL.md` rule 7) before
+this was dispatched.
+
+**Padding ablation (item 4) and warmup/step-decay LR variants (part of
+item 3) are NOT included in this batch** — both need actual trainer/model
+code changes (padding before the FFT, a warmup scheduler), which per this
+project's own discipline should be written and tested on P7 first, not
+handed to the Dell as unvalidated code. Left for a later iteration.
+
 ### WPB2 — Best vanilla config, 3-seed confirmation
 
 Take the single best-performing WPB1 variant (if any cleared the bar,
