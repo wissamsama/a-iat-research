@@ -443,6 +443,32 @@ source. Revérifier si accès VPN institutionnel disponible.
   réelles sur TOUS les checkpoints concernés (V2 m50+m95 rallongés déjà
   prêts, jumeau m95 rallongé à venir, jumeau m50 déjà bon = inchangé) et
   refaire le tableau T2/WP1 au complet.
+
+  **seed42/m95 terminé 2026-07-17 02:30** : early-stop propre à epoch 315
+  (patience 120 → arrêt epoch 435), `rollout_val_rmse` = **0.7244** vs
+  0.7318 (checkpoint original, epoch 300, jamais early-stoppé). Amélioration
+  de **seulement ~1.0%** — nettement moins que les -16.5% à -36.6% des 4
+  runs V2/WP6 ci-dessus. Lecture honnête : contrairement aux checkpoints V2,
+  ce checkpoint jumeau original n'était probablement pas si loin de la
+  convergence malgré l'absence d'early-stop détecté à l'époque — ou alors la
+  fenêtre epoch 300-315 suffisait déjà. Ne pas généraliser "jumeau
+  quasi-inchangé par le budget rallongé" à seed7 avant d'avoir son propre
+  résultat.
+
+  **Incident seed7/m95 (2026-07-17 02:31)** : premier lancement a crashé à
+  l'epoch 2 — `RuntimeError: 27/72 batches skipped for non-finite
+  loss/gradients` (garde-fou existant, seuil 25%, ajouté 2026-07-09 après un
+  précédent NaN seed42/dense). Le run original de seed7/m95 (2026-07-11,
+  300 epochs, jamais rallongé) n'avait eu **zéro** batch skip sur toute sa
+  durée — cette instabilité est donc nouvelle, pas une redite d'un problème
+  connu. Cause suspectée mais NON confirmée : ce lancement tournait en
+  parallèle du job d'éval WP9 (`evaluate_floodcastbench_det_twin_ensemble.py`,
+  13 fenêtres × 3 checkpoints) sur le même GPU — contention mémoire/cudnn
+  possible. **Relancé seul sur le GPU à 02:34** (WP9 avait fini entre-temps)
+  pour tester cette hypothèse ; suivi en direct via un monitor sur les
+  premières epochs. Si ça replante seul sur GPU, l'hypothèse contention est
+  fausse et il faudra chercher ailleurs (config seed7 spécifique, non-
+  déterminisme GPU pur). À vérifier au réveil si pas résolu avant.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
