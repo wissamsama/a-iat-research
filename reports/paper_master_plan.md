@@ -83,6 +83,31 @@ Toutes les valeurs : test split, Australie 60m high-fidelity, protocole natif
   (publié : 0.003941 — écart de reproduction 1.66x documenté,
   `reports/fno_plus_multiseed_results.md`). Long-horizon h216 par étape dans
   le dashboard.
+
+- **V2 dense vs le chiffre OFFICIEL de FNO+ (Table 4 du papier, pas notre
+  reproduction) — 2026-07-16, toutes métriques, 3 seeds** (lecture rapide
+  4/13 fenêtres, résultat stocké proprement sous
+  `experiments/FloodCastBench/v2_dense_fullmetrics_check/`) :
+
+  | Métrique | FNO+ officiel | V2 dense (moy. 3 seeds) | Verdict |
+  |---|---:|---:|---|
+  | relRMSE | 0.003941 | 0.001576 ± 0.000818 | V2 ×2.5 meilleur |
+  | NSE | 0.999979 | 0.999996 ± 0.000004 | V2 meilleur |
+  | Pearson r | 0.999990 | 0.999999 ± 0.000001 | V2 meilleur |
+  | CSI@0.001 | 0.939638 | 0.986660 ± 0.003735 | V2 meilleur (+4.7 pts) |
+  | CSI@0.01 | 0.984588 | 0.999098 ± 0.000393 | V2 meilleur (+1.5 pts) |
+
+  **V2 bat le chiffre publié de FNO+ sur les 5 métriques disponibles**, pas
+  seulement relRMSE — évite complètement l'objection "vous avez mal
+  reproduit FNO+" puisque ce n'est pas notre reproduction qui sert de
+  référence ici. Renforcé par WPB0 (`reports/fno_plus_beat_paper_plan.md`) :
+  on a déjà testé et écarté l'explication "V2 gagne juste parce qu'il voit
+  plus de contexte" — donner le même contexte à FNO+ le rend pire, pas
+  meilleur. Réserves : protocoles pas strictement identiques (V2 = moyenne
+  de 8 scénarios vs FNO+ = sortie déterministe unique ; lecture rapide
+  4/13 fenêtres, pas le protocole test complet) — écart trop large pour être
+  un artefact de ces différences, mais pas encore un chiffre "figé" pour
+  publication sans le protocole complet à 13/13 fenêtres.
 - **V1** (9 runs, 3 seeds × 3 sparsités, 300 epochs) : dense ×560 pire que la
   persistence oracle (nrmse 0.041 vs 7.3e-5) ; m50/m95 : bat la persistence
   sparse (~-36% / ~-11% RMSE). Agrégats :
