@@ -693,6 +693,29 @@ partir dès M3 si une deadline se présente.
 
 ---
 
+## 9-bis. Piste CONDITIONNELLE "mécanisme-first" (Transactions) — ne pas ouvrir avant les deux portes
+
+Reframing possible du papier pour viser TNNLS/TGRS : la contribution
+centrale devient le **plancher de bruit d'échantillonnage** (inégalité :
+un forecaster génératif en espace absolu ne peut battre la persistence que
+si son erreur relative intrinsèque c < σ_Δ/σ_champ ≈ 1/450 ici —
+inatteignable ; en espace delta la condition devient c < 1 — triviale),
+plus l'échelle par régime comme dérivation, plus une **survey data-only du
+ratio σ_Δ/σ_champ à travers les benchmarks publics** (place GenCast@12h,
+nowcasting SEVIR@5min, PDEBench, FloodCastBench@300s sur le même axe — les
+succès/échecs publiés de la diffusion s'alignent-ils sur le ratio ?), plus
+UNE réplication d'entraînement hors crue (PDEBench SWE/NS), l'audit jumeau
+devenant la section de validation. **Prior art à traiter obligatoirement :
+PDE-Refiner (Lippe et al. 2023), les schedule flaws (Lin et al.), la
+prédiction résiduelle en vidéo/météo.**
+
+**Portes de décision (les deux doivent être franchies avant d'investir)** :
+(1) réévaluation WP1 post-WP6 donne à V2 une région claire où il paie ;
+(2) WP9 montre V2 mieux calibré que l'ensemble de jumeaux. Sinon : rester
+sur le framing audit → Q1 domaine. Coût additionnel estimé si ouvert :
+théorie ~1 sem., survey ratios ~2-3 j (data-only), réplication 1 domaine
+~3-5 j GPU.
+
 ## 10. Gouvernance du document
 
 - Ce fichier est **la** source de vérité du plan. Il est versionné git ;
