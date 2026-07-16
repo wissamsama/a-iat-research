@@ -405,27 +405,44 @@ source. Revérifier si accès VPN institutionnel disponible.
 - **Règle** : toute comparaison finale du papier utilise les checkpoints
   au budget rallongé ; documenter les courbes de convergence en annexe.
 
-- **RÉSULTAT PARTIEL 2026-07-16 (seed42 m50 fait, 3 runs restants en
-  cours)** : hypothèse confirmée, et pas seulement pour seed123. Le run
-  seed42/m50 relancé avec budget 600 epochs / patience 120 a trouvé un
-  bien meilleur checkpoint que le run original (300 epochs, patience par
-  défaut) :
+- **RÉSULTAT COMPLET 2026-07-16 (les 4 runs terminés)** : hypothèse
+  confirmée nettement, et pas seulement pour seed123 — **systémique sur
+  tout le corpus sparse existant**, pas un cas isolé :
 
-  | | Budget normal | Budget rallongé |
-  |---|---:|---:|
-  | Meilleure epoch | 65 | **120** |
-  | `rollout_val_rmse` (proxy interne) | 1.331 | **1.004** (-24.6%) |
+  | Run | Budget normal (`rollout_val_rmse`, best epoch) | Budget rallongé | Amélioration |
+  |---|---:|---:|---:|
+  | seed42/m50 | 1.331 (epoch 65) | 1.004 (epoch 120) | -24.6% |
+  | seed42/m95 | 1.864 (epoch 55) | 1.181 (epoch 325) | -36.6% |
+  | seed7/m95 | 1.737 (epoch 60) | 1.451 (epoch 105) | -16.5% |
+  | seed7/m50 | 1.319 (epoch 60) | **0.849 (epoch 600 — jamais early-stoppé, encore en amélioration à la fin)** | -35.6% |
 
-  **Conséquence importante** : le run V2/m50/seed42 utilisé pour la
-  comparaison WP1 (jumeau vs V2, résultat "quasi-tie" à m50) tournait sur
-  un checkpoint sous-entraîné — ce n'est pas juste le cas seed123 qui était
-  affecté. **Le résultat "quasi-tie à m50" de WP1 doit être réévalué sur ce
-  nouveau checkpoint (et les 3 autres runs WP6 une fois finis) avant d'être
-  considéré définitif** — possible que ça déplace la conclusion, pas
-  seulement resserre l'incertitude. À faire dès que WP6 est fini côté P7 :
-  réévaluer tous les checkpoints rallongés (V2 ET si besoin le jumeau, si
-  le même problème de convergence l'affecte aussi — à vérifier, pas encore
-  fait) sur le protocole test réel, mettre à jour le tableau WP1.
+  **seed7/m50 n'a jamais convergé même à 600 epochs** — le run le plus
+  sous-entraîné des quatre, budget encore potentiellement insuffisant.
+  Amélioration moyenne ≈ -28%, aucun des 4 runs n'y échappe.
+
+  **Conséquence majeure** : tous les checkpoints V2 sparse (m50/m95) 
+  utilisés pour WP1 (le "quasi-tie à m50", le "jumeau ×1.57 en m95") ont été
+  mesurés sur des modèles sous-entraînés. **Le tableau WP1 entier doit être
+  refait sur le protocole test réel avec ces nouveaux checkpoints avant
+  d'être considéré définitif.**
+
+  **Vérifié 2026-07-16 : le jumeau déterministe a LE MÊME problème.** Les
+  `summary.json` déjà présents (pas besoin de relancer pour vérifier)
+  montrent : m95 **jamais early-stoppé** pour les 2 seeds (seed42 : best
+  epoch 300/300, seed7 : best epoch 300/300 — les deux tournaient encore à
+  la toute dernière epoch), alors que m50 avait convergé proprement pour
+  les 2 seeds (seed42 : epoch 45/105 ; seed7 : epoch 90/150 — pas de souci
+  là). Signal secondaire à surveiller : seed7 dense montre aussi
+  `best_epoch=270/300` sans early-stop (métrique déjà très petite,
+  probablement sans conséquence pratique, mais pas vérifié).
+
+  **Action lancée 2026-07-16 22:08** : jumeau m95 seed42+seed7 relancés en
+  budget 600/patience 120 (`queue det_twin_budget600`, 2 vagues
+  séquentielles — le jumeau est ~3× plus rapide que V2 par epoch, ETA
+  nettement plus courte que WP6). Une fois fini : lancer les évals test
+  réelles sur TOUS les checkpoints concernés (V2 m50+m95 rallongés déjà
+  prêts, jumeau m95 rallongé à venir, jumeau m50 déjà bon = inchangé) et
+  refaire le tableau T2/WP1 au complet.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
