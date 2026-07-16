@@ -202,6 +202,27 @@ per Paper 1's precedent of accepting honest negative results):
   (saves future authors from re-trying the same naive ideas: §1.5's finding
   already does part of this).
 
+**UPDATE 2026-07-16 — branch (b) achieved, 3-seed confirmed (WPB4).** A
+naive Mamba integration fails badly (+41% relRMSE); the failure was traced
+to a specific, verifiable code defect (an un-gated residual branch — the
+naive `TemporalMambaResidual` adds the Mamba branch's output at full,
+untrained strength from step 1); a standard fix (LayerScale/ReZero gate,
+learnable, initialized at 0) resolves the training instability and
+produces a genuine improvement over vanilla FNO+: relRMSE 0.006353±0.000077
+vs vanilla's 0.006550±0.000135, a 1.46x-vanilla-std gap, 3/3 seeds
+individually consistent. **This is now a real, if modest (~3%), positive
+result — the paper's core narrative shifts from "does X help" to "a
+concrete diagnose-and-fix case study: why the obvious way to add a
+temporal SSM to a spectral operator fails, and what specifically fixes
+it."** This is arguably a more citable, more generalizable contribution
+than a bare hyperparameter win (a) would have been — the mechanism (naive
+residual gating causes optimization instability that specifically damages
+predictions on the harder, information-dense regions of the field) is not
+FNO+-specific and should transfer to other spectral-operator + sequence-
+model integration attempts. WPB1 (vanilla hyperparameter sweep) remains
+open as a secondary/complementary track, not required to carry the paper
+anymore.
+
 ## 3. Results ledger (append rows as each run completes; keep in sync with WP tables below)
 
 | WP | Variant | Seed | relRMSE | NSE | Pearson r | CSI@0.001 | CSI@0.01 | Run dir | Status |
@@ -220,9 +241,11 @@ per Paper 1's precedent of accepting honest negative results):
 | WPB1 | LR/schedule sweep | 42 | | | | | | | pending |
 | WPB1 | padding ablation | 42 | | | | | | | pending |
 | WPB2 | best-vanilla-config, 3 seeds | 42/7/123 | | | | | | | pending |
-| WPB4 | mamba + LayerScale gate, seed 42 | 42 | 0.006442 | 0.999943 | 0.999977 | 0.872149 | 0.995074 | `15-07-2026_21-28-37_..._mamba_layerscale_...` | done — see note below |
-| WPB4 | mamba + LayerScale gate, 3 seeds | 42/7/123 | | | | | | | launched 2026-07-16 (autonomous overnight run), `scripts/run_wpb4_mamba_layerscale_confirmation.sh` |
-| WPB5 | best-mamba-config, 3 seeds | 42/7/123 | | | | | | | pending |
+| WPB4 | mamba + LayerScale gate, seed 42 | 42 | 0.006442 | 0.999943 | 0.999977 | 0.872149 | 0.995074 | `15-07-2026_21-28-37_..._mamba_layerscale_...` | done |
+| WPB4 | mamba + LayerScale gate, seed 7 | 7 | 0.006309 | 0.999946 | — | 0.870093 | — | `16-07-2026_02-36-20_..._mamba_layerscale_seed7_...` | done |
+| WPB4 | mamba + LayerScale gate, seed 123 | 123 | 0.006310 | 0.999946 | 0.999975 | 0.844060 | 0.996392 | `16-07-2026_05-39-17_..._mamba_layerscale_seed123_...` | done |
+| WPB4 | mamba + LayerScale gate, 3-seed mean | 42/7/123 | **0.006353±0.000077** | 0.999945±0.000001 | — | 0.862101±0.015657 | — | — | **CONFIRMED at 3/3 seeds (R1) — clears the pre-registered bar** |
+| WPB5 | best-mamba-config, 3 seeds | 42/7/123 | | | | | | | **satisfied by WPB4's own 3-seed run — no separate WPB5 needed, see below** |
 
 ## 4. Work Packages
 
@@ -651,9 +674,45 @@ clearly-failed variant; (c) this result most directly answers Paper 2's
 central question and a proper 3-seed mean settles it either way instead of
 leaving an ambiguous single-seed read in the ledger.
 
+**3-seed result, 2026-07-16 (R1 satisfied) — CONFIRMED WIN**:
+
+| | Vanilla (3-seed mean) | Mamba + LayerScale (3-seed mean) |
+|---|---:|---:|
+| relRMSE | 0.006550 ± 0.000135 | **0.006353 ± 0.000077** |
+| NSE | 0.999941 ± 0.000002 | 0.999945 ± 0.000001 |
+| CSI@0.001 | 0.869 ± 0.052 | 0.862 ± 0.016 |
+
+Gap on relRMSE: 0.000197, **1.46x the vanilla 3-seed std — clears the
+pre-registered bar (WPB1's criterion, >1x).** Individually consistent
+across seeds (0.006442 / 0.006309 / 0.006310 — seed7 and seed123 land
+almost identically, seed42 slightly higher but still below vanilla's own
+seed42). The LayerScale variant's own std (0.000077) is tighter than
+vanilla's (0.000135) — also more seed-to-seed consistent, not just a
+better mean. CSI@0.001 is a touch below vanilla's mean but well within
+vanilla's own already-documented seed noise on this specific metric (§1.3:
+0.81-0.91 spread) — not a real regression.
+
+**This is Paper 2's confirmed positive result.** A naive Mamba integration
+into FNO+ fails badly (+41% relRMSE, WPB3); the failure was traced to a
+concrete, verifiable code defect (an un-gated residual branch); a standard,
+well-known fix (LayerScale/ReZero) resolves it and **produces a genuine,
+3-seed-confirmed improvement over vanilla FNO+** — small in absolute terms
+(3% relRMSE reduction) but real, reproducible, and directly explained by
+the diagnosed mechanism (the wet-pixel classical RMSE improvement, §above,
+lands exactly where WPB3 predicted it would). §2 (paper positioning)
+updated accordingly.
+
 ### WPB5 — Best Mamba config, 3-seed confirmation
 
-Same structure as WPB2, for whichever Mamba variant clears WPB4's bar.
+**Satisfied by WPB4's own 3-seed run above — no separate WPB5 pass
+needed.** WPB4 was originally scoped as a single-seed screening step with
+WPB5 as its follow-up confirmation; in practice the promising single-seed
+signal (§above) justified going straight to a 3-seed run, which already
+delivers exactly what WPB5 would have produced. Placement/hyperparameter
+sweep (post-backbone vs pre-backbone vs interleaved, `d_state`/`expand`/
+`mamba_layers` variants) remains open for a future iteration if a larger
+gain is wanted, but is no longer required to establish this paper's
+headline result.
 
 ### WPB6 (conditional, only if WPB1-5 all fail to beat baseline outside noise)
 
