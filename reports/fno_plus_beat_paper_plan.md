@@ -750,6 +750,46 @@ sequence-mixing add-ons don't help this one-shot space-time-FFT
 architecture," a real and citable negative result, not "Mamba specifically
 fails" — a more defensible, general claim).
 
+**Update 2026-07-16 — WPB6's control is now REQUIRED, not conditional.**
+With WPB4's positive result in hand, the GRU/Conv1d control flips role: it
+is no longer a fallback for an all-negative outcome, but the ablation that
+determines what the paper can claim. If a zero-init-gated GRU/Conv1d also
+beats vanilla, the honest claim is "a properly-gated temporal mixer helps —
+the gating is the contribution, not Mamba"; only if Mamba beats the gated
+GRU control does "Mamba specifically helps" hold. Without this control a
+competent reviewer can collapse the paper's headline in one question. ~2-3
+runs (seed 42 screening, then confirm the winner).
+
+### WPB7 — Required additions for a publishable version (added 2026-07-16, gap review)
+
+1. **Gate-value analysis (zero GPU)**: read the trained `layer_scale`
+   values from the 3 LayerScale checkpoints — distribution/magnitude per
+   channel. Did the network actually learn to use the Mamba branch (gates
+   moved well away from 0), or is the gain mostly from the branch staying
+   nearly OFF (gates ≈ 0, i.e. the "fix" works by suppressing a harmful
+   block rather than exploiting a useful one)? Either answer reshapes the
+   narrative and one of them (suppression) would substantially weaken the
+   "Mamba helps" claim — must know before writing. Also plot gate values
+   vs training epoch from checkpoints if recoverable.
+2. **Honest metric caveat, to state in the paper**: the LayerScale win is
+   on relRMSE/NSE/Pearson; **CSI@0.001 is NOT improved** (0.862±0.016 vs
+   vanilla 0.869±0.052 — within vanilla's own large noise on this metric,
+   but not a win). "Beats FNO+" must be scoped to the continuous-error
+   metrics; flood-extent classification at the finest threshold is a tie
+   at best. Same discipline as Paper 1's "V2 beats FNO+ but check every
+   metric" rule.
+3. **Second event (UK) for the headline comparison**: vanilla vs
+   LayerScale-Mamba on UK 60m (6 runs: 2 models × 3 seeds, or 2×1 seed
+   screening first). A 3% single-event result is not publishable alone;
+   the same direction on a second event changes its weight entirely.
+4. **Cost table**: params (+Mamba overhead), wall-clock per epoch (already
+   measured: ~2x vanilla), inference latency. The gain must be priced.
+5. **Long-horizon rollout comparison** (vanilla vs LayerScale-Mamba, tool
+   already exists): does the small native-protocol gain grow, shrink, or
+   invert under autoregressive rollout? Temporal-mixing should help MORE
+   at long horizon if the mechanism story is right — a cheap, strong test
+   of the narrative.
+
 ## 5. Evaluation protocol (identical across all WPs)
 
 - Split: `test` only for final reported numbers (`val` used for checkpoint

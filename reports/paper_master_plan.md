@@ -502,10 +502,79 @@ cohérente aussi : cov50=0.109/cov90=0.230 (seed7) vs cov50=0.092/cov90=0.209
   second événement — pas de re-tuning.
 - **Sortie papier** : Table T2-bis ou paragraphe généralisation.
 
+### WP9 — Ensemble profond de jumeaux : LA baseline UQ manquante (ajouté 2026-07-16, quasi gratuit)
+
+**Trou identifié par relecture critique en visant Q1** : l'argument central
+du pivot calibration — "le jumeau déterministe ne peut structurellement pas
+fournir d'incertitude" — est **faux tel quel** et n'importe quel reviewer
+sérieux le relèvera : un **deep ensemble** de jumeaux (N modèles, seeds
+différents) fournit une distribution prédictive, c'est LA baseline UQ
+standard (Lakshminarayanan et al. 2017), souvent mieux calibrée que les
+modèles génératifs. Sans cette comparaison, le papier est attaquable sur
+son dernier argument restant.
+
+- **Chance** : les 3 jumeaux (seeds 42/7/123) sont DÉJÀ entraînés à chaque
+  sparsité → l'ensemble-de-3-jumeaux est **gratuit en entraînement**, il ne
+  faut que des évals (traiter les 3 sorties déterministes comme un ensemble
+  M=3, passer dans le CalibrationAccumulator existant, comparer à V2 M=8 à
+  `nominal_finite_ensemble` égal — corriger pour M différent, le champ
+  existe déjà).
+- **Runs** : éval-only, ~6 évals (3 sparsités × {ensemble-jumeaux, déjà-fait
+  V2}). Si budget : 2 seeds jumeaux de plus pour M=5.
+- **Critères pré-enregistrés** :
+  - Ensemble-jumeaux mieux calibré OU égal à V2 → le génératif n'a plus
+    AUCUNE justification mesurée sur ce benchmark → conclusion du papier
+    d'autant plus nette (et plus citable) — l'écrire tel quel.
+  - V2 nettement mieux calibré → premier vrai point positif pour le
+    génératif → renforce le narratif "où le génératif paie".
+  - Les deux mal calibrés (plausible vu WP3) → "aucune des deux familles ne
+    fournit d'incertitude fiable sans recalibration" — résultat utile aussi.
+- **Sortie papier** : ligne(s) de F5/T2, et un paragraphe de discussion qui
+  désamorce préventivement LA question de reviewer la plus prévisible.
+
+### WP10 — Transfert cross-événement zéro-shot (ajouté 2026-07-16)
+
+Demandé explicitement (tests cross-région) et nécessaire pour viser mieux
+que "un seul événement + une réplication" : prendre les checkpoints
+entraînés Australie (V2 + jumeau, seed 42 min.) et les évaluer **tels
+quels, sans réentraînement** sur UK (grille différente 85×137, stats de
+normalisation UK déjà calculées — WP8). Teste la vraie affirmation de
+déploiement ("different sensor configurations without retraining" du papier
+DIFF-SPARSE, poussée au niveau événement/région).
+- **Runs** : éval-only (~6 évals : 2 modèles × 3 sparsités).
+- **Attente honnête pré-enregistrée** : la normalisation delta/échelle est
+  calée sur les stats Australie → une dégradation est attendue ; la
+  question est *combien*, et si le CLASSEMENT jumeau-vs-V2 tient. Même un
+  échec net des deux est un résultat de déploiement publiable.
+- **Extension optionnelle si temps** : Pakistan/Mozambique 480m
+  (low-fidelity, résolution différente — plus dur, plus parlant).
+
+### WP11 — Table coût/complexité (ajouté 2026-07-16, zéro GPU)
+
+Trou évident pour un reviewer : V2 = 40 pas de diffusion × 8 scénarios par
+prédiction ; le jumeau = 1 forward ; FNO+ = 1 forward pour 19 pas d'un
+coup. Si V2 gagne quelque part, il faut dire À QUEL PRIX.
+- **Contenu** : paramètres, temps d'inférence mesuré par fenêtre de
+  prévision (mêmes conditions, même GPU), mémoire pic, temps d'entraînement
+  total. Mesures réelles, pas estimées.
+- **Sortie papier** : Table T5 — obligatoire dans Methods ou Experiments.
+
+### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
+- **Tout chiffre headline du papier repasse en protocole test COMPLET
+  (13/13 fenêtres)** avant gel — les lectures rapides 4/13 ne servent qu'au
+  pilotage. (Renforce §5.)
+- **Tests de significativité** : comparaison appariée par fenêtre de test
+  (wilcoxon signé ou bootstrap sur les 13 fenêtres × 3 seeds) pour les
+  claims principaux (jumeau vs V2 ; V2 vs FNO+). Un "×1.57" sans intervalle
+  n'ira pas en Q1.
+- **U-Net baseline** : citer les chiffres publiés Table 4 (pas de
+  réentraînement — il est très en-dessous de FNO+ dans le papier source).
+
 ### Hors scope explicite (ne pas ouvrir sans décision consignée §10)
-- Mamba (V2.2), Pakistan/Mozambique (480m), 30m, cross-event transfer,
-  FNO+ à contexte étendu, remask-rollout comme mode principal (reste une
-  ligne d'ablation possible), foundation models météo.
+- Mamba (V2.2), 30m, remask-rollout comme mode principal (reste une
+  ligne d'ablation possible), foundation models météo, benchmarks non-crue.
+- (Sortis du hors-scope le 2026-07-16 : cross-event transfer → WP10 ;
+  Pakistan/Mozambique 480m → extension optionnelle de WP10.)
 
 ---
 
