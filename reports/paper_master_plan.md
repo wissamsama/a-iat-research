@@ -634,6 +634,11 @@ source. Revérifier si accès VPN institutionnel disponible.
   `run_v2_seed123_m95_retry.sh` ajouté, enchaîné après le script m50-retry
   (jusqu'à 2 tentatives chacun), avec le même garde-fou (vérification du
   marqueur `early stop at epoch`, pas juste la fin du process).
+
+  **m50-retry-1 RÉUSSI (2026-07-17 ~20:26)** : early stop propre epoch 195
+  (best epoch 75, patience 120 honorée), succès dès la 1ère tentative de
+  retry. m95-retry-1 démarré immédiatement derrière. Dernier chaînon avant
+  la reconstruction du tableau central WP1.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
