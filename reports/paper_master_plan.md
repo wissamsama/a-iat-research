@@ -655,11 +655,26 @@ source. Revérifier si accès VPN institutionnel disponible.
   V2 {m50,m95} × {seed42,seed7,seed123} tous WP6-corrigés ; jumeau {m50,m95}
   × {seed42,seed7,seed123} tous confirmés (m50 jamais eu besoin de
   correction, m95 rallongé aux 3 seeds, effet marginal/mixte déjà noté).
-  **Reste à faire avant de pouvoir remplir le tableau** : lancer l'éval
+  **Reste à faire avant de pouvoir remplir le tableau** : lancé l'éval
   protocole test complet (13/13 fenêtres) sur les 2 NOUVEAUX checkpoints
-  V2/seed123 (m50 et m95) — les 10 autres combinaisons ont déjà leurs évals
-  test depuis WP6/WP1. Lancé 2026-07-18 03:10 (séquentiel m50→m95,
-  `eval_seed123_queue.log`).
+  V2/seed123 (m50 et m95). 2026-07-18 03:10 (séquentiel m50→m95,
+  `eval_seed123_queue.log`) — **TERMINÉ avec succès, les deux**.
+
+  ⚠ **Hypothèse fausse corrigée en préparant l'agrégation (2026-07-18
+  07:41)** : j'avais supposé "les 10 autres combinaisons ont déjà leurs
+  évals test depuis WP6/WP1" — **faux, vérifié directement** (aucun
+  `eval_rollout_test*` sous les dossiers checkpoints WP6-corrigés, ni pour
+  V2 seed42/seed7, ni pour AUCUN des 6 checkpoints jumeau, pas même les
+  checkpoints jumeau m50 originaux qui n'avaient jamais eu besoin de
+  correction). WP6/WP1 avaient produit les CHECKPOINTS et leurs métriques
+  de validation interne (`rollout_val_rmse`), mais jamais l'éval protocole
+  test 13/13 fenêtres formelle. **10 évals supplémentaires lancées en
+  queue séquentielle** (6 jumeau d'abord — rapides, single-scenario — puis
+  4 V2 — lentes, 8 scénarios), script
+  `/tmp/.../run_central_table_evals.sh`, sortie
+  `central_table_evals_queue.log`. C'est maintenant le VRAI dernier
+  chaînon avant le tableau — leçon : ne jamais supposer qu'un artefact
+  existe sans le lister directement, même quand le plan semble l'impliquer.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
