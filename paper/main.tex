@@ -246,12 +246,16 @@ point at which the two models differ.
 \node[headt, anchor=west] (tw) at ($(unet.east)+(9mm,-10.5mm)$) {\textbf{\twin{} (deterministic)}\\ single pass, $z{=}0$, $t{=}0$\\ $\Rightarrow$ one $\hat\Delta$};
 % ---- reconstruction ----
 \node[box, anchor=west] (rec) at ($(unet.east)+(64mm,0)$) {$\hat x_{t+1}=\mathrm{base}+\sigma_{\mathrm{regime}}\!\cdot\!\hat\Delta$\\ clamp $\hat x\ge 0$};
-% ---- arrows: all orthogonal (right angles only) ----
-\draw[arr] (xin.east) -- ++(2.5mm,0) |- (tenc.west);
-\draw[arr] (min.east) -- ++(2.5mm,0) |- (tenc.west);
-\draw[arr] (min.east) -- ++(2.5mm,0) |- (senc.west);
-\draw[arr] (dem.east) -- ++(2.5mm,0) |- (senc.west);
-\draw[arr] (rain.east) -- ++(2.5mm,0) |- (senc.west);
+% ---- arrows: all orthogonal (right angles only), inputs routed through a
+% single shared vertical bus so wires from boxes of different widths still
+% bend at the same x (a fixed relative jog would misalign, since xin/min/
+% dem/rain all have different .east x-coordinates) ----
+\coordinate (busin) at ($(encx)+(-3mm,0)$);
+\draw[arr] (xin.east) -- (busin -| xin.east) -- (busin -| tenc.west) -- (tenc.west);
+\draw[arr] (min.east) -- (busin -| min.east) -- (busin -| tenc.west) -- (tenc.west);
+\draw[arr] (min.east) -- (busin -| min.east) -- (busin -| senc.west) -- (senc.west);
+\draw[arr] (dem.east) -- (busin -| dem.east) -- (busin -| senc.west) -- (senc.west);
+\draw[arr] (rain.east) -- (busin -| rain.east) -- (busin -| senc.west) -- (senc.west);
 \draw[arr] (tenc.east) -- ++(3mm,0) |- ($(unet.west)+(0,3.5mm)$);
 \draw[arr] (senc.east) -- ++(3mm,0) |- ($(unet.west)+(0,-3.5mm)$);
 \draw[arr] (unet.east) -- ++(3.5mm,0) |- (v2.west);
