@@ -778,6 +778,32 @@ UN SEUL facteur croisé varie :
   courts one-step. Absorbe WP4(a) (`prediction.target: absolute` à Δt
   natif = le point ratio~488 de la grille — même expérience, mieux
   contrôlée en one-step).
+
+- **PHASE 1 FAITE (2026-07-17, `tools/build_mechanism_dose_response.py`,
+  sortie `experiments/FloodCastBench/wp12_dose_response/ratio_curve.json` +
+  figure `paper/figures/f2b_dose_response_ratio.pdf`)** :
+
+  | Δt | ratio Australie | ratio UK |
+  |---|---:|---:|
+  | 300s (natif) | 478 | 412 |
+  | 600s | 239 | 207 |
+  | 900s | 161 | 138 |
+  | 1800s | 82 | 69 |
+  | 3600s | 41 | 34 |
+  | 7200s | 21 | 17 |
+
+  Lectures : (i) σ_Δ croît quasi LINÉAIREMENT avec Δt sur toute la plage
+  (écoulement lisse, régime advectif — pas de décorrélation), donc le
+  ratio suit ~1/Δt ; (ii) le sous-échantillonnage seul couvre un facteur
+  ~23 de ratio (478→21) mais NE PEUT PAS atteindre la région de parité
+  (ratio~1) — la prédiction testable en Phase 2 est donc la monotonie de
+  la fermeture du gap sur 21→478, pas la parité complète (à déclarer
+  honnêtement dans le papier) ; (iii) les ratios natifs (478/412)
+  concordent avec la mesure indépendante de la Figure 2 (488/425, grille
+  d'échantillonnage de paires légèrement différente) — cohérence croisée
+  OK. **Δt retenus pour la Phase 2 (4 points, couverture géométrique)** :
+  300s (478), 900s (161), 1800s (82), 7200s (21) × {absolu, delta} =
+  8 runs one-step courts, seed 42.
 - **Sortie papier** : Figure 2 remplacée par la courbe dose-réponse ;
   §4.2 reformulé selon le résultat ; §1 (contributions) mis à jour pour
   refléter le niveau de preuve réel atteint.
