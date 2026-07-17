@@ -72,11 +72,12 @@ the first such matched control for this task. We first identify and correct
 a structural failure mode of diffusing the \emph{absolute} water-depth
 field at fine temporal resolution: the per-step physical change is
 450--490$\times$ smaller than the field's own amplitude (measured directly
-on two independent flood events), so any sampler whose residual noise
-scales with its generative target is floored above the true signal. A
-delta-space, regime-aware reparametrization removes this floor, and the
-resulting model outperforms the strongest published neural-operator
-baseline on all five reported metrics under full observation. Against its
+on two independent flood events), consistent with a sampling-noise floor
+above the true signal --- a hypothesis we formalize and put to a
+dose--response test. A delta-space, regime-aware reparametrization removes
+the failure, and the resulting model outperforms the strongest published
+neural-operator baseline on all five reported metrics under full
+observation. Against its
 own deterministic twin, however, the generative model's advantage is not
 uniform, and a deep ensemble of twins matches its uncertainty calibration
 --- both families are severely under-covering. We report the comparison in
@@ -294,43 +295,67 @@ this paper scores \ours{} by the \emph{mean of its 8 scenarios}. We flag
 this explicitly as a generic trap for any future
 deterministic-vs-generative comparison in this literature.
 
-\subsection{Why the absolute field cannot be diffused at fine cadence}
+\subsection{Why does the absolute field fail at fine cadence? A scale-mismatch hypothesis}
 \label{sec:mechanism}
 A first variant of our forecaster --- \absdiff{}, which follows the
 reference parametrization of \citet{diffsparse2025} and diffuses the
 \emph{absolute} water-depth field --- fails catastrophically at the
 benchmark's native 300-second cadence: in the dense regime it is
 $\sim$560$\times$ worse than trivial persistence (predicting no change at
-all). We trace this to a scale mismatch, not an implementation defect.
-The true physical signal between two consecutive frames is tiny relative
-to the field's own amplitude: writing $\sigma_\Delta$ for the standard
-deviation of per-step changes and $\sigma_{\text{field}}$ for that of the
-wet-pixel depths, we measure, directly from the raw data of two
-independent events,
+all). The failure is not an implementation defect, and it is not a
+property of diffusion itself: the delta-space model built on the same
+skeleton works (\S\ref{sec:paramresults}). What distinguishes the two is
+the \emph{scale of the generative target}. The true physical signal
+between two consecutive frames is tiny relative to the field's own
+amplitude: writing $\sigma_\Delta$ for the standard deviation of per-step
+changes and $\sigma_{\text{field}}$ for that of the wet-pixel depths, we
+measure, directly from the raw data of two independent events,
 \begin{equation}
 \sigma_{\text{field}} / \sigma_\Delta \;\approx\; 488 \text{ (Australia)}, \qquad 425 \text{ (UK)}
 \end{equation}
-(Figure~\ref{fig:mechanism}). A diffusion sampler's residual error scales
-with the amplitude of \emph{its generative target}. Diffusing the absolute
-field makes that target the full field amplitude, so merely matching
-persistence requires per-step sampling error below $\sim$0.2\% of the
-field's own scale --- beyond what a practical sampler achieves here.
-\ours{} instead diffuses the \emph{per-step change} (delta), for which the
-equivalent condition is trivially satisfied. This mechanism predicts that
-the failure is a property of the parametrization, not of diffusion itself
---- exactly what the corrected model's results confirm
-(\S\ref{sec:paramresults}).
+(Figure~\ref{fig:mechanism}). Our working hypothesis is a
+\textbf{sampling-noise floor}: if a sampler's residual error scales with
+the amplitude of its generative target with some model-specific constant
+$c$, then beating persistence requires $c < \sigma_\Delta /
+\sigma_{\text{field}} \approx 1/450$ in absolute space --- far below what
+practical samplers achieve --- but only $c < 1$ in delta space, which is
+trivially met. We state this as a hypothesis rather than a demonstrated
+mechanism: the evidence so far is two events, both with a high ratio
+\emph{and} a failure, from the same benchmark family --- consistent with
+the hypothesis, but not yet a dose--response relationship.
+
+\blocked{A dose--response experiment is designed and scheduled to settle
+this: one fixed skeleton (\ours{}'s), a single crossed factor
+\{time step $\Delta t \in$ 4--6 geometrically spaced values\} $\times$
+\{target representation: absolute, delta\}, trained for single-step
+prediction in the dense regime (no rollout confounds). Subsampling the
+existing frames to larger $\Delta t$ mechanically lowers the ratio
+$\sigma_{\text{field}}/\sigma_\Delta$; the hypothesis predicts the
+absolute-arm-to-delta-arm error ratio shrinks monotonically as the ratio
+falls, approaching parity when the ratio nears 1. There is no universal
+threshold to find --- the crossing point depends on the sampler's own
+constant $c$ --- but monotonicity tests the mechanism, and the empirical
+crossing point for this architecture is a citable, explicitly
+non-universal deliverable. An internal hint is already consistent with the
+hypothesis: the \absdiff{}-vs-\ours{} gap compresses exactly where the
+delta target's effective scale grows (from $970\times$ dense to
+$1.9\times$ at \mninetyfive{}, where masked pixels make the delta target
+field-scaled), though that comparison is confounded with sparsity itself
+--- hence the clean test.}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.92\linewidth]{figures/f2_mechanism.pdf}
-  \caption{The mechanism behind absolute-field failure, measured from raw
-  training data of two independent flood events. (a) The distribution of
-  per-step changes $|\Delta|$ sits two to three orders of magnitude below
-  the wet-pixel depth distribution. (b) The resulting scale gap
-  ($\sim$488$\times$ Australia, $\sim$425$\times$ UK) is a lower bound on
-  the relative sampling accuracy an absolute-field diffusion model must
-  reach just to match persistence.}
+  \caption{The scale mismatch behind the absolute-field failure
+  hypothesis, measured from raw training data of two independent flood
+  events. (a) The distribution of per-step changes $|\Delta|$ sits two to
+  three orders of magnitude below the wet-pixel depth distribution.
+  (b) The resulting scale gap ($\sim$488$\times$ Australia,
+  $\sim$425$\times$ UK) is, under the sampling-noise-floor hypothesis, a
+  lower bound on the relative sampling accuracy an absolute-field
+  diffusion model would need just to match persistence. This figure will
+  be replaced by the full dose--response curve once that experiment
+  completes.}
   \label{fig:mechanism}
 \end{figure}
 
@@ -428,9 +453,9 @@ Figure~\ref{fig:sparsity} compares the model family across observation
 regimes. Two facts stand out. First, the delta-space parametrization is
 worth up to three orders of magnitude: \absdiff{} sits at or above the
 persistence level everywhere, while every delta-space model is far below
-it --- exactly as the mechanism of \S\ref{sec:mechanism} predicts. Second,
-the short-context ablation confirms the advantage is not driven by input
-history (\S\ref{sec:vsfnoplus} showed the same for the baseline).
+it --- as the scale-mismatch hypothesis of \S\ref{sec:mechanism} predicts.
+Second, the short-context ablation confirms the advantage is not driven by
+input history (\S\ref{sec:vsfnoplus} showed the same for the baseline).
 
 \begin{figure}[t]
   \centering

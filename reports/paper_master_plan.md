@@ -61,6 +61,32 @@ qu'aucun travail existant n'a fait (voir §2).
   gain d'architecture ; le chiffre défendable est le ~×2 en sparse (encore
   confondu par ctx24/12 → WP2).
 
+### Structure profonde du papier (ajouté 2026-07-17 — la colonne vertébrale)
+
+Le papier n'est pas "notre modèle marche" ni un simple audit : c'est une
+**décomposition causale** de la phrase "les modèles de diffusion marchent
+pour la prévision de crues", que la littérature affirme sans jamais la
+décomposer. Trois piliers, chacun avec sa question, sa méthode et ses WPs :
+
+| Pilier | Question | Méthode | WPs | État |
+|---|---|---|---|---|
+| **A. Contrôle** | Le mécanisme génératif lui-même apporte-t-il quelque chose, à squelette identique ? | Jumeau déterministe apparié poids-à-poids | WP1 (+WP2 contexte, +WP6 intégrité checkpoints, +WP11 prix) | En re-éval (WP6) |
+| **B. Mécanisme** | POURQUOI la recette de référence échoue-t-elle ici ? Un ratio adimensionnel σ_Δ(Δt)/σ_champ organise-t-il succès et échecs ? | Dose-réponse : squelette fixe, {Δt × représentation cible} croisés | WP12 (absorbe WP4a) | Hypothèse, test à faire |
+| **C. Honnêteté incertitude** | La justification de repli "le génératif fournit l'incertitude" survit-elle aux baselines UQ standards ? | Deep-ensemble de jumeaux + calibration mesurée à métriques identiques | WP3, WP9 (+WP7 masques réalistes) | m50 : réfutée des 2 côtés ; m95 en attente |
+
+Autour des piliers : validité externe (WP8 UK, WP10 zéro-shot), attribution
+architecturale (WP4 b-f), coût (WP11). **Hors piliers : WP5 (Manning/LULC)**
+— voir sa section, rescopé optionnel.
+
+**La réponse que le papier apporte (état actuel des données)** : l'essentiel
+de ce qui fait "marcher la diffusion" en prévision de crue n'a rien de
+génératif — les gains viennent de choix de représentation (espace delta,
+échelle par régime) qui profitent À L'IDENTIQUE au jumeau déterministe ; le
+ratio signal/champ prédit (si WP12 confirme) où la recette champ-absolu peut
+fonctionner du tout ; et le dividende incertitude, mesuré honnêtement,
+n'existe pas encore sur ce benchmark. Chaque WP doit servir un pilier ; toute
+tâche qui n'en sert aucun est par défaut hors scope.
+
 ---
 
 ## 2. Paysage littérature (vérifié 2026-07-10, refaire une passe avant soumission)
@@ -359,8 +385,11 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
 
 ### WP4 — Grille d'ablation V2 (attribution des gains)
 - **Runs** : seed 42, m50 (régime de la thèse) ; dense en plus pour (a).
-  - (a) `prediction.target: absolute` (architecture V2, paramétrisation V1)
-    → isole la contribution delta. La plus importante de la grille.
+  - (a) ~~`prediction.target: absolute`~~ **ABSORBÉ PAR WP12 (2026-07-17)** :
+    la même manipulation, mais dans le design croisé {Δt × cible} en
+    one-step — mieux contrôlée (pas de confondant rollout/pushforward) et
+    elle donne le point ratio~488 de la courbe dose-réponse au passage. Ne
+    pas la lancer en double ici.
   - (b) `include_target_rainfall: false`
   - (c) encodeur spatial désactivé (attention-only) — vérifier s'il existe un
     knob propre, sinon petit ajout modèle (flag `use_spatial_encoder`)
@@ -371,7 +400,17 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   de 3 en parallèle.
 - **Sortie papier** : Table T3.
 
-### WP5 — LULC / Manning (V2.1, entrée causale vérifiée)
+### WP5 — LULC / Manning (V2.1, entrée causale vérifiée) — RESCOPÉ OPTIONNEL (2026-07-17)
+
+**Rescope (relecture structure profonde, §1)** : ce WP ne sert aucun des
+trois piliers du papier — c'est une amélioration de modèle (une entrée
+causale de plus), pas une réponse à "quand le génératif se justifie-t-il".
+Il renforce l'attrait domaine (revue hydrologie) mais dilue le propos et
+consomme du budget GPU en concurrence avec les piliers. **Décision : ne le
+lancer que si les piliers A/B/C sont bouclés avant M5 (gel des expériences)
+ET qu'il reste du budget ; sinon il passe explicitement en "travail futur /
+papier V2.1" avec une phrase dans la discussion.** Le code reste prêt, rien
+n'est perdu dans les deux cas.
 
 **Schéma confirmé 2026-07-10 (Dell, instruction coordination 0003, commit
 `a7b6c0a`)** : ESRI/Impact-Observatory 10-classes Sentinel-2 — nos codes
@@ -668,7 +707,7 @@ coup. Si V2 gagne quelque part, il faut dire À QUEL PRIX.
   total. Mesures réelles, pas estimées.
 - **Sortie papier** : Table T5 — obligatoire dans Methods ou Experiments.
 
-### WP12 — Preuve dose-réponse du mécanisme signal≪champ (ajouté 2026-07-17, CRITIQUE, quasi gratuit)
+### WP12 — Dose-réponse du mécanisme signal≪champ (ajouté 2026-07-17, redessiné le jour même, CRITIQUE)
 
 **Trou identifié par relecture critique de l'utilisateur** : §4.2/Figure 2
 du papier affirment un MÉCANISME causal ("diffuser l'absolu échoue PARCE
@@ -680,40 +719,68 @@ qui réussirait, aucun exemple à ratio intermédiaire. Un reviewer sérieux
 **le maillon le plus faible du papier**, pas le plus solide comme
 initialement présenté.
 
-- **Test principal (dose-réponse, gratuit — CPU, données déjà sur disque)** :
-  recalculer σ_Δ à plusieurs Δt en sous-échantillonnant la séquence de
-  frames déjà présente (300s natif → 600s, 900s, 1800s, 3000s, ...). Le
-  ratio σ_field/σ_Δ doit décroître mécaniquement quand Δt augmente.
-  Produire une vraie courbe ratio-vs-Δt (5+ points), pas 2 points isolés.
-  Extension de `tools/build_mechanism_figure.py` (ou nouveau script dédié,
-  ne pas alourdir l'existant) : `tools/build_mechanism_dose_response.py`.
-- **Test décisif (entraînement, coûte 1-2 runs courts)** : entraîner
-  Abs-Diff à un Δt intermédiaire (ratio réduit, ex. 1800s) et vérifier que
-  sa performance (vs persistence à ce Δt) s'améliore de façon monotone avec
-  la baisse du ratio, comme prédit par l'hypothèse. Si la sévérité de
-  l'échec ne bouge pas malgré un ratio très différent → l'hypothèse est
-  fausse ou incomplète, à écrire tel quel (résultat négatif informatif).
-- **Réplication hors famille (optionnelle, plus lourde, déjà notée en §9-bis
-  pour la piste Transactions)** : PDEBench SWE ou équivalent — pas dans le
-  scope immédiat de ce WP, seulement si WP12 principal confirme et que la
-  piste Transactions s'ouvre.
+**Design (proposé par l'utilisateur, remplace la version initiale qui
+comparait Abs-Diff — architecture différente — à travers les Δt, donc
+confondait architecture et Δt)** : un seul squelette, celui de V2, figé ;
+UN SEUL facteur croisé varie :
+
+  **{Δt ∈ 4-6 valeurs géométriques} × {cible : absolue, delta}**
+
+- Prédiction **simple (un pas), pas de rollout** : `pushforward_fraction=0`,
+  sélection de checkpoint sur la val one-step — élimine les confondants
+  rollout/pushforward, réduit le coût par run.
+- **Régime dense** uniquement : sous masquage, la cible delta aux pixels
+  masqués a déjà une amplitude d'échelle champ (le remplissage moyen-train
+  n'est pas la frame précédente), ce qui brouillerait la manipulation.
+  Indice interne DÉJÀ cohérent avec le mécanisme, à citer dans le papier :
+  l'écart V1-vs-V2 se comprime exactement là où l'échelle effective de la
+  cible delta grossit (dense ×970 → m95 ×1.9, WP2) — c'est une
+  dose-réponse "gratuite" via la sparsité, mais confondue avec d'autres
+  effets, d'où le besoin du test propre ci-dessous.
+- **Phase 1 (gratuite, CPU, avant tout entraînement)** :
+  `tools/build_mechanism_dose_response.py` — recalculer σ_Δ(Δt) en
+  sous-échantillonnant les frames déjà sur disque (300→600→900→1800→3600→
+  7200s), tracer ratio-vs-Δt pour les 2 événements, ET choisir les 3-4 Δt
+  d'entraînement pour couvrir ≥1 ordre de grandeur de ratio. Peut tourner
+  MAINTENANT en parallèle du GPU.
+- **Phase 2 (GPU, ~6-8 runs courts, seed 42, screening déclaré)** :
+  entraîner les 2 bras (cible absolue / cible delta) à chaque Δt retenu.
+  Mesure par bras : erreur one-step test vs persistence au même Δt.
+- **Prédiction quantitative de l'hypothèse (pré-enregistrée)** :
+  - bras delta : battre la persistence exige un bruit d'échantillonnage
+    normalisé c < 1 → performance ≈ indépendante du ratio ;
+  - bras absolu : exige c < 1/ratio(Δt) → le rapport
+    (erreur_absolu / erreur_delta) doit **décroître de façon monotone**
+    quand le ratio décroît (Δt grandit), avec quasi-parité à ratio → ~1.
+  - **Il n'y a PAS de seuil universel à découvrir** : le point de
+    croisement absolu-vs-persistence dépend de c, propriété de CE sampler
+    (pas une constante physique). Le livrable est (i) la monotonie
+    (test du mécanisme) et (ii) le seuil EMPIRIQUE pour cette
+    architecture (chiffre citable, explicitement non-universel).
 - **Critères pré-enregistrés** :
-  - Sévérité de l'échec suit monotonement le ratio → mécanisme corroboré,
-    la Figure 2 devient une vraie courbe dose-réponse, §4.2 peut passer de
-    "cohérent avec l'hypothèse" à "nous montrons que" (avec la réplication
-    hors-famille encore recommandée avant Transactions, pas avant Q1).
-  - Pas de relation claire → reformuler §4.2 en observation empirique sans
-    revendication causale ("nous observons que... la cause exacte reste à
-    établir"), retirer la revendication de "mécanisme" du résumé des
-    contributions (§1), et documenter le résultat négatif — reste
-    publiable, juste moins fort.
-- **Priorité** : avant tout autre travail sur §4.2/Figure 2 ; n'affecte pas
-  WP6/WP9 (tableau central, calibration) qui restent la priorité GPU
-  immédiate — WP12 principal est CPU, peut tourner en parallèle sans
-  bloquer le training en cours.
-- **Sortie papier** : Figure 2 remplacée par une vraie courbe dose-réponse
-  (pas 2 barres) ; §4.2 reformulé selon le résultat ; §1 (contributions)
-  mis à jour pour refléter le niveau de preuve réel.
+  - Monotonie confirmée → mécanisme corroboré, Figure 2 devient la courbe
+    dose-réponse (2 bras + persistence vs ratio), §4.2 passe de "cohérent
+    avec l'hypothèse" à "nous montrons que" (réplication hors-famille
+    toujours recommandée avant Transactions, pas nécessaire pour Q1).
+  - Pas de relation claire / non-monotone → l'hypothèse est fausse ou
+    incomplète : reformuler §4.2 en observation empirique, retirer
+    "mécanisme" des contributions, documenter le résultat négatif tel
+    quel — reste publiable, moins fort.
+- **Ce que ça peut expliquer rétroactivement si confirmé** : pourquoi le
+  papier DIFF-SPARSE d'origine (domaine tidal, dynamique par pas
+  vraisemblablement plus grande relative au champ) a pu rapporter des
+  succès là où le transfert crue-à-300s s'effondre — les succès/échecs
+  publiés se placent sur le même axe ratio. Si les données tidal de
+  l'original sont publiques, calculer LEUR ratio (data-only) et le placer
+  sur la courbe ; sinon le noter comme non vérifiable.
+- **Priorité et coût** : Phase 1 immédiate (CPU, gratuite). Phase 2 après
+  WP6/WP9 (qui gardent la priorité GPU) — ~1-2 j GPU au total en runs
+  courts one-step. Absorbe WP4(a) (`prediction.target: absolute` à Δt
+  natif = le point ratio~488 de la grille — même expérience, mieux
+  contrôlée en one-step).
+- **Sortie papier** : Figure 2 remplacée par la courbe dose-réponse ;
+  §4.2 reformulé selon le résultat ; §1 (contributions) mis à jour pour
+  refléter le niveau de preuve réel atteint.
 
 ### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
 - **Tout chiffre headline du papier repasse en protocole test COMPLET
@@ -1024,3 +1091,23 @@ Détail complet dans `PROTOCOL.md`.
   sans confirmation dose-réponse, la piste mécanisme-first tombe
   indépendamment des portes (1)/(2) déjà posées. N'affecte pas la priorité
   GPU immédiate (WP6/WP9) — WP12 principal est CPU-only.
+- 2026-07-17 (b) — **WP12 redessiné (design utilisateur) + structure
+  profonde du papier posée (§1)** : (i) WP12 passe du design "Abs-Diff à
+  travers les Δt" (confondu par l'architecture) au design propre "squelette
+  V2 unique, croisement {Δt × cible absolue/delta}, one-step dense,
+  pushforward=0" — prédiction pré-enregistrée : le rapport
+  erreur_absolu/erreur_delta décroît monotonement avec le ratio ; pas de
+  seuil universel, seulement la monotonie (test du mécanisme) + le seuil
+  empirique propre à ce sampler (livrable citable, non-universel). WP4(a)
+  absorbé (même manipulation, mieux contrôlée). (ii) §1 gagne le bloc
+  "Structure profonde" : 3 piliers (A contrôle jumeau, B mécanisme
+  dose-réponse, C honnêteté incertitude), chaque WP mappé à un pilier, et
+  la réponse que le papier apporte énoncée explicitement — l'essentiel des
+  gains attribués à la diffusion vient de choix de représentation qui
+  profitent à l'identique au déterministe. (iii) WP5 (Manning/LULC)
+  rescopé optionnel : ne sert aucun pilier, ne se lance que si A/B/C sont
+  bouclés avant le gel M5, sinon passe en travail futur. (iv) Indice
+  interne noté dans WP12 : la compression du gap V1/V2 avec la sparsité
+  (×970 dense → ×1.9 m95) est déjà cohérente avec le mécanisme (l'échelle
+  effective de la cible delta grossit aux pixels masqués) — dose-réponse
+  "gratuite" mais confondue, d'où le test propre.
