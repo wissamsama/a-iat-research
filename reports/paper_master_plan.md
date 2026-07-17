@@ -602,6 +602,23 @@ source. Revérifier si accès VPN institutionnel disponible.
   `/tmp/.../run_v2_seed123_queue.sh`, watchdog dédié). Bloque la
   reconstruction du tableau central WP1 tant que ces 2 runs ne sont pas
   finis — c'est maintenant le dernier chaînon manquant.
+
+  **Incident 2026-07-17 18:08 : m50 a crashé, bug de script révélé.**
+  `RuntimeError: 19/72 batches skipped` à l'epoch 7 (skip croissant dès
+  l'epoch 1 : 1, 11, 17, 17, 19 — contrairement à seed42/seed7 WP6, zéro
+  skip sur toute leur durée). **Bug découvert dans le script de queue** :
+  il attendait juste la disparition du PID, sans vérifier le succès — donc
+  m95 a été lancé automatiquement juste après l'ÉCHEC de m50, pas après sa
+  réussite. m95 montre lui aussi un signe potentiel d'instabilité dès le
+  premier batch (`prediction_finite: false` dans le diagnostic initial),
+  à surveiller. **Correction** : nouveau script
+  `run_v2_seed123_m50_retry.sh` qui attend la fin réelle de m95, puis
+  retente m50 jusqu'à 2 fois en vérifiant explicitement le marqueur
+  `early stop at epoch` (pas juste la disparition du process) avant de
+  déclarer un succès. Leçon générale à appliquer à tout script de queue
+  futur : **toujours vérifier le contenu du log de fin, jamais seulement
+  la disparition du PID** — un crash et un succès ressemblent identiques
+  du point de vue d'un `wait $PID`.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
