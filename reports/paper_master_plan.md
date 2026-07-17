@@ -619,6 +619,21 @@ source. Revérifier si accès VPN institutionnel disponible.
   futur : **toujours vérifier le contenu du log de fin, jamais seulement
   la disparition du PID** — un crash et un succès ressemblent identiques
   du point de vue d'un `wait $PID`.
+
+  **Incident 2026-07-17 18:12 : m95 a aussi crashé** (le signal
+  `prediction_finite: false` du premier batch était donc un vrai signe
+  avant-coureur, pas du bruit) — `RuntimeError: 24/72 batches skipped` à
+  l'epoch 5 (13, 0, 1, 18, 24 — pattern bruyant, pas une dérive continue
+  comme m50, mais franchit quand même le seuil). **Les deux runs seed123
+  (m50 ET m95) ont donc échoué à leur 1er essai**, contrairement à
+  seed42/seed7 qui avaient tous réussi du premier coup. Hypothèse : ce
+  n'est probablement pas un hasard isolé — seed123 pourrait être
+  intrinsèquement plus proche du seuil d'instabilité que les 2 autres
+  seeds pour ce modèle/paramétrisation (à documenter comme observation,
+  pas à sur-interpréter sans plus de runs). **Queue de retry étendue** :
+  `run_v2_seed123_m95_retry.sh` ajouté, enchaîné après le script m50-retry
+  (jusqu'à 2 tentatives chacun), avec le même garde-fou (vérification du
+  marqueur `early stop at epoch`, pas juste la fin du process).
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
