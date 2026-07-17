@@ -637,8 +637,29 @@ source. Revérifier si accès VPN institutionnel disponible.
 
   **m50-retry-1 RÉUSSI (2026-07-17 ~20:26)** : early stop propre epoch 195
   (best epoch 75, patience 120 honorée), succès dès la 1ère tentative de
-  retry. m95-retry-1 démarré immédiatement derrière. Dernier chaînon avant
-  la reconstruction du tableau central WP1.
+  retry. m95-retry-1 démarré immédiatement derrière.
+
+  **m95-retry-1 RÉUSSI (2026-07-18 ~03:10)** : early stop propre epoch 415
+  (best epoch 295, patience 120 honorée). **Les 4 checkpoints V2 seed123
+  corrigés (m50+m95, tentative 1 échouée + retry réussi pour chacun) sont
+  identifiés et confirmés** :
+  - m50 : `17-07-2026_18-12-40_.../checkpoint_best.pth` (epoch 75,
+    rollout_val_rmse=1.2717)
+  - m95 : `17-07-2026_20-27-22_.../checkpoint_best.pth` (epoch 295,
+    rollout_val_rmse=1.1634)
+  (les tentatives échouées `18-03-48` et `18-08-53` sont laissées sur
+  disque mais ne doivent JAMAIS être utilisées pour le tableau final —
+  written down here explicitly pour éviter toute confusion future.)
+
+  **Toutes les pièces du tableau central WP1 sont maintenant réunies** :
+  V2 {m50,m95} × {seed42,seed7,seed123} tous WP6-corrigés ; jumeau {m50,m95}
+  × {seed42,seed7,seed123} tous confirmés (m50 jamais eu besoin de
+  correction, m95 rallongé aux 3 seeds, effet marginal/mixte déjà noté).
+  **Reste à faire avant de pouvoir remplir le tableau** : lancer l'éval
+  protocole test complet (13/13 fenêtres) sur les 2 NOUVEAUX checkpoints
+  V2/seed123 (m50 et m95) — les 10 autres combinaisons ont déjà leurs évals
+  test depuis WP6/WP1. Lancé 2026-07-18 03:10 (séquentiel m50→m95,
+  `eval_seed123_queue.log`).
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
