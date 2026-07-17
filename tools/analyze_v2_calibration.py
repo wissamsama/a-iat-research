@@ -47,12 +47,12 @@ def main() -> int:
         raise SystemExit("--labels must match --eval-dirs")
     columns = len(args.eval_dirs)
 
-    fig, axes = plt.subplots(3, columns, figsize=(4.6 * columns, 12.0), dpi=150, squeeze=False)
-    fig.suptitle(
-        "Calibration DIFF-SPARSE v2 (ensemble de scénarios vs vérité simulateur)\n"
-        "Rangée 1 : reliability — Rangée 2 : rank histogram — Rangée 3 : spread–skill",
-        fontsize=12, fontweight="700",
-    )
+    plt.rcParams.update({
+        "font.family": "serif",
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    })
+    fig, axes = plt.subplots(3, columns, figsize=(3.4 * columns, 8.2), dpi=200, squeeze=False)
 
     for column, (eval_dir, label) in enumerate(zip(args.eval_dirs, labels)):
         calibration = load_calibration(eval_dir)
@@ -66,11 +66,11 @@ def main() -> int:
             counts = entry["pooled_count"]
             kept = [i for i in range(len(probs)) if counts[i] > 0]
             ax.plot([probs[i] for i in kept], [observed[i] for i in kept],
-                    marker=marker, label=gamma_key.replace("gamma_", "γ="))
-        ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, label="parfaite")
-        ax.set_xlabel("probabilité prévue (k/M)")
-        ax.set_ylabel("fréquence observée")
-        ax.set_title(f"{label} — reliability")
+                    marker=marker, label=gamma_key.replace("gamma_", "$\\gamma$="))
+        ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, label="perfect")
+        ax.set_xlabel("forecast probability (k/M)")
+        ax.set_ylabel("observed frequency")
+        ax.set_title(label, fontsize=9)
         ax.legend(fontsize=8)
         ax.set_xlim(0, 1); ax.set_ylim(0, 1)
 
@@ -78,35 +78,35 @@ def main() -> int:
         hist = calibration["rank_histogram"]
         ranks = list(range(members + 1))
         width = 0.4
-        ax.bar([r - width / 2 for r in ranks], hist["frequency"], width=width, label="tous pixels")
-        ax.bar([r + width / 2 for r in ranks], hist["active_frequency"], width=width, label="pixels actifs")
-        ax.axhline(hist["uniform_reference"], color="k", linestyle="--", linewidth=0.8, label="uniforme")
-        ax.set_xlabel("rang de la cible dans l'ensemble")
-        ax.set_ylabel("fréquence")
-        ax.set_title(f"{label} — rank histogram")
+        ax.bar([r - width / 2 for r in ranks], hist["frequency"], width=width, label="all pixels")
+        ax.bar([r + width / 2 for r in ranks], hist["active_frequency"], width=width, label="active pixels")
+        ax.axhline(hist["uniform_reference"], color="k", linestyle="--", linewidth=0.8, label="uniform")
+        ax.set_xlabel("rank of truth in ensemble")
+        ax.set_ylabel("frequency")
+        pass  # column title on top row only
         ax.legend(fontsize=8)
 
         ax = axes[2][column]
         bins = [b for b in calibration["spread_skill"] if b["count"] > 0]
-        ax.loglog([b["mean_spread_m"] for b in bins], [b["rmse_m"] for b in bins], "o-", label="RMSE(moyenne)")
+        ax.loglog([b["mean_spread_m"] for b in bins], [b["rmse_m"] for b in bins], "o-", label="RMSE (ensemble mean)")
         spreads = [b["mean_spread_m"] for b in bins if b["mean_spread_m"] > 0]
         if spreads:
             ax.loglog(spreads, spreads, "k--", linewidth=0.8, label="RMSE = spread")
-        ax.set_xlabel("spread ensemble (m)")
-        ax.set_ylabel("erreur (m)")
-        ax.set_title(f"{label} — spread–skill")
+        ax.set_xlabel("ensemble spread (m)")
+        ax.set_ylabel("error (m)")
+        pass  # column title on top row only
         ax.legend(fontsize=8)
 
         coverage = calibration["coverage"]
         text = "  ".join(
-            f"IC{name}: {entry['pooled']:.2f} (nominal fini-M {entry['nominal_finite_ensemble']:.2f})"
+            f"CI{name}: {entry['pooled']:.2f} (nominal {entry['nominal_finite_ensemble']:.2f})"
             for name, entry in sorted(coverage.items())
         )
         axes[0][column].text(0.02, 0.97, text, transform=axes[0][column].transAxes,
                              fontsize=7.5, va="top",
                              bbox=dict(facecolor="white", alpha=0.75, edgecolor="none"))
 
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.tight_layout()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, bbox_inches="tight")
     plt.close(fig)

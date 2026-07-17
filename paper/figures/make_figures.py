@@ -86,10 +86,10 @@ def fig_performance_vs_sparsity() -> None:
                yerr=err, error_kw={"lw": 0.8, "capsize": 2}, hatch=hatch,
                edgecolor="white", linewidth=0.4)
 
-    bars(-1.5 * w, v1, C_V1, "V1 (absolute-space diffusion)")
-    bars(-0.5 * w, v2_12, C_V2_12, "V2, context 12 (=V1)")
-    bars(+0.5 * w, v2_seeds.mean(axis=1), C_V2, "V2 (delta-space diffusion)", v2_seeds)
-    bars(+1.5 * w, twin_seeds.mean(axis=1), C_TWIN, "Deterministic twin", twin_seeds)
+    bars(-1.5 * w, v1, C_V1, "Abs-Diff (absolute field)")
+    bars(-0.5 * w, v2_12, C_V2_12, "$\\Delta$-Diff (short context, 12)")
+    bars(+0.5 * w, v2_seeds.mean(axis=1), C_V2, "$\\Delta$-Diff (delta field)", v2_seeds)
+    bars(+1.5 * w, twin_seeds.mean(axis=1), C_TWIN, "Twin (deterministic)", twin_seeds)
 
     ax.set_yscale("log")
     ax.set_ylim(2e-4, 3)
@@ -114,16 +114,17 @@ def fig_calibration_comparison() -> None:
     (b) rank histograms (active pixels) -- V2 (M=8) vs twin ensemble (M=3)."""
 
     e = WORKSPACE / "experiments/FloodCastBench"
+    DD = "$\\Delta$-Diff"
     sources = [
-        ("Twin ens.\n(M=3) m50", C_ENS,
+        ("Twin ens.\n(M=3) M50", C_ENS,
          e / "wp9_det_twin_ensemble/eval_test_m3_17-07-2026_00-11-29/eval_calibration.json"),
-        ("V2 gauge\nm50", C_V2,
+        (f"{DD} gauge\nM50", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.5_gauge/eval_calibration.json"),
-        ("V2 clust.\nm50", C_V2,
+        (f"{DD} clust.\nM50", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.5_cluster/eval_calibration.json"),
-        ("V2 gauge\nm95", C_V2,
+        (f"{DD} gauge\nM95", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_gauge/eval_calibration.json"),
-        ("V2 clust.\nm95", C_V2,
+        (f"{DD} clust.\nM95", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_cluster/eval_calibration.json"),
     ]
 
@@ -162,8 +163,8 @@ def fig_calibration_comparison() -> None:
     # (b) rank histograms, active pixels, frequency vs uniform
     twin_c = load_calibration(sources[0][2])
     v2_c = load_calibration(sources[1][2])
-    for c, color, label in ((v2_c, C_V2, "V2 (M=8, m50 gauge)"),
-                            (twin_c, C_ENS, "Twin ensemble (M=3, m50)")):
+    for c, color, label in ((v2_c, C_V2, f"{DD} (M=8, M50 gauge)"),
+                            (twin_c, C_ENS, "Twin ensemble (M=3, M50)")):
         freq = np.array(c["rank_histogram"]["active_frequency"])
         ranks = np.arange(len(freq)) / (len(freq) - 1)
         ax2.plot(ranks, freq * (len(freq)), marker="o", ms=3, lw=1.2,

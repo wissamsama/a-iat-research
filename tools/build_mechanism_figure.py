@@ -83,41 +83,55 @@ def main() -> int:
 
     events = [collect_event(path) for path in args.configs]
 
-    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.6), dpi=150)
-    fig.suptitle(
-        "Le mécanisme : à Δt=300 s, le changement réel par pas est ~2 ordres de grandeur\n"
-        "sous l'amplitude du champ — diffuser le champ absolu impose un plancher de bruit > signal",
-        fontsize=11, fontweight="700",
-    )
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.size": 9,
+        "axes.titlesize": 9.5,
+        "axes.labelsize": 9,
+        "legend.fontsize": 8,
+        "xtick.labelsize": 8.5,
+        "ytick.labelsize": 8.5,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    })
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.9), dpi=200,
+                             gridspec_kw={"width_ratios": [1.5, 1.0]})
 
     ax = axes[0]
     bins = np.logspace(-6, 1.2, 80)
-    for entry, (c_delta, c_wet) in zip(events, (("#1f77b4", "#9ecae1"), ("#d62728", "#f4a5a5"))):
+    for entry, (c_delta, c_wet) in zip(events, (("#0072B2", "#56B4E9"), ("#D55E00", "#E69F00"))):
         ax.hist(np.clip(entry["deltas"], 1e-6, None), bins=bins, histtype="step",
-                density=True, color=c_delta, label=f"{entry['event']} : |Δ| par pas (5 min)")
+                density=True, color=c_delta, lw=1.1,
+                label=f"{entry['event']}: per-step change $|\\Delta|$")
         ax.hist(entry["wet"], bins=bins, histtype="step", density=True,
-                color=c_wet, linestyle="--", label=f"{entry['event']} : profondeur (pixels mouillés)")
+                color=c_wet, linestyle="--", lw=1.1,
+                label=f"{entry['event']}: depth (wet pixels)")
     ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlabel("mètres (échelle log)")
-    ax.set_ylabel("densité (log)")
-    ax.set_title("Distributions réelles (frames train sous-échantillonnées)")
-    ax.legend(fontsize=7.5)
+    ax.set_xlabel("meters (log scale)")
+    ax.set_ylabel("density (log)")
+    ax.set_title("(a) Per-step change vs. field amplitude", loc="left")
+    ax.legend(fontsize=6.8, frameon=False)
 
     ax = axes[1]
     labels = [e["event"] for e in events]
     x = np.arange(len(events))
-    ax.bar(x - 0.18, [e["delta_std"] for e in events], width=0.36, label="std du changement par pas")
-    ax.bar(x + 0.18, [e["field_std"] for e in events], width=0.36, label="std du champ (pixels mouillés)")
+    ax.bar(x - 0.18, [e["delta_std"] for e in events], width=0.36, color="#0072B2",
+           label="std of per-step change")
+    ax.bar(x + 0.18, [e["field_std"] for e in events], width=0.36, color="#E69F00",
+           label="std of field (wet pixels)")
     ax.set_yscale("log")
     ax.set_xticks(x, labels)
-    ax.set_ylabel("mètres (log)")
+    ax.set_ylabel("meters (log)")
+    top = max(e["field_std"] for e in events)
+    ax.set_ylim(top=top * 40)
     for i, e in enumerate(events):
         ratio = e["field_std"] / max(e["delta_std"], 1e-12)
-        ax.text(i, e["field_std"] * 1.4, f"×{ratio:.0f}", ha="center", fontsize=10, fontweight="700")
-    ax.set_title("Écart d'échelle signal/champ par événement")
-    ax.legend(fontsize=8)
+        ax.text(i + 0.18, e["field_std"] * 1.6, f"$\\times${ratio:.0f}", ha="center",
+                fontsize=9, fontweight="700")
+    ax.set_title("(b) Scale gap per event", loc="left")
+    ax.legend(fontsize=6.4, frameon=False, loc="upper left")
 
-    fig.tight_layout(rect=(0, 0, 1, 0.88))
+    fig.tight_layout()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, bbox_inches="tight")
     plt.close(fig)
