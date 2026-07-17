@@ -469,6 +469,37 @@ source. Revérifier si accès VPN institutionnel disponible.
   premières epochs. Si ça replante seul sur GPU, l'hypothèse contention est
   fausse et il faudra chercher ailleurs (config seed7 spécifique, non-
   déterminisme GPU pur). À vérifier au réveil si pas résolu avant.
+
+  **seed7/m95 retry terminé 2026-07-17 07:20** (early stop epoch 480, best
+  epoch 360) : **zéro batch skippé sur toute la durée** — confirme
+  l'hypothèse de contention GPU avec WP9 comme cause du crash initial (pas
+  un problème de config seed7 ni de non-déterminisme). Mais le résultat lui-
+  même est **une régression, pas une amélioration** : `rollout_val_rmse` =
+  **0.7410** vs **0.7105** (checkpoint original, epoch 300, jamais
+  early-stoppé) → **+4.3% PIRE**, à l'opposé de seed42/m95 (+1.0% mieux) et
+  des 4 runs V2 (-16.5% à -36.6%, tous meilleurs). Résumé jumeau-m95 : seed42
+  quasi-inchangé, seed7 dégradé. **Ne pas présenter WP6 comme "budget plus
+  long = toujours mieux" pour le jumeau** — contrairement à V2, l'effet est
+  faible et de signe incohérent selon la seed, ce qui suggère que la
+  variance run-à-run domine le signal de convergence pour cette architecture
+  spécifiquement. À signaler tel quel dans le papier si WP6 est cité comme
+  justification méthodologique.
+
+  ⚠ **Incident opérationnel (2026-07-17, ~4h26 GPU idle)** : le monitor mis
+  en place pour suivre le retry seed7 utilisait un filtre trop restrictif
+  (`awk` ne reconnaissait pas la ligne `early stop at epoch...` — elle ne
+  matchait ni le motif d'erreur ni `^epoch=`) → le message de fin de
+  training n'a déclenché AUCUNE notification. Le run s'est terminé à 07:20,
+  découvert seulement à 11:46 sur demande "eta" de l'utilisateur — le GPU
+  est resté inactif ~4h26 sans que je m'en aperçoive. Corrigé : nouveau
+  monitor (seed123/m95, lancé 11:47) avec un filtre couvrant explicitly
+  "early stop" en plus des erreurs. Leçon retenue : tout filtre de monitor
+  sur un training doit inclure le message de fin/early-stop, pas seulement
+  les signatures d'erreur — silence ≠ succès.
+
+  **Action 2026-07-17 11:47** : seed123/m95 mis en queue seul (budget
+  600/patience 120) pour compléter le trio de seeds m95 nécessaire à WP9-m95
+  et au tableau WP1 final.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
