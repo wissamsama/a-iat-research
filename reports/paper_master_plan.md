@@ -716,6 +716,38 @@ son dernier argument restant.
     + paragraphe "Is a generative model even needed for uncertainty?"
     (commit `7614b98`).
 
+- **RÉSULTAT MIS À JOUR ET COMPLÉTÉ (2026-07-17, fin de journée)** — les 2
+  caveats du résultat m50 partiel sont levés, et m95 est fait :
+
+  1. **V2 m50 masque ALÉATOIRE, checkpoint WP6-corrigé** (comble le caveat
+     "gauge≠aléatoire"), `wp9_det_twin_ensemble/v2_m50_random_seed42_wp6ckpt/` :
+     cov50 ratio **0.395**, cov90 ratio **0.444** — comparaison maintenant
+     appariée mask-à-mask avec l'ensemble-jumeaux.
+  2. **Ensemble-jumeaux m95, 3 seeds rallongés** (comble le caveat "m95
+     manquant"), `wp9_det_twin_ensemble/eval_test_m3_17-07-2026_17-28-04/` :
+     cov50 pooled **0.174** (ratio **0.695**), cov90 pooled **0.280** (ratio
+     **0.622**).
+
+  **Tableau de synthèse calibration (ratio couverture observée/nominale,
+  1.0 = parfait), toutes comparaisons maintenant appariées par masque** :
+
+  | Modèle | m50 (aléatoire) | m95 (structuré, le plus proche dispo) |
+  |---|---:|---:|
+  | Ensemble-jumeaux (M=3) | 0.469 / 0.456 | 0.695 / 0.622 |
+  | V2 (M=8) | 0.395 / 0.444 | gauge 0.644/0.673 · cluster 0.517/0.556 |
+
+  **Lecture** : à m50 comme à m95, l'ensemble-jumeaux n'est **jamais moins
+  bien calibré que V2** — à m50 il est même légèrement meilleur (0.469 vs
+  0.395 sur l'intervalle 50%), et à m95 comparable au meilleur cas V2
+  (gauge). **La branche (c) "les deux mal calibrés, ni l'un ni l'autre ne
+  sauve la calibration" est confirmée aux deux sparsités**, avec une nuance
+  qui renforce le narratif du papier plutôt que de l'affaiblir : rien dans
+  ces données ne soutient "le génératif est mieux calibré que le
+  déterministe" — c'est cohérent avec le pilier C tel qu'énoncé en §1.
+  Caveat restant, mineur : m95 encore comparé à des masques structurés
+  faute d'éval V2-m95-aléatoire-avec-calibration lancée (peu prioritaire,
+  le signal est déjà cohérent aux deux sparsités disponibles).
+
 ### WP10 — Transfert cross-événement zéro-shot (ajouté 2026-07-16)
 
 Demandé explicitement (tests cross-région) et nécessaire pour viser mieux

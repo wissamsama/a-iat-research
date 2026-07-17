@@ -116,15 +116,15 @@ def fig_calibration_comparison() -> None:
     e = WORKSPACE / "experiments/FloodCastBench"
     DD = "$\\Delta$-Diff"
     sources = [
-        ("Twin ens.\n(M=3) M50", C_ENS,
+        ("Twin ens.\n(M=3) M50\nrandom", C_ENS,
          e / "wp9_det_twin_ensemble/eval_test_m3_17-07-2026_00-11-29/eval_calibration.json"),
-        (f"{DD} gauge\nM50", C_V2,
-         e / "wp7_structured_masks_eval/seed42_m0.5_gauge/eval_calibration.json"),
-        (f"{DD} clust.\nM50", C_V2,
-         e / "wp7_structured_masks_eval/seed42_m0.5_cluster/eval_calibration.json"),
-        (f"{DD} gauge\nM95", C_V2,
+        (f"{DD} M50\nrandom", C_V2,
+         e / "wp9_det_twin_ensemble/v2_m50_random_seed42_wp6ckpt/eval_calibration.json"),
+        ("Twin ens.\n(M=3) M95\nrandom", C_ENS,
+         e / "wp9_det_twin_ensemble/eval_test_m3_17-07-2026_17-28-04/eval_calibration.json"),
+        (f"{DD} M95\ngauge", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_gauge/eval_calibration.json"),
-        (f"{DD} clust.\nM95", C_V2,
+        (f"{DD} M95\ncluster", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_cluster/eval_calibration.json"),
     ]
 
@@ -160,11 +160,11 @@ def fig_calibration_comparison() -> None:
     ax1.set_axisbelow(True)
     ax1.set_title("(a) Central-interval coverage (finite-ensemble corrected)", loc="left")
 
-    # (b) rank histograms, active pixels, frequency vs uniform
+    # (b) rank histograms, active pixels, frequency vs uniform (M50, matched random masks)
     twin_c = load_calibration(sources[0][2])
     v2_c = load_calibration(sources[1][2])
-    for c, color, label in ((v2_c, C_V2, f"{DD} (M=8, M50 gauge)"),
-                            (twin_c, C_ENS, "Twin ensemble (M=3, M50)")):
+    for c, color, label in ((v2_c, C_V2, f"{DD} (M=8, M50 random)"),
+                            (twin_c, C_ENS, "Twin ensemble (M=3, M50 random)")):
         freq = np.array(c["rank_histogram"]["active_frequency"])
         ranks = np.arange(len(freq)) / (len(freq) - 1)
         ax2.plot(ranks, freq * (len(freq)), marker="o", ms=3, lw=1.2,

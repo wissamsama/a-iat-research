@@ -545,37 +545,44 @@ uncertainty'' --- is false as stated: a \emph{deep ensemble} of
 independently trained deterministic models
 \citep{lakshminarayanan2017deep} is the standard baseline, and our three
 \twin{} seeds provide one at zero additional training cost.
-Figure~\ref{fig:calibcomp} makes the comparison at \mfifty{} on identical
-metrics and finite-ensemble corrections. The result is symmetric and
-sobering: the twin ensemble ($M{=}3$) covers 46--47\% of its corrected
-nominal intervals, statistically comparable to \ours{} ($M{=}8$, 43--48\%
-under the closest available mask condition) --- \textbf{neither family
-provides reliable uncertainty out of the box}, and the rank histograms
-show the diffusion ensembles are, if anything, more overconfident in shape
-than the twin ensemble. On this benchmark, calibration as measured so far
-does not supply the generative model's missing justification.
+Figure~\ref{fig:calibcomp} makes the comparison at both sparsities, with
+the twin ensemble evaluated on the same random masks used everywhere else
+in this paper and \ours{} on its closest matched condition (random masks
+at \mfifty{}; the structured gauge/cluster masks at \mninetyfive{}, since
+no random-mask calibration run was performed at that sparsity). The result
+is symmetric and sobering at both sparsities: at \mfifty{}, the twin
+ensemble ($M{=}3$) covers 47\% of its corrected 50\%-interval nominal
+(\ours{}, $M{=}8$, random masks: 40\%); at \mninetyfive{}, the twin
+ensemble covers 70\% (\ours{}: 64\% gauge, 52\% cluster). \textbf{At no
+sparsity tested is the twin ensemble less well calibrated than the
+diffusion ensemble} --- if anything the reverse holds slightly, and the
+rank histograms show the diffusion ensemble is, if anything, more
+overconfident in shape. On this benchmark, calibration as measured so far
+does not supply the generative model's missing justification: the
+uncertainty-based defense of diffusion is not merely unproven, it is
+actively contradicted by the one standard baseline it should be compared
+against.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figures/f6_calibration_comparison.pdf}
   \caption{Uncertainty quality: \ours{} diffusion ensembles vs.\ a deep
-  ensemble of deterministic twins. (a) Observed over nominal coverage
-  (finite-ensemble corrected; 1.0 = perfectly calibrated) --- every
-  condition is severely under-covered, twin ensemble and \ours{} alike.
-  (b) Rank histograms over active pixels: both are U-shaped
-  (overconfident), \ours{} more strongly so. Caveats: the twin ensemble
-  uses random masks at \mfifty{} while the nearest available \ours{}
-  evaluations use structured masks (the gauge mask is behaviorally closest
-  to random, \S\ref{sec:masks}); member counts differ ($M{=}3$ vs
-  $M{=}8$); single-seed \ours{} evaluations. A fully matched comparison
-  (random masks, all sparsities, corrected checkpoints) is pending.}
+  ensemble of deterministic twins, at both tested sparsities. (a) Observed
+  over nominal coverage (finite-ensemble corrected; 1.0 = perfectly
+  calibrated) --- every condition is severely under-covered, and the twin
+  ensemble is never worse than \ours{}. (b) Rank histograms over active
+  pixels at \mfifty{} (matched random masks): both are U-shaped
+  (overconfident), \ours{} more strongly so. Caveat: at \mninetyfive{},
+  \ours{} is evaluated on structured masks (no random-mask run at that
+  sparsity) while the twin ensemble uses random masks --- \S\ref{sec:masks}
+  showed the gauge mask behaves like random, so this likely understates
+  rather than overstates \ours{}'s calibration there.}
   \label{fig:calibcomp}
 \end{figure}
 
-\blocked{Remaining for this subsection: the \mninetyfive{} twin-ensemble
-evaluation (waiting on the corrected \mninetyfive{} checkpoints), the
-matched random-mask \ours{} evaluation at \mfifty{}, and a sharpness-aware
-score (CRPS) to complement pure coverage.}
+\blocked{Remaining for this subsection: a matched random-mask \ours{}
+evaluation at \mninetyfive{} (to remove the one remaining mask-type
+caveat), and a sharpness-aware score (CRPS) to complement pure coverage.}
 
 \subsection{Ablations, cost, and generalization}
 \label{sec:ablations}
