@@ -226,13 +226,16 @@ point at which the two models differ.
   arr/.style={-{Stealth[length=1.5mm]}, black!65, line width=0.55pt},
   lab/.style={font=\sffamily\tiny, black!55, align=center},
 ]
-% ---- inputs ----
-\node[box] (xin) {sparse context\\ $X_{t-23:t}\odot M$};
-\node[box, below=of xin] (min) {sensor mask $M$};
-\node[box, below=of min] (dem) {DEM};
-\node[box, below=of dem] (rain) {rainfall $R$\\ (context $+$ target step)};
-% ---- shared encoders (anchored right of the widest input, no overlap possible) ----
-\coordinate (encx) at ($(rain.east)+(7mm,0)$);
+% ---- inputs: forced to a common width so their .east edges align exactly
+% -- this is what makes a clean shared bus possible below without any
+% coordinate arithmetic (mixed-width boxes would bend wires at different x
+% for a fixed relative jog, which is what caused the earlier messy routing) ----
+\node[box, minimum width=34mm] (xin) {sparse context\\ $X_{t-23:t}\odot M$};
+\node[box, minimum width=34mm, below=of xin] (min) {sensor mask $M$};
+\node[box, minimum width=34mm, below=of min] (dem) {DEM};
+\node[box, minimum width=34mm, below=of dem] (rain) {rainfall $R$\\ (context $+$ target step)};
+% ---- shared encoders ----
+\coordinate (encx) at ($(rain.east)+(28mm,0)$);
 \coordinate (tency) at ($(xin.east)!0.5!(min.east)$);
 \coordinate (sency) at ($(dem.east)!0.5!(rain.east)$);
 \node[enc, anchor=west] (tenc) at (encx |- tency) {temporal token\\ encoder};
@@ -246,16 +249,17 @@ point at which the two models differ.
 \node[headt, anchor=west] (tw) at ($(unet.east)+(9mm,-10.5mm)$) {\textbf{\twin{} (deterministic)}\\ single pass, $z{=}0$, $t{=}0$\\ $\Rightarrow$ one $\hat\Delta$};
 % ---- reconstruction ----
 \node[box, anchor=west] (rec) at ($(unet.east)+(64mm,0)$) {$\hat x_{t+1}=\mathrm{base}+\sigma_{\mathrm{regime}}\!\cdot\!\hat\Delta$\\ clamp $\hat x\ge 0$};
-% ---- arrows: all orthogonal (right angles only), inputs routed through a
-% single shared vertical bus so wires from boxes of different widths still
-% bend at the same x (a fixed relative jog would misalign, since xin/min/
-% dem/rain all have different .east x-coordinates) ----
-\coordinate (busin) at ($(encx)+(-3mm,0)$);
-\draw[arr] (xin.east) -- (busin -| xin.east) -- (busin -| tenc.west) -- (tenc.west);
-\draw[arr] (min.east) -- (busin -| min.east) -- (busin -| tenc.west) -- (tenc.west);
-\draw[arr] (min.east) -- (busin -| min.east) -- (busin -| senc.west) -- (senc.west);
-\draw[arr] (dem.east) -- (busin -| dem.east) -- (busin -| senc.west) -- (senc.west);
-\draw[arr] (rain.east) -- (busin -| rain.east) -- (busin -| senc.west) -- (senc.west);
+% ---- arrows: all orthogonal (right angles only). All 4 inputs now share
+% the same .east x (equal box widths), so a plain relative jog puts every
+% bend on the same vertical line -- no bus coordinate math needed. Two
+% jog depths: short (xin/dem/rain, local hop to the near encoder) and long
+% (mask, which fans out to BOTH encoders and needs its own lane so its
+% far-reaching branch to senc doesn't sit on top of dem/rain's short one). ----
+\draw[arr] (xin.east) -- ++(6mm,0) |- (tenc.west);
+\draw[arr] (dem.east) -- ++(6mm,0) |- (senc.west);
+\draw[arr] (rain.east) -- ++(6mm,0) |- (senc.west);
+\draw[arr] (min.east) -- ++(14mm,0) |- (tenc.west);
+\draw[arr] (min.east) -- ++(22mm,0) |- (senc.west);
 \draw[arr] (tenc.east) -- ++(3mm,0) |- ($(unet.west)+(0,3.5mm)$);
 \draw[arr] (senc.east) -- ++(3mm,0) |- ($(unet.west)+(0,-3.5mm)$);
 \draw[arr] (unet.east) -- ++(3.5mm,0) |- (v2.west);
