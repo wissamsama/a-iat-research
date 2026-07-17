@@ -26,11 +26,21 @@ qu'aucun travail existant n'a fait (voir §2).
 1. Première étude contrôlée "quand le génératif se justifie-t-il" en prévision
    **autorégressive** de champs physiques sous sparsité (jumeau déterministe
    apparié — WP1), sur les crues (créneau vide vérifié — §2).
-2. Mécanisme d'échec quantifié : diffuser le champ absolu à résolution
-   temporelle fine (signal/champ ≈ 1/400 ici) impose un plancher de bruit
-   d'échantillonnage supérieur au signal → sous la persistence triviale
-   (mesuré : ×560, 3 seeds). Correction : cible delta avec échelle par régime
-   d'observabilité (per-pixel visibility scale). Généalogie complète dans
+2. Mécanisme d'échec **hypothétique, actuellement corrélationnel, pas
+   prouvé** (relecture critique 2026-07-17, voir WP12) : diffuser le champ
+   absolu à résolution temporelle fine (signal/champ ≈ 1/400-1/490 ici)
+   impose, par hypothèse, un plancher de bruit d'échantillonnage supérieur
+   au signal → sous la persistence triviale (mesuré : ×560, 3 seeds). Ce
+   qu'on a réellement : ratio élevé + échec co-observés sur 2 événements de
+   la MÊME famille de benchmark (même simulateur Saint-Venant, même
+   philosophie de résolution) — pas encore de courbe dose-réponse (faire
+   varier le ratio et observer si la sévérité de l'échec suit), pas de
+   réplication hors famille FloodCastBench. **Formulation correcte tant que
+   WP12 n'est pas fait : "cohérent avec l'hypothèse", jamais "démontre" ou
+   "le mécanisme est".** Correction proposée (elle, empiriquement acquise,
+   *qu'importe le mécanisme sous-jacent*) : cible delta avec échelle par
+   régime d'observabilité (per-pixel visibility scale) — ça marche, la
+   question ouverte est uniquement le POURQUOI. Généalogie complète dans
    `reports/diff_sparse_v2_design.md` ("Incident 2026-07-09").
 3. Restauration d'une entrée causale du benchmark : le simulateur officiel
    dérive la friction de Manning du LULC (vérifié dans
@@ -658,6 +668,53 @@ coup. Si V2 gagne quelque part, il faut dire À QUEL PRIX.
   total. Mesures réelles, pas estimées.
 - **Sortie papier** : Table T5 — obligatoire dans Methods ou Experiments.
 
+### WP12 — Preuve dose-réponse du mécanisme signal≪champ (ajouté 2026-07-17, CRITIQUE, quasi gratuit)
+
+**Trou identifié par relecture critique de l'utilisateur** : §4.2/Figure 2
+du papier affirment un MÉCANISME causal ("diffuser l'absolu échoue PARCE
+QUE le ratio signal/champ est trop grand") à partir de seulement 2 points
+de données (Australie ×488, UK ×425), tous deux avec ratio élevé ET échec.
+C'est une corrélation, pas une preuve — aucun exemple avec ratio faible
+qui réussirait, aucun exemple à ratio intermédiaire. Un reviewer sérieux
+(a fortiori Transactions) attaquera ce point en premier. C'est actuellement
+**le maillon le plus faible du papier**, pas le plus solide comme
+initialement présenté.
+
+- **Test principal (dose-réponse, gratuit — CPU, données déjà sur disque)** :
+  recalculer σ_Δ à plusieurs Δt en sous-échantillonnant la séquence de
+  frames déjà présente (300s natif → 600s, 900s, 1800s, 3000s, ...). Le
+  ratio σ_field/σ_Δ doit décroître mécaniquement quand Δt augmente.
+  Produire une vraie courbe ratio-vs-Δt (5+ points), pas 2 points isolés.
+  Extension de `tools/build_mechanism_figure.py` (ou nouveau script dédié,
+  ne pas alourdir l'existant) : `tools/build_mechanism_dose_response.py`.
+- **Test décisif (entraînement, coûte 1-2 runs courts)** : entraîner
+  Abs-Diff à un Δt intermédiaire (ratio réduit, ex. 1800s) et vérifier que
+  sa performance (vs persistence à ce Δt) s'améliore de façon monotone avec
+  la baisse du ratio, comme prédit par l'hypothèse. Si la sévérité de
+  l'échec ne bouge pas malgré un ratio très différent → l'hypothèse est
+  fausse ou incomplète, à écrire tel quel (résultat négatif informatif).
+- **Réplication hors famille (optionnelle, plus lourde, déjà notée en §9-bis
+  pour la piste Transactions)** : PDEBench SWE ou équivalent — pas dans le
+  scope immédiat de ce WP, seulement si WP12 principal confirme et que la
+  piste Transactions s'ouvre.
+- **Critères pré-enregistrés** :
+  - Sévérité de l'échec suit monotonement le ratio → mécanisme corroboré,
+    la Figure 2 devient une vraie courbe dose-réponse, §4.2 peut passer de
+    "cohérent avec l'hypothèse" à "nous montrons que" (avec la réplication
+    hors-famille encore recommandée avant Transactions, pas avant Q1).
+  - Pas de relation claire → reformuler §4.2 en observation empirique sans
+    revendication causale ("nous observons que... la cause exacte reste à
+    établir"), retirer la revendication de "mécanisme" du résumé des
+    contributions (§1), et documenter le résultat négatif — reste
+    publiable, juste moins fort.
+- **Priorité** : avant tout autre travail sur §4.2/Figure 2 ; n'affecte pas
+  WP6/WP9 (tableau central, calibration) qui restent la priorité GPU
+  immédiate — WP12 principal est CPU, peut tourner en parallèle sans
+  bloquer le training en cours.
+- **Sortie papier** : Figure 2 remplacée par une vraie courbe dose-réponse
+  (pas 2 barres) ; §4.2 reformulé selon le résultat ; §1 (contributions)
+  mis à jour pour refléter le niveau de preuve réel.
+
 ### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
 - **Tout chiffre headline du papier repasse en protocole test COMPLET
   (13/13 fenêtres)** avant gel — les lectures rapides 4/13 ne servent qu'au
@@ -700,8 +757,12 @@ coup. Si V2 gagne quelque part, il faut dire À QUEL PRIX.
 ## 6. Plan d'analyse et de comparaison (ce que le papier démontre, table par table)
 
 - **T1** : protocole/benchmark (événements, résolutions, splits, baselines).
-- **F2 (mécanisme)** : distribution des deltas par pas vs champ absolu
-  (ratio ~400x) ; RMSE persistence vs V1 dense — l'argument du plancher.
+- **F2 (mécanisme, statut hypothèse)** : distribution des deltas par pas vs
+  champ absolu (ratio ~400-490x) ; RMSE persistence vs V1 dense — l'argument
+  du plancher. **N'est PAS une preuve de mécanisme en l'état** (un seul
+  régime observé, 2 événements corrélés de la même famille de benchmark) —
+  voir WP12 pour le test dose-réponse qui manque avant de pouvoir écrire
+  "nous montrons que" plutôt que "cohérent avec l'hypothèse que".
 - **T2/F3 (résultat principal)** : {persistence oracle, persistence sparse,
   FNO+ (protocole déclaré), V1, jumeau déterministe, V2} × {dense, m50, m95},
   relRMSE + CSI médian + path-IoU, mean±std 3 seeds. La lecture attendue :
@@ -808,12 +869,19 @@ devenant la section de validation. **Prior art à traiter obligatoirement :
 PDE-Refiner (Lippe et al. 2023), les schedule flaws (Lin et al.), la
 prédiction résiduelle en vidéo/météo.**
 
-**Portes de décision (les deux doivent être franchies avant d'investir)** :
+**Portes de décision (les TROIS doivent être franchies avant d'investir —
+3e porte ajoutée 2026-07-17)** :
 (1) réévaluation WP1 post-WP6 donne à V2 une région claire où il paie ;
-(2) WP9 montre V2 mieux calibré que l'ensemble de jumeaux. Sinon : rester
-sur le framing audit → Q1 domaine. Coût additionnel estimé si ouvert :
-théorie ~1 sem., survey ratios ~2-3 j (data-only), réplication 1 domaine
-~3-5 j GPU.
+(2) WP9 montre V2 mieux calibré que l'ensemble de jumeaux ;
+(3) **WP12 confirme la dose-réponse** (la sévérité de l'échec suit le ratio
+signal/champ quand Δt varie) — sans cette porte, toute la piste
+"mécanisme-first" repose sur une corrélation à 2 points, ce qui est
+exactement le point faible qu'un reviewer Transactions attaquera en
+premier. Si WP12 ne confirme pas, cette piste entière tombe, indépendamment
+de (1) et (2). Sinon : rester sur le framing audit → Q1 domaine. Coût
+additionnel estimé si ouvert : théorie ~1 sem., survey ratios ~2-3 j
+(data-only), réplication 1 domaine ~3-5 j GPU, WP12 lui-même ~1-2 j
+(dose-réponse gratuite + 1-2 runs courts).
 
 ## 10. Gouvernance du document
 
@@ -939,3 +1007,20 @@ Détail complet dans `PROTOCOL.md`.
     Corrigé en capturant les PID des jobs d'entraînement et en faisant
     `wait "${pids[@]}"` au lieu d'un `wait` nu. Vérifié par un relancement
     court en direct avant de relancer la vraie vague 3 (seed123).
+- 2026-07-17 — **relecture critique du mécanisme signal≪champ (utilisateur)
+  → WP12 créé, CRITIQUE** : le §4.2/Figure 2 du papier revendiquait un
+  MÉCANISME causal à partir de 2 points de données (Australie ×488, UK
+  ×425), tous deux à ratio élevé ET en échec — c'est une corrélation, pas
+  une preuve (aucun point à ratio faible/intermédiaire pour établir la
+  relation). Identifié comme **le maillon le plus faible du papier**,
+  contrairement à la présentation initiale comme acquis solide. Contribution
+  #2 (§1) et description F2 (§6) reformulées en langage d'hypothèse
+  ("cohérent avec", jamais "démontre") en attendant WP12. **WP12 ajouté** :
+  test dose-réponse (recalculer σ_Δ à plusieurs Δt par sous-échantillonnage
+  des frames déjà sur disque — gratuit, CPU, peut tourner en parallèle du
+  training GPU en cours ; puis un entraînement court d'Abs-Diff à Δt
+  intermédiaire pour vérifier que la sévérité de l'échec suit le ratio).
+  §9-bis (piste Transactions) gagne une 3e porte de décision obligatoire :
+  sans confirmation dose-réponse, la piste mécanisme-first tombe
+  indépendamment des portes (1)/(2) déjà posées. N'affecte pas la priorité
+  GPU immédiate (WP6/WP9) — WP12 principal est CPU-only.
