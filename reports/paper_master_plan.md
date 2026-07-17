@@ -549,6 +549,42 @@ source. Revérifier si accès VPN institutionnel disponible.
   **Action 2026-07-17 11:47** : seed123/m95 mis en queue seul (budget
   600/patience 120) pour compléter le trio de seeds m95 nécessaire à WP9-m95
   et au tableau WP1 final.
+
+  **seed123/m95 terminé 2026-07-17 17:27** (early stop epoch 505, best
+  epoch 385, tourné seul sur GPU sans replant après le 1er crash de la
+  veille — voir incident 2026-07-17 02:31) : `rollout_val_rmse` = **0.7157**
+  vs **0.7132** (checkpoint original, epoch 300) → **+0.35%, quasi-nul,
+  dans le bruit**.
+
+  **BILAN COMPLET jumeau-m95, 3/3 seeds, budget rallongé** :
+
+  | Seed | Original (epoch, rmse) | Rallongé (epoch, rmse) | Variation |
+  |---|---|---|---:|
+  | 42 | 300, 0.7318 | 315→435, 0.7244 | **-1.0%** (meilleur) |
+  | 7 | 300, 0.7105 | 360→480, 0.7410 | **+4.3%** (pire) |
+  | 123 | 300, 0.7132 | 385→505, 0.7157 | **+0.35%** (quasi-nul) |
+
+  **Conclusion ferme** : contrairement à V2 (4/4 runs améliorés de -16.5% à
+  -36.6%), le budget rallongé **ne corrige rien de systématique pour le
+  jumeau m95** — signe incohérent, magnitude petite, aucune seed n'atteint
+  l'amélioration typique de V2. L'hypothèse initiale de WP6 ("tous les
+  checkpoints sparse existants étaient sous-entraînés") **ne tient que pour
+  V2, pas pour le jumeau**. Explication probable : le jumeau converge ~3×
+  plus vite par epoch et n'avait probablement pas le même problème de sous-
+  entraînement à budget normal — les checkpoints originaux (epoch 300,
+  jamais early-stoppés au sens strict mais proches d'un plateau) étaient
+  déjà représentatifs. **Décision méthodologique** : utiliser les
+  checkpoints RALLONGÉS pour la cohérence de protocole (même procédure de
+  sélection que V2), mais documenter explicitement dans le papier que cette
+  extension n'a pas changé la conclusion jumeau-m95, pour ne pas laisser
+  penser que WP6 était nécessaire pour le jumeau — il l'était pour V2
+  seulement.
+
+  **GPU libéré 17:27, immédiatement relancé** : WP9-m95 (ensemble des 3
+  jumeaux rallongés, éval-only) lancé en fond pour compléter la calibration
+  m95 manquante depuis le résultat m50 (§ci-dessous, cov50=0.117/cov90=0.205
+  à m50) ; figure qualitative (GT vs Δ-Diff vs Twin) et reconstruction du
+  tableau central WP1 à enchaîner ensuite.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
