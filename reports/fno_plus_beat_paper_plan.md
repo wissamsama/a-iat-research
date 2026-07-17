@@ -525,6 +525,28 @@ code changes (padding before the FFT, a warmup scheduler), which per this
 project's own discipline should be written and tested on P7 first, not
 handed to the Dell as unvalidated code. Left for a later iteration.
 
+**Stalled twice, diagnosed, relaunched (2026-07-16/17)**: the sweep froze
+mid-run on its first variant (`bs2`, epoch 41/100) on 2026-07-16 at
+18:15:33 — `metrics.csv`, `checkpoint_last.pth`, and the orchestrator log
+all stopped writing at the same second, with P7 confirmed continuously up
+throughout (ruling out the earlier NFS/fstab mechanism). A mechanical
+post-mortem (coordination instruction 0010: process list, kernel log,
+GPU ECC/performance counters, reboot history, disk space) found **no
+definitive cause** — the kernel log covering the exact incident window was
+lost when the Dell's WSL2 VM next rebooted (Jul 17, 14:48), and no system
+reboot is recorded at the freeze time itself. One suggestive but
+unconfirmed lead: the very next boot's kernel log shows a fault trace in
+`dxgkio_submit_wait_to_hwqueue`/`dxgk_ioctl` — the WSL2 GPU-passthrough
+driver — consistent with a driver-level crash silently killing the
+training process (no Python traceback, no zombie, clean disappearance).
+Disk space, GPU ECC/thermal state, and an exact-time system reboot were
+all ruled out. No code-level fix is available for a suspected host-driver
+issue; the sweep was relaunched from scratch (instruction 0011, no result
+lost since the freeze happened before the first variant finished) with a
+lightweight external watchdog (process-liveness + log-staleness, writing a
+status file to the shared coordination directory every 60s) so a repeat
+failure is caught within a minute instead of discovered hours later.
+
 ### WPB2 — Best vanilla config, 3-seed confirmation
 
 Take the single best-performing WPB1 variant (if any cleared the bar,
