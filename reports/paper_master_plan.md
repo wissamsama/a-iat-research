@@ -606,6 +606,31 @@ son dernier argument restant.
 - **Sortie papier** : ligne(s) de F5/T2, et un paragraphe de discussion qui
   désamorce préventivement LA question de reviewer la plus prévisible.
 
+- **RÉSULTAT PARTIEL m50 (2026-07-17, 13/13 fenêtres test, masques
+  aléatoires, M=3, seeds 42/7/123 checkpoints originaux)** — outil créé :
+  `tools/evaluate_floodcastbench_det_twin_ensemble.py` (commit `33fdd5e`),
+  réutilise le CalibrationAccumulator de V2 à métriques identiques.
+  Sortie : `experiments/FloodCastBench/wp9_det_twin_ensemble/eval_test_m3_17-07-2026_00-11-29/`.
+  - Couverture ensemble-jumeaux : cov50 pooled **0.117** (nominal corrigé
+    M=3 : 0.25 → ratio 0.469), cov90 pooled **0.205** (nominal 0.45 →
+    ratio 0.456).
+  - Comparaison V2 la plus proche disponible (m50 gauge, M=8, seed42) :
+    ratios 0.427/0.484 — **statistiquement comparables**. Rank histogram :
+    les deux en U (surconfiance), V2 plus marqué que l'ensemble-jumeaux.
+  - **Branche pré-enregistrée déclenchée (provisoire) : (c) "les deux mal
+    calibrés"** — aucune des deux familles ne fournit d'incertitude fiable
+    sans recalibration à m50. La calibration ne sauve PAS le génératif en
+    l'état.
+  - Caveats avant de figer : V2 comparé sur masque gauge (pas aléatoire —
+    l'éval V2 m50 aléatoire avec calibration n'existe pas encore, à lancer
+    quand le GPU est libre, PAS en parallèle d'un training jumeau vu les
+    crashs de contention) ; M différents (3 vs 8, corrigé par
+    nominal_finite_ensemble mais la granularité du rank histogram diffère) ;
+    checkpoints pré-WP6. m95 en attente des 3 seeds m95 corrigés.
+  - Déjà intégré au draft papier : Figure 5 (f6_calibration_comparison.pdf)
+    + paragraphe "Is a generative model even needed for uncertainty?"
+    (commit `7614b98`).
+
 ### WP10 — Transfert cross-événement zéro-shot (ajouté 2026-07-16)
 
 Demandé explicitement (tests cross-région) et nécessaire pour viser mieux
