@@ -585,6 +585,23 @@ source. Revérifier si accès VPN institutionnel disponible.
   m95 manquante depuis le résultat m50 (§ci-dessous, cov50=0.117/cov90=0.205
   à m50) ; figure qualitative (GT vs Δ-Diff vs Twin) et reconstruction du
   tableau central WP1 à enchaîner ensuite.
+
+  ⚠ **Trou découvert en préparant la reconstruction du tableau central
+  (2026-07-17 18:03)** : **V2 seed123 (m50 ET m95) n'a jamais été relancé
+  sous WP6** — seuls seed42 et seed7 ont des checkpoints V2 sparse
+  corrigés (`16-07-2026_09-37-4{3,4}` et `16-07-2026_15-14-5{1,2}`). Le
+  tableau WP1 original à 3 seeds utilisait le checkpoint V2/seed123
+  ORIGINAL (non corrigé) — jamais identifié comme trou avant cette
+  vérification systématique. **Vérifié en même temps, jumeau m50/seed123**
+  (par précaution, même style de vérification que le trou trouvé) : early
+  stop propre à epoch 105 (best epoch 45, patience 60 honorée) — RAS,
+  cohérent avec seed42/seed7, aucune correction nécessaire côté jumeau m50.
+
+  **Action 2026-07-17 18:03** : V2 seed123 m50 lancé (budget 600/patience
+  120), m95 mis en queue automatique derrière (script séquentiel,
+  `/tmp/.../run_v2_seed123_queue.sh`, watchdog dédié). Bloque la
+  reconstruction du tableau central WP1 tant que ces 2 runs ne sont pas
+  finis — c'est maintenant le dernier chaînon manquant.
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
