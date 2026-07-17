@@ -100,33 +100,43 @@ def run_model(config_path: Path, checkpoint_path: Path, missing_rate: float,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ours-config", type=Path, required=True)
-    parser.add_argument("--ours-checkpoint", type=Path, required=True)
-    parser.add_argument("--twin-config", type=Path, required=True)
-    parser.add_argument("--twin-checkpoint", type=Path, required=True)
+    parser.add_argument("--ours-config", type=Path)
+    parser.add_argument("--ours-checkpoint", type=Path)
+    parser.add_argument("--twin-config", type=Path)
+    parser.add_argument("--twin-checkpoint", type=Path)
     parser.add_argument("--missing-rate", type=float, default=0.95)
     parser.add_argument("--window", type=int, default=0)
     parser.add_argument("--num-scenarios", type=int, default=8)
     parser.add_argument("--horizons", type=int, nargs="+", default=[1, 6, 12])
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--from-npz", type=Path,
+                        help="Re-plot from a previously saved .npz (skips GPU inference entirely).")
     args = parser.parse_args()
 
-    device = resolve_device(args.device)
-    ours, target, mask = run_model(args.ours_config, args.ours_checkpoint,
-                                   args.missing_rate, args.window, args.num_scenarios, device)
-    twin, target2, mask2 = run_model(args.twin_config, args.twin_checkpoint,
-                                     args.missing_rate, args.window, 1, device)
-    if not np.allclose(target, target2):
-        raise RuntimeError("targets differ between the two runs -- window/mask mismatch")
-    if not np.allclose(mask, mask2):
-        raise RuntimeError("sensor masks differ between the two runs -- not a controlled comparison")
-
     npz_path = args.output.with_suffix(".npz")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(npz_path, target=target, ours=ours, twin=twin, mask=mask,
-                        horizons=np.array(args.horizons), missing_rate=args.missing_rate,
-                        window=args.window)
+    if args.from_npz is not None:
+        data = np.load(args.from_npz)
+        target, ours, twin = data["target"], data["ours"], data["twin"]
+        args.horizons = list(data["horizons"])
+    else:
+        for name in ("ours_config", "ours_checkpoint", "twin_config", "twin_checkpoint"):
+            if getattr(args, name) is None:
+                raise SystemExit(f"--{name.replace('_', '-')} is required unless --from-npz is given")
+        device = resolve_device(args.device)
+        ours, target, mask = run_model(args.ours_config, args.ours_checkpoint,
+                                       args.missing_rate, args.window, args.num_scenarios, device)
+        twin, target2, mask2 = run_model(args.twin_config, args.twin_checkpoint,
+                                         args.missing_rate, args.window, 1, device)
+        if not np.allclose(target, target2):
+            raise RuntimeError("targets differ between the two runs -- window/mask mismatch")
+        if not np.allclose(mask, mask2):
+            raise RuntimeError("sensor masks differ between the two runs -- not a controlled comparison")
+
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(npz_path, target=target, ours=ours, twin=twin, mask=mask,
+                            horizons=np.array(args.horizons), missing_rate=args.missing_rate,
+                            window=args.window)
 
     plt.rcParams.update({
         "font.family": "serif",
@@ -134,10 +144,15 @@ def main() -> int:
         "axes.titlesize": 8.5,
     })
     steps = [h - 1 for h in args.horizons]
-    depth_max = max(target[steps].max(), ours[steps].max(), twin[steps].max())
+    # Water depth is heavy-tailed (a few deep-channel pixels dwarf the flood
+    # extent); a colormap capped at the true max renders as near-black.
+    # Cap at a high percentile of the GROUND TRUTH (not the models, which
+    # can spike higher on outlier pixels) so all panels share one physically
+    # meaningful scale and the actual flood texture stays visible.
+    depth_max = float(np.percentile(target[steps], 99.0))
     err_ours = np.abs(ours - target)
     err_twin = np.abs(twin - target)
-    err_max = max(err_ours[steps].max(), err_twin[steps].max())
+    err_max = float(np.percentile(np.concatenate([err_ours[steps], err_twin[steps]]), 99.0))
 
     ncols, nrows = 5, len(steps)
     fig, axes = plt.subplots(nrows, ncols, figsize=(2.1 * ncols, 2.15 * nrows), squeeze=False)

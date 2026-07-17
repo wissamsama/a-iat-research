@@ -20,6 +20,8 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 \setlist{topsep=4pt,itemsep=2pt}
+\usepackage{placeins}
+\usepackage{float}
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit,arrows.meta,calc}
 \definecolor{diffblue}{RGB}{0,114,178}
@@ -211,7 +213,7 @@ matched control for autoregressive flood forecasting under sparsity.
 Figure~\ref{fig:pair} summarizes the shared architecture and the single
 point at which the two models differ.
 
-\begin{figure}[t]
+\begin{figure}[H]
 \centering
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
@@ -343,7 +345,7 @@ $1.9\times$ at \mninetyfive{}, where masked pixels make the delta target
 field-scaled), though that comparison is confounded with sparsity itself
 --- hence the clean test.}
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.92\linewidth]{figures/f2_mechanism.pdf}
   \caption{The scale mismatch behind the absolute-field failure
@@ -457,7 +459,7 @@ it --- as the scale-mismatch hypothesis of \S\ref{sec:mechanism} predicts.
 Second, the short-context ablation confirms the advantage is not driven by
 input history (\S\ref{sec:vsfnoplus} showed the same for the baseline).
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.78\linewidth]{figures/f3_performance_sparsity.pdf}
   \caption{Rollout RMSE (normalized, test set, log scale) across
@@ -471,6 +473,24 @@ input history (\S\ref{sec:vsfnoplus} showed the same for the baseline).
 
 \subsection{Diffusion vs.\ its deterministic twin: the central comparison}
 \label{sec:twinresults}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\linewidth]{figures/f7_qualitative_maps.pdf}
+  \caption{Qualitative rollout at \mninetyfive{}, one representative test
+  window (\ours{}: mean of 8 scenarios; \twin{}: single deterministic
+  forecast; corrected checkpoints, \S\ref{sec:protocol}). Depth and error
+  colormaps are each capped at the 99th percentile of ground truth (resp.\
+  pooled error) to keep the flood extent and error texture visible against
+  a small number of deep-channel outlier pixels. The error panels show a
+  visible, not just numerical, difference: \twin{}'s error map is
+  consistently darker (mean absolute error $\approx$0.105\,m across the
+  three horizons shown, vs.\ $\approx$0.122\,m for \ours{}), concentrated
+  similarly at flood-boundary pixels for both models. This single window
+  is illustrative, not a substitute for the aggregate comparison below.}
+  \label{fig:qualitative}
+\end{figure}
+
 \blocked{The headline table of the paper. It is deliberately withheld: the
 convergence audit described in \S\ref{sec:protocol} showed that the
 sparse-regime checkpoints of \emph{both} models were under-trained under
@@ -484,6 +504,7 @@ every regime, the generative mechanism adds nothing here and the paper
 says so; if \ours{} wins under sparsity and ties or loses when dense, the
 generative premise is confirmed where observation is incomplete; any mixed
 outcome is reported per-regime with no blanket claim.}
+\FloatBarrier
 
 \subsection{Structured sensor layouts vs.\ random masks}
 \label{sec:masks}
@@ -518,7 +539,7 @@ interpretable generalization boundary: the model's implicit assumption is
 
 \subsection{Calibration}
 \label{sec:calibration}
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.9\linewidth]{figures/f5_calibration_diagnostics.pdf}
   \caption{Calibration diagnostics for \ours{} across the four structured-mask
@@ -563,7 +584,7 @@ uncertainty-based defense of diffusion is not merely unproven, it is
 actively contradicted by the one standard baseline it should be compared
 against.
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{figures/f6_calibration_comparison.pdf}
   \caption{Uncertainty quality: \ours{} diffusion ensembles vs.\ a deep
