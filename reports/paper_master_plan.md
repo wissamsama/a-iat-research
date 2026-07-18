@@ -181,6 +181,19 @@ narration radicalement plus favorable en review, 100% honnête.
    reconstruction, pas une incertitude physique — et un jumeau + deep
    ensemble la couvre.
 
+**Mise en garde (ajoutée 2026-07-19, correction après question utilisateur
+"ça me paraît trivial")** : la recommandation **procédurale** ("testez
+toujours un jumeau apparié avant d'attribuer un gain à un mécanisme
+génératif") n'est PAS la contribution — prise seule, c'est de la méthode
+scientifique de base, triviale comme principe. C'est un **corollaire
+pratique**, à ne faire apparaître qu'en fin de discussion. La vraie
+contribution est le **niveau 2 ci-dessus** (attribution) porté par un fait
+non trivial : le motif mesuré est **non-monotone** (jumeau gagne aux deux
+extrêmes dense/m95, indécis au milieu m50) — pas le résultat plat
+("diffusion inutile partout") qu'un simple rappel méthodologique
+prédirait. L'intro doit ouvrir sur ce motif + le jumeau=nouveau SOTA, pas
+sur "on recommande d'ablater".
+
 **Modèle de menace complet (attaque reviewer → réponse)** :
 
 | Attaque | Réponse | État |
