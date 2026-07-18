@@ -1392,6 +1392,48 @@ objection plutôt que de laisser un reviewer la découvrir seul.
 - **U-Net baseline** : citer les chiffres publiés Table 4 (pas de
   réentraînement — il est très en-dessous de FNO+ dans le papier source).
 
+### Checklist de parité FNO+ — "on bat le SOTA sur tout ce qui a été testé,
+pas juste sur le chiffre qui nous arrange" (ajoutée 2026-07-19, discussion
+utilisateur sur l'arc narratif du papier)
+
+**Ce que FNO+ (papier source, Table 4) a réellement testé** : Australie
+60m high-fidelity uniquement, **dense seulement** (le papier FNO+ ne
+teste aucune sparsité — l'axe sparsité est propre à cette ligne de
+travaux DIFF-SPARSE, pas à FNO+), protocole single-shot non-autorégressif
+t2..t20 (19 pas en un seul forward), 5 métriques : relRMSE, NSE, Pearson
+r, CSI@0.001, CSI@0.01. Pas de long-horizon au-delà de t20, pas de test
+multi-région dans le papier source.
+
+**État de la parité, honnêtement inventorié** :
+
+| Condition testée par FNO+ | Couverte chez nous ? | État |
+|---|---|---|
+| relRMSE, dense, Australie | Oui, V2 bat le chiffre publié | Fait, mais lecture rapide 4/13 fenêtres — **pas encore 13/13, bloquant avant gel** (item 1.3) |
+| NSE, Pearson r, CSI@0.001, CSI@0.01, dense | Oui, V2 bat sur les 5 | Même réserve 4/13 que ci-dessus |
+| Protocole d'évaluation (single-shot vs autorégressif) | **Non résolu** : V2/jumeau = moyenne-8-scénarios en rollout autorégressif, FNO+ = sortie déterministe unique en un forward — pas rigoureusement le même protocole | Réserve explicite déjà notée (§3), **à trancher avant "bat le SOTA" définitif** — soit reporter aussi un chiffre V2 single-sample comparable, soit justifier explicitement pourquoi les deux protocoles sont la bonne base de comparaison malgré la différence |
+| Long-horizon au-delà de t20 | FNO+ a une courbe h216 dans le dashboard, mais FNO+ n'a jamais été *évalué par ses auteurs* au-delà de t20 — comparaison h216 est une extension de ce projet, pas une reproduction de leur protocole | Analyse "V2 vs V1 vs FNO+ par étape" pas encore faite formellement (WP0, déjà noté) |
+| Sparsité (m50/m95) | **FNO+ n'a jamais été entraîné/évalué sous sparsité, ni par ses auteurs ni par nous** — aucun run trouvé (`grep` négatif) | **Absence assumée, pas un oubli** : ce n'est pas un manque de parité mais le point même du papier — la lignée DIFF-SPARSE gère un régime où FNO+ n'a jamais été conçu pour opérer. Ne PAS reproduire un FNO+ "sparsifié" artificiellement sans le dire clairement si jamais fait (tier 2, optionnel, voir ci-dessous) |
+| Autre région que l'Australie | Non testé pour FNO+ (papier source = Australie seule) | Hors scope de la comparaison FNO+ — WP13 (UK, Pakistan, Mozambique) compare V2/jumeau entre eux, pas contre FNO+ qui n'a pas de chiffre publié ailleurs |
+
+**Actions qui en découlent, classées par priorité** :
+1. **Bloquant avant gel (déjà dans le palier 1, item 1.3)** : rerun 13/13
+   fenêtres pour tous les chiffres headline dense vs FNO+ — sans ça,
+   "on bat le SOTA" reste une lecture rapide, pas un chiffre de papier.
+2. **Nouveau, à trancher avant la section résultats (tier 1, léger)** :
+   énoncer explicitement dans le papier la différence de protocole
+   (moyenne-8-scénarios autorégressive vs sortie déterministe single-shot)
+   et justifier pourquoi la comparaison reste valide malgré ça — plutôt
+   que de laisser un reviewer la découvrir. Coût : rédaction, pas de calcul.
+3. **Optionnel, tier 2, préempte une objection précise ("vous n'avez
+   jamais donné sa chance à FNO+ sous sparsité")** : entraîner FNO+
+   directement sous m50/m95 (masquage en entrée, sans le mécanisme
+   d'échelle par régime propre à V2/jumeau) comme baseline supplémentaire
+   — pas pour "battre" ce chiffre puisque FNO+ n'est pas conçu pour ça,
+   mais pour montrer explicitement l'ampleur de la dégradation plutôt que
+   de laisser l'absence de comparaison ouverte à interprétation. Coût
+   estimé ~1-2 j (réutilise l'infra Papier 2), à décider au moment du
+   palier 2 selon le budget restant.
+
 ### Hors scope explicite (ne pas ouvrir sans décision consignée §10)
 - Mamba (V2.2), 30m, remask-rollout comme mode principal (reste une
   ligne d'ablation possible), foundation models météo, benchmarks non-crue.
@@ -1766,3 +1808,18 @@ Détail complet dans `PROTOCOL.md`.
   avec l'argument no-free-lunch énoncé explicitement en discussion pour
   préempter l'objection plutôt que de la laisser à découvrir par un
   reviewer.
+- 2026-07-19 (b) — **Checklist de parité FNO+ ajoutée (§4, discussion
+  utilisateur sur l'arc narratif "sparsité → bat le SOTA → teste
+  diffusion → généralise")**. Inventaire honnête de ce que FNO+ a
+  réellement testé (dense seul, Australie seule, single-shot t2-20, 5
+  métriques — jamais de sparsité, jamais publié ailleurs qu'Australie) vs
+  ce qu'on couvre. Trois actions identifiées : (1) rerun 13/13 fenêtres
+  bloquant avant gel (déjà item 1.3, pas nouveau) ; (2) NOUVEAU — énoncer
+  explicitement dans le papier la différence de protocole
+  moyenne-8-scénarios vs sortie déterministe single-shot avant de
+  affirmer "bat le SOTA", plutôt que de la laisser un reviewer la
+  trouver ; (3) optionnel tier 2 — entraîner FNO+ lui-même sous m50/m95
+  comme baseline de dégradation (pas pour le "battre", pour montrer
+  l'ampleur du problème qu'il ne gère pas). Confirmé au passage : l'
+  absence de FNO+ sous sparsité n'est pas un trou de couverture à
+  combler par principe, c'est le point même du papier.
