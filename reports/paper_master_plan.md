@@ -128,16 +128,24 @@ identifiée), ordre de rendement décroissant :**
 | # | Item | Attaque qu'il ferme | Coût |
 |---|---|---|---|
 | 2.1 | WP14-A : 2e architecture générative (sampler/schedule différent) + son jumeau, Australie | "c'est peut-être propre à CE modèle de diffusion" | ~2-3 j |
-| 2.2 | **+2 seeds (→5 au total) sur la comparaison centrale** (Australie, {V2, jumeau} × {m50, m95} ; dense optionnel) — particulièrement justifié depuis que WP6 a montré que la variance inter-seed domine le signal de convergence chez le jumeau | "3 seeds c'est trop peu pour vos claims de variance" | ~2-3 j (8 trainings + évals, avec le taux de retry observé) |
+| 2.2 | **5 seeds comme standard, pas juste +2 sur un tableau** : étendre {42,7,123} à {42,7,123,+2 nouvelles} sur TOUS les résultats phares réutilisés par le papier (comparaison centrale dense/m50/m95 ; WP9 calibration ; WP12 dose-réponse si Phase 2 confirme) — particulièrement justifié depuis que WP6 a montré que la variance inter-seed domine le signal de convergence chez le jumeau, et que m50 a un signe qui s'inverse selon la seed (3 seeds ne suffisent pas à distinguer near-tie réel de sous-échantillonnage) | "3 seeds c'est trop peu pour vos claims de variance" | ~4-6 j (16+ trainings + évals à travers les WPs concernés, avec le taux de retry observé) |
 | 2.3 | WP13 événements 3/4 : Pakistan + Mozambique complets (configs à créer) | "2 événements de la même famille haute-fidélité seulement" | ~3-6 j |
 | 2.4 | WP14-B : variante backbone Mamba (emplacements multiples, chacun avec jumeau, fix LayerScale d'office) | "et si une architecture séquentielle moderne changeait la donne ?" | ~3-5 j |
 | 2.5 | WP4 (b-f) : grille d'ablation restante | "d'où viennent exactement les gains ?" | ~1-2 j |
-| 2.6 | Calibration : CRPS (score sharpness-aware) + éval V2-m95-aléatoire (dernier caveat de masque de la Fig. 6) + 3e seed cluster WP7 | "votre calibration n'utilise que la couverture" / caveats résiduels | ~1 j |
+| 2.6 | Calibration : CRPS (score sharpness-aware) + éval V2-m95-aléatoire (dernier caveat de masque de la Fig. 6) + 3e seed cluster WP7 + logging par-fenêtre dans l'évaluateur (pour le vrai test apparié fenêtre×seed, n=39, avant tout futur rerun) | "votre calibration n'utilise que la couverture" / caveats résiduels / "n=3 par seed n'est pas un test statistique sérieux" | ~1-2 j |
 
-Estimation palier 2 complet : **+2 à 3 semaines** après le palier 1.
-Point de décision de soumission : à la fin du palier 1, soumettre ou
-continuer se décide sur l'état réel des résultats 2.1/2.2 (les deux
-premiers items du palier 2 sont ceux qui changent le tier ; 2.3-2.6
+**Objectif "inattaquable" en une phrase** : 5 seeds partout où un résultat
+est cité comme preuve, sur les 4 événements FloodCastBench (WP13), avec le
+protocole jumeau répliqué sur ≥2 architectures génératives indépendantes
+(WP14) — c'est la combinaison 2.1+2.2+2.3+2.4 qui définit le palier 2
+complet, pas un seul item isolé.
+
+Estimation palier 2 complet : **+3 à 4 semaines** après le palier 1 (révisé
+à la hausse : 2.2 élargi à "5 seeds partout", pas seulement la
+comparaison centrale). Point de décision de soumission : à la fin du
+palier 1, soumettre ou continuer se décide sur l'état réel des résultats
+2.1/2.2 (les deux premiers items du palier 2 sont ceux qui changent le
+tier ; 2.3-2.6
 renforcent sans changer la catégorie).
 
 **Hors paliers (explicitement)** : WP5 Manning/LULC (aucun pilier),
