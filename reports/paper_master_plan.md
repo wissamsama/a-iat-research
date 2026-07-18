@@ -151,6 +151,38 @@ renforcent sans changer la catégorie).
 **Hors paliers (explicitement)** : WP5 Manning/LULC (aucun pilier),
 §9-bis Transactions (gates inchangées), combinaison WP14 A+B.
 
+### PALIER 3 — hors scope de cette soumission (ajouté 2026-07-18, discussion utilisateur)
+
+**Question posée** : pour que l'affirmation *substantielle* (pas juste la
+recommandation procédurale) devienne vraiment générale, ne faudrait-il pas
+3-4 datasets **indépendants** (pas 4 événements du même simulateur comme
+WP13) et 4-5 architectures génératives (pas 2 comme WP14) ?
+
+**Réponse honnête** : oui en principe, mais c'est un ordre de grandeur
+au-dessus de WP13/WP14, probablement plusieurs mois — potentiellement un
+2e papier à lui seul, pas un ajout à celui-ci. Un dataset indépendant
+coûte plus qu'un événement du même benchmark (intégration complète du
+pipeline à chaque fois, cf. le coût déjà observé pour UK/Pakistan/
+Mozambique) ; 4-5 architectures multiplient le risque d'instabilités
+inédites à chaque nouvelle (cf. l'historique Mamba/LayerScale).
+
+**Décision** : NE PAS engager ceci dans le scope de la soumission actuelle.
+Le papier n'a pas besoin de cette généralisation complète pour être
+honnête : la recommandation *procédurale* (toujours construire le jumeau
+apparié) est déjà bien soutenue par une seule démonstration rigoureuse et
+ne dépend pas d'une large base de preuves ; c'est l'affirmation
+*substantielle* (le motif précis mesuré) qui a été délibérément cantonnée
+à FloodCastBench + architectures testées (limite explicite ajoutée au
+papier, §7.1) plutôt que payée par une généralisation coûteuse. Ce
+cantonnement EST la solution retenue pour cette soumission.
+
+**Traitement** : noté ici comme travail futur / 2e papier potentiel, pas
+comme item à cocher avant de soumettre. Si repris un jour : privilégier UN
+dataset réellement indépendant (pas 3-4) + 3-4 architectures (pas 5)
+comme ambition réaliste d'un "palier 3" borné, en gardant la même
+discipline de gel/priorisation que les paliers 1-2 plutôt que de laisser
+le scope dériver sans limite.
+
 ---
 
 ## 2. Paysage littérature (vérifié 2026-07-10, refaire une passe avant soumission)
