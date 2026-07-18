@@ -70,13 +70,22 @@ décomposer. Trois piliers, chacun avec sa question, sa méthode et ses WPs :
 
 | Pilier | Question | Méthode | WPs | État |
 |---|---|---|---|---|
-| **A. Contrôle** | Le mécanisme génératif lui-même apporte-t-il quelque chose, à squelette identique ? | Jumeau déterministe apparié poids-à-poids | WP1 (+WP2 contexte, +WP6 intégrité checkpoints, +WP11 prix) | En re-éval (WP6) |
-| **B. Mécanisme** | POURQUOI la recette de référence échoue-t-elle ici ? Un ratio adimensionnel σ_Δ(Δt)/σ_champ organise-t-il succès et échecs ? | Dose-réponse : squelette fixe, {Δt × représentation cible} croisés | WP12 (absorbe WP4a) | Hypothèse, test à faire |
-| **C. Honnêteté incertitude** | La justification de repli "le génératif fournit l'incertitude" survit-elle aux baselines UQ standards ? | Deep-ensemble de jumeaux + calibration mesurée à métriques identiques | WP3, WP9 (+WP7 masques réalistes) | m50 : réfutée des 2 côtés ; m95 en attente |
+| **A. Contrôle** | Le mécanisme génératif lui-même apporte-t-il quelque chose, à squelette identique ? Sur combien d'événements et d'architectures ce constat tient-il ? | Jumeau déterministe apparié poids-à-poids, répliqué sur 4 événements et ≥2 architectures génératives supplémentaires | WP1 (+WP2 contexte, +WP6 intégrité, +WP11 prix, +WP13 multi-événements, +WP14 multi-architectures) | m50/m95 Australie : pièces réunies, tableau à construire |
+| **B. Mécanisme** | POURQUOI la recette de référence échoue-t-elle ici ? Un ratio adimensionnel σ_Δ(Δt)/σ_champ organise-t-il succès et échecs ? | Dose-réponse : squelette fixe, {Δt × représentation cible} croisés | WP12 (absorbe WP4a) | Phase 1 faite, Phase 2 à lancer |
+| **C. Honnêteté incertitude** | La justification de repli "le génératif fournit l'incertitude" survit-elle aux baselines UQ standards ? | Deep-ensemble de jumeaux + calibration mesurée à métriques identiques | WP3, WP9 (+WP7 masques réalistes) | **FERMÉ, m50+m95** : jumeau jamais moins bien calibré |
 
-Autour des piliers : validité externe (WP8 UK, WP10 zéro-shot), attribution
-architecturale (WP4 b-f), coût (WP11). **Hors piliers : WP5 (Manning/LULC)**
-— voir sa section, rescopé optionnel.
+Autour des piliers : validité externe (WP8 UK, WP10 zéro-shot sur les 4
+événements), attribution architecturale (WP4 b-f), coût (WP11). **Hors
+piliers : WP5 (Manning/LULC)** — voir sa section, rescopé optionnel.
+
+**Décision utilisateur du 2026-07-18** : le pilier A passe d'un test
+ponctuel (1 événement, 1 architecture) à une **méthodologie répliquée**
+(WP13 : 4 événements ; WP14 : ≥2 architectures génératives supplémentaires,
+dont une variante Mamba appariée à son propre jumeau). C'est le levier
+identifié comme le plus susceptible de faire monter le papier au-dessus de
+Q1 domaine — si le motif se réplique, l'argument devient méthodologique
+("tout papier de diffusion spatiotemporelle sous sparsité doit reporter un
+jumeau apparié"), pas seulement empirique sur un cas.
 
 **La réponse que le papier apporte (état actuel des données)** : l'essentiel
 de ce qui fait "marcher la diffusion" en prévision de crue n'a rien de
@@ -852,8 +861,10 @@ DIFF-SPARSE, poussée au niveau événement/région).
   calée sur les stats Australie → une dégradation est attendue ; la
   question est *combien*, et si le CLASSEMENT jumeau-vs-V2 tient. Même un
   échec net des deux est un résultat de déploiement publiable.
-- **Extension optionnelle si temps** : Pakistan/Mozambique 480m
-  (low-fidelity, résolution différente — plus dur, plus parlant).
+- **Extension 2026-07-18 (n'est plus optionnelle)** : zero-shot sur
+  Pakistan/Mozambique 480m aussi, pas seulement UK — sert de triage avant
+  WP13 (réentraînement complet 4 événements, décision utilisateur). À
+  lancer dès que les configs Pakistan/Mozambique existent (WP13 étape 4).
 
 ### WP11 — Table coût/complexité (ajouté 2026-07-16, zéro GPU)
 
@@ -965,6 +976,116 @@ UN SEUL facteur croisé varie :
 - **Sortie papier** : Figure 2 remplacée par la courbe dose-réponse ;
   §4.2 reformulé selon le résultat ; §1 (contributions) mis à jour pour
   refléter le niveau de preuve réel atteint.
+
+### WP13 — Généralisation multi-événements (ajouté 2026-07-18, DÉCISION UTILISATEUR : à faire)
+
+**Décision** : réentraînement complet (V2 + jumeau, 3 seeds, {dense, m50,
+m95}, évals protocole test complètes) sur **les 4 événements
+FloodCastBench**, pas seulement Australie(+UK optionnel comme avant).
+Étend le pilier A (contrôle jumeau) d'un seul événement à quatre — la
+question devient "le motif jumeau-vs-diffusion se réplique-t-il à travers
+des géographies/hydrologies indépendantes", pas juste "tient-il sur un
+cas".
+
+**Inventaire confirmé (`datasets/floodcastbench_fno_dataset.py`,
+`data/FloodCastBench` sur disque)** :
+
+| Événement | Fidélité | Résolution | Grille | Frames | Config repo |
+|---|---|---|---|---:|---|
+| Australie | haute | 60m | 536×536 | 2881 | ✅ existant (défaut) |
+| UK | haute | 60m | 85×137 | 865 | ✅ existant (WP8) |
+| Pakistan | basse | 480m | 810×441 | 4033 | ❌ à créer |
+| Mozambique | basse | 480m | 151×138 | 1729 | ❌ à créer |
+
+**Séquencement obligatoire (portes avant tout engagement complet)** :
+1. **Finir Australie d'abord** (2 évals restantes ce soir) — ne pas ouvrir
+   un 2e front tant que le premier n'est pas fermé.
+2. **WP10 (zero-shot cross-événement, déjà scopé, quasi gratuit)** sur
+   TOUS les événements disponibles (pas seulement UK comme prévu
+   initialement) — sert de test de triage avant de décider où le
+   réentraînement complet vaut le coût. Si le zero-shot s'effondre
+   uniformément partout, ça change peu la priorité (réentraîner reste
+   nécessaire pour trancher le motif) ; s'il tient bien quelque part,
+   ça peut réordonner la priorité des événements 3/4.
+3. **UK complet** (config déjà prête, WP8) — 2e événement, coût
+   comparable à Australie (même résolution/grille proche).
+4. **Pakistan puis Mozambique** — configs à créer (schéma dataset déjà
+   supporté par le loader, `DEFAULT_SPLITS`/rainfall folders à ajouter),
+   grilles plus petites (480m) donc probablement plus rapides par
+   epoch/fenêtre, mais intégration initiale (stats de normalisation,
+   dry-run, smoke tests) à refaire comme pour UK.
+
+**Coût estimé (basé sur les débits réels observés cette nuit, pas des
+chiffres théoriques)** : par événement, 18 runs d'entraînement (V2+jumeau
+× 3 seeds × 3 sparsités) + 18 évals ≈ 48h de calcul + 10h30 d'éval en
+séquentiel sur 1 GPU, mais le temps de MUR réel (retries, découverte de
+trous, vérification systématique — cf. la nuit du 17-18 juillet) est
+plus proche de **3-5 jours par événement**. **Total 4 événements : ~8-14
+jours séquentiel sur 1 GPU, ~4-8 jours si P7+Dell tournent réellement en
+parallèle** (réserve : fiabilité Dell pas garantie, cf. incident WPB1 non
+résolu avec certitude).
+
+**Sortie papier** : Table T2 étendue à 4 événements (ou table par
+événement + synthèse), remplace la version "Australie + UK optionnel" du
+plan précédent. Renforce directement le pilier A.
+
+### WP14 — Généralisation architecturale : le protocole jumeau appliqué à d'autres génératifs (ajouté 2026-07-18, DÉCISION UTILISATEUR : à faire)
+
+**Motivation** : le pilier A démontre actuellement "CE modèle de diffusion
+(Δ-Diff) n'apporte pas d'avantage net face à son jumeau". Un reviewer
+sérieux demandera si c'est propre à cette architecture précise ou une
+propriété plus générale de la diffusion appliquée à ce problème. Répliquer
+le protocole jumeau apparié sur ≥2 architectures génératives
+supplémentaires transforme le "contrôle jumeau" d'un test ponctuel en une
+**méthodologie généralisable** — c'est probablement le levier le plus fort
+pour monter de tier si les résultats sont cohérents à travers architectures.
+
+**Design en portes (la moins chère d'abord, ne pas engager la plus chère
+sans passer la première)** :
+
+1. **Variante A — même squelette, sampler/schedule différent** (peu
+   coûteux : réutilise l'encodeur temporel, l'encodeur spatial, tout —
+   seul le processus de diffusion change, ex. DDIM déterministe à peu de
+   pas, ou un schedule continu type score-based/SDE). Teste si le motif
+   dépend du type d'échantillonnage ou seulement du fait de générer.
+2. **Variante B — squelette Mamba** (plus coûteux, nouvelle architecture) :
+   insérer Mamba à des points candidats différents dans le backbone —
+   encodeur temporel (remplace/complète les tokens temporels), encodeur
+   spatial, bottleneck du U-Net — et comparer où l'insertion aide le plus.
+   **Leçon directement réutilisable du Papier 2 (WPB3/WPB4/WPB5)** :
+   l'insertion naïve de Mamba déstabilise l'entraînement (courbes 2-3×
+   plus bruitées, dégât concentré sur les pixels mouillés) ; le fix
+   LayerScale/gate-à-zéro-à-l'init (confirmé +1.46σ sur FNO+) doit être
+   appliqué DÈS LE DÉPART ici, pas découvert une 2e fois par la même
+   instabilité. Chaque emplacement Mamba testé reçoit **son propre jumeau
+   déterministe apparié** (même protocole que V2/Twin) — c'est ce qui fait
+   que ça reste dans le pilier A plutôt que de devenir une simple ablation
+   d'architecture.
+3. **Combinaison optionnelle** : si Variante B montre un emplacement Mamba
+   clairement gagnant, le tester aussi en variante "sampler différent"
+   (combine A+B) — seulement si le budget temps le permet après WP13.
+
+**Critères pré-enregistrés** :
+- Le motif "jumeau compétitif/gagnant dans certains régimes" se réplique
+  sur les nouvelles architectures → conclusion du pilier A considérablement
+  renforcée, argument publiable comme règle méthodologique générale
+  ("tout papier de diffusion spatiotemporelle sous sparsité doit reporter
+  un jumeau apparié").
+- Le motif NE se réplique PAS (le nouveau génératif bat nettement son
+  jumeau) → résultat tout aussi informatif : identifie CE QUI, dans
+  l'architecture ou le sampler, fait la différence — reformuler le pilier A
+  en "dépend de la paramétrisation/architecture", moins fort mais toujours
+  honnête et publiable.
+
+**Séquencement** : après WP13 (ne pas ouvrir un 3e front architectural
+avant d'avoir fermé le front multi-événements) sauf si le budget GPU libéré
+par Dell/P7 permet un vrai parallélisme sans dégrader la supervision des
+runs déjà en cours — à réévaluer au moment venu, pas décidé à l'avance.
+
+**Sortie papier** : nouvelle figure/table "réplication inter-architectures"
+du motif jumeau-vs-génératif ; si WP14 Variante B confirme un gain Mamba
+net et répliqué, ça devient aussi un pont direct vers le Papier 2
+(WPB3-7), à mentionner explicitement dans la discussion des deux papiers.
 
 ### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
 - **Tout chiffre headline du papier repasse en protocole test COMPLET
@@ -1295,3 +1416,28 @@ Détail complet dans `PROTOCOL.md`.
   (×970 dense → ×1.9 m95) est déjà cohérente avec le mécanisme (l'échelle
   effective de la cible delta grossit aux pixels masqués) — dose-réponse
   "gratuite" mais confondue, d'où le test propre.
+- 2026-07-18 — **DÉCISION UTILISATEUR : élargissement majeur du scope,
+  WP13 + WP14 créés**. Après un bilan honnête de la nuit (voir résultats
+  WP6/WP9/WP12 ci-dessus) et une discussion coût/bénéfice, décision de :
+  (i) **WP13** — réentraînement complet (V2+jumeau, 3 seeds, 3 sparsités,
+  évals) sur les 4 événements FloodCastBench (Australie, UK, Pakistan,
+  Mozambique), pas seulement Australie+UK-optionnel comme prévu
+  jusqu'ici ; inventaire confirmé par lecture directe du code dataset
+  (`floodcastbench_fno_dataset.py`) et du disque (`data/FloodCastBench`) —
+  Pakistan/Mozambique existent dans le benchmark mais n'ont aucune config
+  dans ce repo, à créer. Coût estimé ~8-14 j séquentiel / ~4-8 j si
+  double-machine (réserve fiabilité Dell). Séquencement obligatoire :
+  finir Australie → zero-shot triage (WP10 étendu aux 4 événements,
+  quasi gratuit) → UK complet → Pakistan/Mozambique. (ii) **WP14** — le
+  protocole jumeau apparié répliqué sur ≥2 architectures génératives
+  supplémentaires : une variante sampler/schedule (peu coûteuse) et une
+  variante backbone Mamba à emplacements multiples (encodeur temporel,
+  encodeur spatial, bottleneck U-Net), chacune avec son propre jumeau
+  déterministe. Réutilise directement la leçon LayerScale/gate-à-zéro du
+  Papier 2 (WPB4/WPB5) pour éviter de redécouvrir la même instabilité
+  d'entraînement Mamba. Ce WP transforme le pilier A d'un test ponctuel en
+  méthodologie généralisable — identifié comme le levier le plus probable
+  pour dépasser le tier Q1 domaine si les motifs se répliquent. §1
+  (structure profonde) mis à jour en conséquence. Séquencement : WP14
+  après WP13 sauf parallélisme réel sans dégrader la supervision des runs
+  en cours.
