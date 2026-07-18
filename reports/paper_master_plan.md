@@ -133,6 +133,7 @@ identifiée), ordre de rendement décroissant :**
 | 2.4 | WP14-B : variante backbone Mamba (emplacements multiples, chacun avec jumeau, fix LayerScale d'office) | "et si une architecture séquentielle moderne changeait la donne ?" | ~3-5 j |
 | 2.5 | WP4 (b-f) : grille d'ablation restante | "d'où viennent exactement les gains ?" | ~1-2 j |
 | 2.6 | Calibration : CRPS (score sharpness-aware) + éval V2-m95-aléatoire (dernier caveat de masque de la Fig. 6) + 3e seed cluster WP7 + logging par-fenêtre dans l'évaluateur (pour le vrai test apparié fenêtre×seed, n=39, avant tout futur rerun) | "votre calibration n'utilise que la couverture" / caveats résiduels / "n=3 par seed n'est pas un test statistique sérieux" | ~1-2 j |
+| 2.7 | WP15-A : paramétrisation delta+échelle appliquée à FNO+ (réutilise l'infra Papier 2), démêle "paramétrisation" vs "backbone" avant toute affirmation jumeau-vs-FNO | "vous comparez un backbone bien paramétré à un backbone mal paramétré, pas deux backbones" | ~1-2 j |
 
 **Objectif "inattaquable" en une phrase** : 5 seeds partout où un résultat
 est cité comme preuve, sur les 4 événements FloodCastBench (WP13), avec le
@@ -213,6 +214,29 @@ l'évaluateur (était en 2.6) passe AVANT l'item 1.5 (UK) — sinon toutes
 les évals UK devront être refaites pour le test apparié n=39. Petit coût
 code, gros coût évité.
 
+**Portée de la comparaison au jumeau vs FNO (ajouté 2026-07-19, question
+utilisateur : "le jumeau peut-il remplacer FNO en toute condition ?")**
+
+Réponse théorique honnête : **non, et ce n'est pas censé être vrai**. Le
+même argument de biais inductif qui prédit que le jumeau bat FNO+ ici
+(design local/multi-échelle mieux adapté aux fronts nets d'inondation et
+à l'observation éparse) prédit l'inverse sur les problèmes pour lesquels
+FNO a été conçu et validé à l'origine (Navier-Stokes, Darcy flow — champs
+globalement lisses, sans discontinuité locale, où le mélange spectral
+global est un avantage et où l'invariance en résolution est une propriété
+que ni U-Net ni Mamba ne possèdent nativement). Une affirmation "bat FNO
+en toute condition" est un argument de type no-free-lunch et serait très
+probablement fausse si testée sur le terrain de FNO — et un reviewer verra
+immédiatement le biais de sélection si on ne teste que des datasets
+similaires à FloodCastBench.
+
+**Ce qui est défendable** : une affirmation **scopée**, pas universelle —
+"pour la classe de problèmes à observations éparses + reconstruction à
+frontières localisées nettes (inondation, et probablement propagation de
+feu / cartographie d'étendue quasi-binaire), le jumeau (potentiellement
+Mamba) est préférable à FNO+". Voir WP15 pour les deux expériences qui
+établissent cette portée proprement plutôt que de la surclaimer.
+
 ### PALIER 3 — hors scope de cette soumission (ajouté 2026-07-18, discussion utilisateur)
 
 **Question posée** : pour que l'affirmation *substantielle* (pas juste la
@@ -244,6 +268,16 @@ dataset réellement indépendant (pas 3-4) + 3-4 architectures (pas 5)
 comme ambition réaliste d'un "palier 3" borné, en gardant la même
 discipline de gel/priorisation que les paliers 1-2 plutôt que de laisser
 le scope dériver sans limite.
+
+**WP15-B (ajouté 2026-07-19)** : même logique, appliquée à la question
+"le jumeau peut-il remplacer FNO en toute condition ?" (voir WP15 en §4).
+Tester sur un dataset délibérément favorable à FNO (champ lisse,
+généralisation en résolution) est le test qui répondrait vraiment à la
+question, mais coûte une intégration de dataset complète — même ordre de
+grandeur que le reste du palier 3. Non engagé maintenant ; le papier
+actuel se limite à l'affirmation scopée (portée = classe de problèmes à
+observations éparses + fronts nets) et énonce explicitement l'argument
+no-free-lunch plutôt que de laisser la question ouverte sans réponse.
 
 ---
 
@@ -1276,6 +1310,64 @@ du motif jumeau-vs-génératif ; si WP14 Variante B confirme un gain Mamba
 net et répliqué, ça devient aussi un pont direct vers le Papier 2
 (WPB3-7), à mentionner explicitement dans la discussion des deux papiers.
 
+### WP15 — Le jumeau comme alternative à FNO : démêler paramétrisation et
+backbone, puis tester la portée (ajouté 2026-07-19, DÉCISION UTILISATEUR :
+WP15-A à faire, WP15-B = future work)
+
+**Motivation** : la question "le jumeau (potentiellement Mamba) peut-il
+remplacer FNO ?" est distincte de la question "la diffusion apporte-t-elle
+quelque chose ?" (pilier A). Deux confondants doivent être démêlés avant
+toute affirmation de ce type :
+1. Le jumeau n'a pas que un backbone différent de FNO+, il a AUSSI la
+   paramétrisation delta + échelle par régime que FNO+ n'a jamais reçue —
+   sans contrôle, on ne saurait pas si le jumeau gagne grâce au backbone ou
+   grâce à la cible d'entraînement (même piège que le confondant de
+   contexte déjà découvert et écarté pour WPB0).
+2. Même démêlé, un gain sur FloodCastBench ne dit rien sur "en toute
+   condition" (voir discussion no-free-lunch ci-dessus) — il faut un test
+   sur le terrain favorable à FNO pour connaître la vraie portée.
+
+**WP15-A — Paramétrisation delta sur FNO+ (peu coûteux, tier 2)** :
+réutiliser directement l'infra du Papier 2 (FNO+/FNO+Mamba), donner à
+FNO+ la même cible delta + échelle par régime que V2/jumeau (aucun autre
+changement), réentraîner sur Australie. Deux issues, toutes deux
+publiables :
+- FNO+delta comble la majorité de l'écart avec le jumeau → la vraie
+  découverte n'est pas "U-Net bat FNO" mais **"la paramétrisation compte
+  plus que le backbone"** — résultat plus général, se transfère
+  directement au Papier 2, et évite de surclaimer sur l'architecture.
+- FNO+delta ne comble PAS l'écart → argument d'architecture réel (biais
+  local/attention bat le mélange spectral global ici), qui justifie de
+  pousser WP14-B (Mamba) comme variante FNO-alternative sérieuse.
+  Coût estimé : ~1-2 j (réutilise le code Papier 2 existant), 3 seeds.
+
+**WP15-B — Dataset adversarial, terrain favorable à FNO (coûteux, PALIER
+3 / future work, PAS engagé dans cette soumission)** : tester le jumeau
+sur un problème délibérément défavorable à son biais inductif — champ
+lisse sans front net, et/ou exigence de généralisation en résolution
+(train basse résolution, inférence haute résolution) — par exemple un
+benchmark PDE standard type Navier-Stokes/Darcy où FNO a été validé à
+l'origine. Deux issues :
+- Le jumeau perd → confirme le compromis de biais inductif, renforce la
+  crédibilité (on montre qu'on comprend les limites plutôt que de
+  surclaimer), donne une règle de décision claire au praticien ("choisir
+  selon la structure du champ").
+- Le jumeau gagne quand même → résultat surprenant, nécessiterait une
+  explication mécanistique sérieuse avant d'être cru (même standard que
+  pour l'hypothèse signal≪champ, actuellement non prouvée).
+  Coût : intégration complète d'un nouveau dataset/pipeline (cf. coût déjà
+  observé pour UK/Pakistan/Mozambique) — ordre de grandeur PALIER 3, pas
+  tier 2. Décision : documenté ici comme condition de sortie nécessaire
+  AVANT toute affirmation "peut remplacer FNO" dans une version future du
+  papier ou un papier séparé — mais explicitement PAS engagé maintenant.
+
+**Ce qui va dans le papier actuel, quel que soit l'état de WP15-B** : la
+formulation reste scopée ("pour cette classe de problèmes"), jamais
+universelle. La section discussion/limitations doit énoncer explicitement
+l'argument no-free-lunch (pourquoi on ne teste pas "en toute condition"
+et pourquoi ce serait le mauvais test à faire ici) — ça préempte l'
+objection plutôt que de laisser un reviewer la découvrir seul.
+
 ### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
 - **Tout chiffre headline du papier repasse en protocole test COMPLET
   (13/13 fenêtres)** avant gel — les lectures rapides 4/13 ne servent qu'au
@@ -1643,3 +1735,21 @@ Détail complet dans `PROTOCOL.md`.
   additif ; le point de décision de soumission est à la fin du palier 1,
   tranché sur l'état réel de 2.1/2.2 (seuls items qui changent le tier).
   Re-priorisation interdite sans mise à jour explicite de cette section.
+- 2026-07-19 — **WP15 créé (question utilisateur : le jumeau peut-il
+  remplacer FNO "en toute condition" ?)**. Réponse théorique posée
+  explicitement dans le plan (§1) : non, argument no-free-lunch — le
+  biais inductif qui favorise le jumeau sur FloodCastBench (fronts nets,
+  observation éparse) prédit l'inverse sur le terrain de FNO (champs
+  lisses, généralisation en résolution). Deux items créés pour établir la
+  portée proprement plutôt que de surclaimer : **WP15-A** (tier 2, item
+  2.7, ~1-2 j) — appliquer la paramétrisation delta+échelle par régime à
+  FNO+ (réutilise l'infra Papier 2) pour démêler si l'avantage du jumeau
+  vient du backbone ou de la cible d'entraînement, confondant jusqu'ici
+  non contrôlé ; **WP15-B** (palier 3, hors scope, documenté comme
+  condition de sortie future) — test sur dataset adversarial favorable à
+  FNO, ordre de grandeur intégration-dataset-complète, non engagé
+  maintenant. Le papier gardera une affirmation scopée ("classe de
+  problèmes à observations éparses + fronts nets"), jamais universelle,
+  avec l'argument no-free-lunch énoncé explicitement en discussion pour
+  préempter l'objection plutôt que de la laisser à découvrir par un
+  reviewer.
