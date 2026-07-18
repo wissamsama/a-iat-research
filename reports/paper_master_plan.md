@@ -731,6 +731,46 @@ source. Revérifier si accès VPN institutionnel disponible.
   `central_table_evals_queue.log`. C'est maintenant le VRAI dernier
   chaînon avant le tableau — leçon : ne jamais supposer qu'un artefact
   existe sans le lister directement, même quand le plan semble l'impliquer.
+
+  **10/10 TERMINÉES avec succès (2026-07-18 21:01)**. En les assemblant,
+  **3e gap trouvé** : le jumeau dense n'avait non plus jamais d'éval test
+  formelle (seulement `rollout_val_rmse` interne). 3 évals rapides
+  lancées et terminées (~1-4 min chacune). **En même temps, asymétrie
+  repérée et corrigée** : le V2 dense existant (`v2_dense_fullmetrics_check`)
+  n'était qu'une lecture rapide 4/13 fenêtres (déjà identifié comme item
+  1.3 du palier 1) — relancé en protocole complet 13/13 pour que la ligne
+  dense du tableau soit apples-to-apples avec les lignes m50/m95 (en
+  cours au moment d'écrire).
+
+  **TABLEAU CENTRAL — relRMSE, moyenne ± écart-type sur 3 seeds (42/7/123),
+  protocole test, jumeau dense/m50/m95 et V2 m50/m95 sur 13/13 fenêtres ;
+  V2 dense encore sur 4/13, réévaluation 13/13 en cours** :
+
+  | Régime | V2 (Δ-Diff) | Twin (jumeau) | Gagnant | Ratio | Signe cohérent sur les 3 seeds ? |
+  |---|---:|---:|---|---:|---|
+  | dense | 0.001576 ± 0.000668 (4/13, à refaire) | **0.000417 ± 0.000039** | jumeau | ×3.78 | oui (3/3) |
+  | m50 | **0.318425 ± 0.043702** | 0.348852 ± 0.040779 | V2 (faible) | ×1.10 | **non** (2/3 V2, 1/3 jumeau) |
+  | m95 | 0.492443 ± 0.013940 | **0.344249 ± 0.006248** | jumeau | ×1.43 | oui (3/3) |
+
+  **Lecture** : le motif est **quasi identique à l'estimation pré-WP6**
+  (dense jumeau ×3.55→×3.78, m50 quasi-tie, m95 jumeau ×1.57→×1.43) — les
+  corrections de checkpoints (WP6) n'ont donc PAS changé la conclusion
+  qualitative, seulement affiné les chiffres. **Verdict selon les critères
+  pré-enregistrés (§WP1) : branche "mixte"** — ni "jumeau partout" ni
+  "V2 partout". Le jumeau domine nettement en dense et en sparsité
+  extrême (m95), le résultat est indécis à sparsité intermédiaire (m50,
+  signe non cohérent entre seeds).
+
+  **Limite de rigueur statistique, à noter explicitement dans le papier** :
+  ce test est un test apparié par SEED (n=3, sous-puissant) — le test par
+  FENÊTRE×SEED (n=39, Wilcoxon/bootstrap) prévu dans le protocole
+  d'origine nécessiterait que l'évaluateur sauvegarde le relRMSE par
+  fenêtre individuelle (actuellement seulement agrégé), ce qui impliquerait
+  de refaire les 12 évals avec un évaluateur modifié — coût élevé, reporté
+  en item du palier 1 (déjà couvert par la mention "tests appariés" de
+  l'item 1.1, à préciser : ajouter la sauvegarde par-fenêtre AVANT tout
+  autre rerun futur pour ne pas payer ce coût une 2e fois).
+
 - **Design** : deux familles de masques d'éval en plus de l'aléatoire i.i.d. :
   (i) capteurs placés le long du réseau de drainage (pixels à forte occupation
   d'eau au temps initial — proxy jauges de rivière) ; (ii) clusters spatiaux
