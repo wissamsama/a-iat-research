@@ -96,6 +96,53 @@ fonctionner du tout ; et le dividende incertitude, mesuré honnêtement,
 n'existe pas encore sur ce benchmark. Chaque WP doit servir un pilier ; toute
 tâche qui n'en sert aucun est par défaut hors scope.
 
+### Priorités de sortie (ajouté 2026-07-18, décision utilisateur) — deux paliers
+
+**Règle de lecture** : le PALIER 1 seul = un papier Q1 domaine soumissible.
+Le PALIER 2 = ce qui le rend inattaquable et candidat au-dessus. Chaque
+item du palier 2 est ADDITIF (s'insère dans le papier sans en changer la
+narration) — donc le palier 1 définit un point de gel atteignable, et on
+n'ouvre un item du palier 2 que quand tout ce qui le précède est fermé.
+Interdiction de re-prioriser sous le coup d'une idée nouvelle sans passer
+par une mise à jour explicite de cette section.
+
+**PALIER 1 — NOYAU (Q1 domaine assuré si tout est fait), dans l'ordre :**
+
+| # | Item | Coût estimé | État |
+|---|---|---|---|
+| 1.1 | Tableau central Australie (jumeau vs Δ-Diff, 3 seeds × 3 sparsités, protocole test 13/13, checkpoints corrigés) + tests appariés (Wilcoxon/bootstrap par fenêtre×seed) | en cours | 9/10 évals faites, dernière en cours |
+| 1.2 | WP12 Phase 2 (dose-réponse {Δt × cible}, 8 runs one-step courts) — décide si le pilier B est "mécanisme montré" ou "hypothèse honnête" | ~1-2 j GPU | Δt choisis, prêt à lancer |
+| 1.3 | Re-run protocole COMPLET (13/13) de la table Δ-Diff-vs-FNO+ dense (actuellement 4/13, la légende du papier promet ce re-run) | ~3-5h GPU | à lancer |
+| 1.4 | WP2 ablation contexte : confirmer sur 2 seeds de plus (actuellement single-seed, encadré PENDING du papier le promet) | ~1 j GPU | à lancer |
+| 1.5 | WP8 : UK complet (V2+jumeau, 3 seeds × 3 sparsités + évals) — LE saut de crédibilité 1→2 événements | ~2-4 j | config prête |
+| 1.6 | WP10 : zero-shot triage sur les 4 événements (éval-only) | ~0.5 j | après configs Pak/Moz minimales |
+| 1.7 | WP11 : table coût/complexité (mesures réelles) | ~2-3h | à lancer |
+| 1.8 | Assemblage papier : intro + discussion + section protocole, gel des encadrés PENDING restants, figures f2 remplacée par dose-réponse | ~2-3 j rédaction | draft déjà avancé |
+
+Estimation totale palier 1 depuis maintenant : **~7-12 jours de mur**
+(items 1.3/1.4/1.6/1.7 intercalables dans les creux GPU des gros items).
+
+**PALIER 2 — INATTAQUABLE (chaque item ferme une attaque reviewer
+identifiée), ordre de rendement décroissant :**
+
+| # | Item | Attaque qu'il ferme | Coût |
+|---|---|---|---|
+| 2.1 | WP14-A : 2e architecture générative (sampler/schedule différent) + son jumeau, Australie | "c'est peut-être propre à CE modèle de diffusion" | ~2-3 j |
+| 2.2 | **+2 seeds (→5 au total) sur la comparaison centrale** (Australie, {V2, jumeau} × {m50, m95} ; dense optionnel) — particulièrement justifié depuis que WP6 a montré que la variance inter-seed domine le signal de convergence chez le jumeau | "3 seeds c'est trop peu pour vos claims de variance" | ~2-3 j (8 trainings + évals, avec le taux de retry observé) |
+| 2.3 | WP13 événements 3/4 : Pakistan + Mozambique complets (configs à créer) | "2 événements de la même famille haute-fidélité seulement" | ~3-6 j |
+| 2.4 | WP14-B : variante backbone Mamba (emplacements multiples, chacun avec jumeau, fix LayerScale d'office) | "et si une architecture séquentielle moderne changeait la donne ?" | ~3-5 j |
+| 2.5 | WP4 (b-f) : grille d'ablation restante | "d'où viennent exactement les gains ?" | ~1-2 j |
+| 2.6 | Calibration : CRPS (score sharpness-aware) + éval V2-m95-aléatoire (dernier caveat de masque de la Fig. 6) + 3e seed cluster WP7 | "votre calibration n'utilise que la couverture" / caveats résiduels | ~1 j |
+
+Estimation palier 2 complet : **+2 à 3 semaines** après le palier 1.
+Point de décision de soumission : à la fin du palier 1, soumettre ou
+continuer se décide sur l'état réel des résultats 2.1/2.2 (les deux
+premiers items du palier 2 sont ceux qui changent le tier ; 2.3-2.6
+renforcent sans changer la catégorie).
+
+**Hors paliers (explicitement)** : WP5 Manning/LULC (aucun pilier),
+§9-bis Transactions (gates inchangées), combinaison WP14 A+B.
+
 ---
 
 ## 2. Paysage littérature (vérifié 2026-07-10, refaire une passe avant soumission)
@@ -1441,3 +1488,16 @@ Détail complet dans `PROTOCOL.md`.
   (structure profonde) mis à jour en conséquence. Séquencement : WP14
   après WP13 sauf parallélisme réel sans dégrader la supervision des runs
   en cours.
+- 2026-07-18 (b) — **Priorités de sortie à deux paliers posées (§1,
+  décision utilisateur après discussion coût/rendement)** : PALIER 1 =
+  noyau suffisant pour un Q1 domaine soumissible (tableau central
+  Australie + dose-réponse + re-runs protocole complet + WP2 3-seeds + UK
+  complet + zero-shot 4 événements + table coût + assemblage, ~7-12 j) ;
+  PALIER 2 = rendre le papier inattaquable, par rendement décroissant
+  (2e architecture générative appariée, **+2 seeds → 5 sur la comparaison
+  centrale** — justifié par la variance inter-seed dominante observée en
+  WP6 —, Pakistan/Mozambique, variante Mamba, ablations restantes,
+  CRPS/caveats calibration, +2-3 semaines). Chaque item du palier 2 est
+  additif ; le point de décision de soumission est à la fin du palier 1,
+  tranché sur l'état réel de 2.1/2.2 (seuls items qui changent le tier).
+  Re-priorisation interdite sans mise à jour explicite de cette section.
