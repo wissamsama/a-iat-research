@@ -739,6 +739,25 @@ number (Table~T5, pending), so we do not adjudicate the trade here.
   \item The \mfifty{} regime's undecided verdict is based on 3 seeds
     with a sign flip; distinguishing a genuine near-tie from insufficient
     seed count is not yet possible with this sample size.
+  \item \textbf{Scope of the generalization claim.} Even once extended to
+    all four FloodCastBench events (Australia, UK, Pakistan, Mozambique,
+    \S\ref{sec:limitations}), these are draws from a single benchmark's
+    data-generation pipeline --- the same hydraulic simulator, the same
+    curation choices --- not independent replications across simulators
+    or institutions. A pattern that holds across all four could still be
+    a property of this simulator (e.g.\ its numerical damping) rather than
+    of flood dynamics in general. Likewise, testing the matched-twin
+    protocol on 1--2 additional generative architectures
+    (\S\ref{sec:ablations}) rules out ``artifact of one architecture'' but
+    falls far short of covering the space of generative model designs. We
+    therefore separate two claims of different strength: the
+    \emph{procedural} recommendation --- that any claimed generative
+    advantage in this class of problem should be checked against a
+    parameter-matched deterministic twin --- is supported by demonstrating
+    the check matters even once; the \emph{substantive} finding --- the
+    specific mixed pattern we measure --- is scoped to FloodCastBench and
+    the architectures tested, and should not be read as a general claim
+    about generative spatiotemporal forecasting.
 \end{itemize}
 
 % ============================================================
