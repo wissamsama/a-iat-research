@@ -435,18 +435,17 @@ metrics.
 \caption{\ours{} under full observation (mean $\pm$ std over 3 training
 seeds) versus the \emph{published} FNO+ results on the same benchmark
 split. Arrows give the direction of improvement; \textbf{bold} marks the
-better value per row. Evaluated on a 4-window subset of the test protocol;
-the full-protocol rerun is pending and will replace these numbers.}
+better value per row. Full test protocol (13/13 windows).}
 \label{tab:vsfnoplus}
 \begin{tabular}{lrr}
 \toprule
 Metric & FNO+ (published) & \ours{} (ours) \\
 \midrule
-Relative RMSE $\downarrow$ & 0.003941 & $\mathbf{0.001576 \pm 0.000818}$ \\
+Relative RMSE $\downarrow$ & 0.003941 & $\mathbf{0.001558 \pm 0.000836}$ \\
 NSE $\uparrow$              & 0.999979 & $\mathbf{0.999996 \pm 0.000004}$ \\
 Pearson $r$ $\uparrow$      & 0.999990 & $\mathbf{0.999999 \pm 0.000001}$ \\
-CSI@0.001\,m $\uparrow$     & 0.939638 & $\mathbf{0.986660 \pm 0.003735}$ \\
-CSI@0.01\,m $\uparrow$      & 0.984588 & $\mathbf{0.999098 \pm 0.000393}$ \\
+CSI@0.001\,m $\uparrow$     & 0.939638 & $\mathbf{0.985861 \pm 0.003884}$ \\
+CSI@0.01\,m $\uparrow$      & 0.984588 & $\mathbf{0.999063 \pm 0.000416}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -518,10 +517,8 @@ no blanket claim.
 \centering
 \caption{\ours{} (mean of 8 scenarios) vs.\ \twin{} (single deterministic
 forecast), relative RMSE, mean $\pm$ std over 3 seeds (42/7/123), full
-test protocol (13/13 windows) for \mfifty{} and \mninetyfive{}. The dense
-row uses the 4-window screening read pending a full-protocol re-run
-(\S\ref{sec:protocol}); the pattern already matches the sparse rows'
-direction. \textbf{Bold} marks the better model per row. The rightmost
+test protocol (13/13 windows) for all three regimes. \textbf{Bold} marks
+the better model per row. The rightmost
 column reports whether the per-seed difference (\ours{} $-$ \twin{}) has
 a consistent sign across all 3 seeds --- our current significance check,
 since the evaluator does not yet log per-window error (a proper
@@ -532,7 +529,7 @@ window$\times$seed paired test, $n{=}39$, is future work,
 \toprule
 Regime & \ours{} & \twin{} & Winner & Consistent sign (3 seeds) \\
 \midrule
-dense & 0.001576 $\pm$ 0.000668 & $\mathbf{0.000417 \pm 0.000039}$ & \twin{}, $\times$3.8 & yes \\
+dense & 0.001558 $\pm$ 0.000836 & $\mathbf{0.000417 \pm 0.000039}$ & \twin{}, $\times$3.7 & yes \\
 \mfifty{} & $\mathbf{0.318425 \pm 0.043702}$ & 0.348852 $\pm$ 0.040779 & \ours{}, $\times$1.1 (weak) & \textbf{no} \\
 \mninetyfive{} & 0.492443 $\pm$ 0.013940 & $\mathbf{0.344249 \pm 0.006248}$ & \twin{}, $\times$1.4 & yes \\
 \bottomrule
