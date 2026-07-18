@@ -1396,24 +1396,64 @@ objection plutôt que de laisser un reviewer la découvrir seul.
 pas juste sur le chiffre qui nous arrange" (ajoutée 2026-07-19, discussion
 utilisateur sur l'arc narratif du papier)
 
-**Ce que FNO+ (papier source, Table 4) a réellement testé** : Australie
-60m high-fidelity uniquement, **dense seulement** (le papier FNO+ ne
-teste aucune sparsité — l'axe sparsité est propre à cette ligne de
-travaux DIFF-SPARSE, pas à FNO+), protocole single-shot non-autorégressif
-t2..t20 (19 pas en un seul forward), 5 métriques : relRMSE, NSE, Pearson
-r, CSI@0.001, CSI@0.01. Pas de long-horizon au-delà de t20, pas de test
-multi-région dans le papier source.
+**CORRECTION (2026-07-19, après lecture directe du papier via PMC —
+`https://pmc.ncbi.nlm.nih.gov/articles/PMC11903882/`)** : l'inventaire
+ci-dessous était **incomplet et partiellement faux** — FNO+ a bien été
+testé sur plusieurs régions, pas seulement l'Australie. Corrigé point par
+point.
 
-**État de la parité, honnêtement inventorié** :
+**Ce que FNO+ (papier source FloodCastBench, Nature Sci Data 2025) a
+réellement testé — inventaire complet vérifié** :
+
+- **5 métriques**, pas plus : relRMSE (`Σ|y-p|²/Σ|y|²`), NSE, Pearson r,
+  CSI@0.001, CSI@0.01. Confirmé, rien d'autre dans le papier.
+- **Horizon** : single-shot, 20 pas (t=1..20, 300s/pas ≈ 100 min),
+  conditions initiales vraies à t=0. **Pas de rollout autorégressif chez
+  eux, aucun long-horizon au-delà de t20** — confirmé, la comparaison h216
+  reste une extension propre à ce projet.
+- **Sparsité** : confirmé, **aucune sparsité testée**, nulle part. L'axe
+  sparsité reste propre à DIFF-SPARSE.
+- **Régions/résolutions — Table 4 (entraînement in-domain)** :
+  - Basse-fidélité 480m (Pakistan) : relRMSE 0.002107, NSE 0.999994,
+    r 0.999997, CSI@0.001 0.976716, CSI@0.01 0.993993
+  - Haute-fidélité 60m (Australie) : relRMSE 0.003941 (le chiffre qu'on
+    utilise déjà), NSE 0.999979, r 0.999990, CSI@0.001 0.939638,
+    CSI@0.01 0.984588
+- **Régions — Table 5 (transfert cross-régional zero-shot, poids gelés,
+  NON réentraîné sur la région cible)** — **totalement absente de notre
+  inventaire jusqu'ici** :
+  - Basse-fidélité 480m, transfert Pakistan→Mozambique : relRMSE
+    0.078633, NSE 0.955450, r 0.985521, CSI@0.001 0.934028,
+    CSI@0.01 0.912712
+  - Haute-fidélité 60m, transfert Australie→UK : relRMSE 0.024771,
+    NSE 0.998949, r 0.999645, CSI@0.001 0.859821, CSI@0.01 0.963278
+  - Haute-fidélité 30m, transfert Australie→UK **avec downscaling
+    zero-shot** : relRMSE 0.025190, NSE 0.998953, r 0.999639,
+    CSI@0.001 0.810674, CSI@0.01 0.958525
+  - Comparateurs dans les deux tables : U-Net et FNO (variante non
+    physics-informed).
+
+**Conséquence importante pour WP13** : notre plan actuel (entraîner
+V2/jumeau séparément sur chaque événement, in-domain) **n'est PAS le même
+protocole que la Table 5 de FNO+** (transfert zero-shot, poids gelés).
+Si on veut une comparaison directe aux chiffres Table 5, il faut EN PLUS
+évaluer nos checkpoints Australie **en zero-shot sur UK/Mozambique, sans
+réentraînement** — et c'est en fait **beaucoup moins cher que WP13 tel
+que planifié** (pas de nouvel entraînement, juste une éval sur des
+checkpoints déjà existants). À faire probablement AVANT le WP13 complet,
+comme sonde rapide.
+
+**État de la parité, mis à jour** :
 
 | Condition testée par FNO+ | Couverte chez nous ? | État |
 |---|---|---|
-| relRMSE, dense, Australie | Oui, V2 bat le chiffre publié | Fait, mais lecture rapide 4/13 fenêtres — **pas encore 13/13, bloquant avant gel** (item 1.3) |
-| NSE, Pearson r, CSI@0.001, CSI@0.01, dense | Oui, V2 bat sur les 5 | Même réserve 4/13 que ci-dessus |
-| Protocole d'évaluation (single-shot vs autorégressif) | **Non résolu** : V2/jumeau = moyenne-8-scénarios en rollout autorégressif, FNO+ = sortie déterministe unique en un forward — pas rigoureusement le même protocole | Réserve explicite déjà notée (§3), **à trancher avant "bat le SOTA" définitif** — soit reporter aussi un chiffre V2 single-sample comparable, soit justifier explicitement pourquoi les deux protocoles sont la bonne base de comparaison malgré la différence |
-| Long-horizon au-delà de t20 | FNO+ a une courbe h216 dans le dashboard, mais FNO+ n'a jamais été *évalué par ses auteurs* au-delà de t20 — comparaison h216 est une extension de ce projet, pas une reproduction de leur protocole | Analyse "V2 vs V1 vs FNO+ par étape" pas encore faite formellement (WP0, déjà noté) |
-| Sparsité (m50/m95) | **FNO+ n'a jamais été entraîné/évalué sous sparsité, ni par ses auteurs ni par nous** — aucun run trouvé (`grep` négatif) | **Absence assumée, pas un oubli** : ce n'est pas un manque de parité mais le point même du papier — la lignée DIFF-SPARSE gère un régime où FNO+ n'a jamais été conçu pour opérer. Ne PAS reproduire un FNO+ "sparsifié" artificiellement sans le dire clairement si jamais fait (tier 2, optionnel, voir ci-dessous) |
-| Autre région que l'Australie | Non testé pour FNO+ (papier source = Australie seule) | Hors scope de la comparaison FNO+ — WP13 (UK, Pakistan, Mozambique) compare V2/jumeau entre eux, pas contre FNO+ qui n'a pas de chiffre publié ailleurs |
+| 5 métriques, dense, Australie in-domain (Table 4) | Oui, V2 bat le chiffre publié sur les 5 | Fait, mais lecture rapide 4/13 fenêtres — **pas encore 13/13, bloquant avant gel** (item 1.3) |
+| 5 métriques, dense, Pakistan in-domain (Table 4, 480m) | **Non couvert** — jamais comparé | **Nouveau gap** : nécessite un modèle V2/jumeau entraîné sur Pakistan in-domain (recoupe WP13, mais 480m ≠ nos 60m habituels — à vérifier si config existe) |
+| Protocole d'évaluation (single-shot vs autorégressif) | **Non résolu** : V2/jumeau = moyenne-8-scénarios en rollout autorégressif, FNO+ = sortie déterministe unique en un forward | Réserve explicite déjà notée (§3), **à trancher avant "bat le SOTA" définitif** |
+| Transfert zero-shot Australie→UK 60m et 30m (Table 5) | **Non couvert, gap découvert aujourd'hui** | **Nouveau, prioritaire et peu coûteux** : éval zero-shot des checkpoints Australie existants sur UK, sans réentraînement — voir action 4 ci-dessous |
+| Transfert zero-shot Pakistan→Mozambique 480m (Table 5) | **Non couvert, gap découvert aujourd'hui** | Nécessite d'abord un modèle Pakistan in-domain (comme ci-dessus), puis éval zero-shot sur Mozambique |
+| Long-horizon au-delà de t20 | FNO+ n'a jamais été évalué au-delà de t20 par ses auteurs | Comparaison h216 = extension propre à ce projet, pas un manque de parité |
+| Sparsité (m50/m95) | FNO+ n'a jamais été entraîné/évalué sous sparsité, ni par ses auteurs ni par nous | **Absence assumée, pas un oubli** — c'est le point du papier. Voir action 3 (optionnelle) |
 
 **Actions qui en découlent, classées par priorité** :
 1. **Bloquant avant gel (déjà dans le palier 1, item 1.3)** : rerun 13/13
@@ -1433,6 +1473,22 @@ multi-région dans le papier source.
    de laisser l'absence de comparaison ouverte à interprétation. Coût
    estimé ~1-2 j (réutilise l'infra Papier 2), à décider au moment du
    palier 2 selon le budget restant.
+4. **NOUVEAU, ajouté 2026-07-19, priorité haute et coût faible** : évaluer
+   les checkpoints Australie existants (V2 et jumeau, 3 seeds, déjà
+   entraînés) **en zero-shot sur UK, sans réentraînement** — même
+   protocole de transfert que la Table 5 de FNO+ (poids gelés, domaine
+   cible ajusté), pour une comparaison directe aux chiffres publiés
+   (relRMSE 0.024771 @60m, 0.025190 @30m). Coût : uniquement de l'éval
+   (le pipeline UK existe déjà, `diff_sparse_v2_uk_delta_stats.json`
+   confirme les stats delta calculées) — pas de nouvel entraînement. À
+   faire **avant** le WP13 complet (qui entraîne in-domain, un protocole
+   différent) comme sonde rapide à très haut rendement : si on bat déjà
+   la Table 5 en zero-shot, c'est un argument SOTA supplémentaire quasi
+   gratuit ; sinon ça informe directement la discussion du papier sur les
+   limites de généralisation cross-régionale. Pakistan→Mozambique (480m)
+   suit la même logique mais nécessite d'abord un modèle Pakistan
+   in-domain entraîné (pas encore le cas) — coût plus élevé, à
+   reséquencer après la sonde UK.
 
 ### Hors scope explicite (ne pas ouvrir sans décision consignée §10)
 - Mamba (V2.2), 30m, remask-rollout comme mode principal (reste une
@@ -1823,3 +1879,21 @@ Détail complet dans `PROTOCOL.md`.
   l'ampleur du problème qu'il ne gère pas). Confirmé au passage : l'
   absence de FNO+ sous sparsité n'est pas un trou de couverture à
   combler par principe, c'est le point même du papier.
+- 2026-07-19 (c) — **CORRECTION de la checklist de parité FNO+ après
+  lecture directe du papier source (PMC, `PMC11903882`)**. L'inventaire
+  précédent était faux sur un point important : "FNO+ n'a jamais été
+  testé hors Australie" — en réalité le papier a une **Table 5** de
+  transfert cross-régional zero-shot (poids gelés) : Pakistan→Mozambique
+  480m, Australie→UK 60m ET 30m (downscaling zero-shot), totalement
+  absente de notre inventaire jusqu'ici. Chiffres relevés et consignés
+  (§4, WP15 checklist). **Conséquence directe** : notre plan WP13
+  (réentraînement in-domain par événement) n'est pas le même protocole
+  que cette Table 5 — une sonde bien moins chère existe et n'a pas encore
+  été faite : évaluer les checkpoints Australie déjà entraînés (V2 +
+  jumeau, 3 seeds) en zero-shot sur UK, sans réentraînement, contre les
+  chiffres publiés. Ajouté comme action 4, priorité haute, avant WP13
+  complet. Leçon : même en ayant déjà lu ce papier plusieurs fois pour
+  Table 4, une checklist affirmant "non testé" doit être vérifiée
+  directement contre le texte, pas déduite de ce dont on se souvient —
+  même discipline R-quelconque que les autres incidents "supposé sans
+  vérifier" du projet.
