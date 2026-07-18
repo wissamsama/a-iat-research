@@ -151,6 +151,68 @@ renforcent sans changer la catégorie).
 **Hors paliers (explicitement)** : WP5 Manning/LULC (aucun pilier),
 §9-bis Transactions (gates inchangées), combinaison WP14 A+B.
 
+### Orientation stratégique du papier (ajouté 2026-07-18, réflexion de fond demandée par l'utilisateur)
+
+**Identité du papier — la découverte positive cachée dans le résultat
+négatif.** Le jumeau n'est pas seulement un contrôle : **c'est le meilleur
+modèle du benchmark** (dense : 0.000417 vs 0.003941 FNO+ publié = ~9.4×
+meilleur que le SOTA publié, pour ~1/320e du coût d'inférence de la
+diffusion — 40 pas × 8 scénarios vs 1 passe). Le papier ne doit PAS se
+vendre comme "papier négatif sur la diffusion" mais comme : *un modèle
+déterministe simple, obtenu en SUPPRIMANT la boucle de diffusion d'un
+modèle de diffusion, établit un nouvel état de l'art — et voici le
+protocole qui permet de découvrir ce genre de chose*. Même contenu,
+narration radicalement plus favorable en review, 100% honnête.
+
+**Trois lectures du résultat, à hiérarchiser dans l'intro** :
+1. Étroite (vraie mais paroissiale) : "n'utilisez pas la diffusion sur
+   FloodCastBench". Niveau note technique.
+2. Médiane (la contribution réelle) : **décomposition d'attribution** —
+   les gains attribués à la diffusion dans cette ligne de travaux
+   viennent de choix de représentation (delta, échelle par régime) qui
+   se transfèrent tels quels au déterministe. Parle à tous ceux qui
+   construisent sur DIFF-SPARSE et sa descendance.
+3. Large (le cadre conceptuel) : **confusion épistémique/aléatoire** —
+   la diffusion importée de domaines à stochasticité réelle (météo
+   chaotique) vers des problèmes de reconstruction d'un simulateur
+   déterministe, sans vérifier que la prémisse tient. La vérité terrain
+   étant déterministe, la "diversité de scénarios" mesure l'ambiguïté de
+   reconstruction, pas une incertitude physique — et un jumeau + deep
+   ensemble la couvre.
+
+**Modèle de menace complet (attaque reviewer → réponse)** :
+
+| Attaque | Réponse | État |
+|---|---|---|
+| **"Tautologique : la cible EST déterministe, évidemment le déterministe suffit"** (l'attaque la plus profonde) | (a) le champ entier a fait cette "évidence" à l'envers sans jamais la tester ; (b) le résultat n'est PAS uniforme (m50 indécis, motif non-monotone) — une tautologie prédirait jumeau-partout, ce qu'on n'observe pas ; (c) le cas sans bruit d'observation est structurellement le PIRE pour la diffusion — à dire explicitement | À écrire dans l'intro/discussion |
+| "Votre diffusion est un homme de paille mal réglé" | Δ-Diff bat le SOTA publié sur les 5 métriques — c'est le meilleur génératif du benchmark ; le jumeau = mêmes poids exactement ; WP14 ajoute une 2e architecture | Solide (WP14 = tier 2) |
+| "4 événements du même simulateur ≠ réplication" | Limite explicite déjà dans le papier + séparation procédural/substantiel | Fait (43f4bf6) |
+| "3 seeds, pas de vrai test statistique" | 5 seeds (tier 2.2) + logging par-fenêtre pour test n=39 — **à faire AVANT les runs UK pour ne pas payer 2×** | Re-séquencé (voir ci-dessous) |
+| "Résultat connu (Spatially-Aware Diffusion 2024)" | Cadrage : confirmation + extension majeure (autorégressif, benchmark réel, calibration, mécanisme) d'une observation éparse → protocole | Dans §2, à renforcer en intro |
+| "Mécanisme non prouvé" | Langage d'hypothèse + WP12 Phase 2 tranche (ou rétracte honnêtement) | Phase 2 = prochain GPU |
+| **"relRMSE cherry-pické"** | **NEUTRALISÉE 2026-07-18** : vérif multi-métriques (coût zéro, JSONs existants) — m95 : jumeau gagne sur les 6 métriques (relRMSE, NSE, CSI@0.001, CSI@0.01, CSI-médiane, path-IoU) ; m50 : aucune métrique n'a un signe cohérent 3/3 seeds → "indécis" tient partout | Fait, à insérer dans §6.3 |
+| "Pas de données réelles / capteurs parfaits" | Limite honnête + **proposition axe bruit d'observation** (ci-dessous) | Proposé |
+
+**Proposition nouvelle (à valider utilisateur) — l'axe "bruit
+d'observation"** : la seule œuvre antérieure comparable (Spatially-Aware
+Diffusion) trouve que la diffusion n'aide QUE sous bruit d'observation.
+Nos capteurs simulés sont parfaits — le cas structurellement le plus
+favorable au déterministe. Ajouter un axe bruit (σ_obs croissant) pourrait
+transformer la réponse du papier de "pas ici" à **"voici la frontière où
+le génératif commence à payer"** — une réponse constructive à la question
+du titre, bien plus forte qu'une négation. Coût étagé : (i) sonde
+éval-only sur checkpoints existants (bruiter les pixels observés à l'éval,
+~½ journée GPU, zéro entraînement) → si le gap jumeau-diffusion se resserre
+déjà en zero-shot, signal fort ; (ii) réentraînement à 1-2 niveaux de
+bruit (~2-3 j) pour le test propre. Recommandation : (i) en fin de palier
+1, (ii) en tier 2 si (i) montre un signal. C'est peut-être l'idée au
+meilleur ratio impact/coût restant sur la table.
+
+**Re-séquencement conséquent (palier 1)** : le logging par-fenêtre de
+l'évaluateur (était en 2.6) passe AVANT l'item 1.5 (UK) — sinon toutes
+les évals UK devront être refaites pour le test apparié n=39. Petit coût
+code, gros coût évité.
+
 ### PALIER 3 — hors scope de cette soumission (ajouté 2026-07-18, discussion utilisateur)
 
 **Question posée** : pour que l'affirmation *substantielle* (pas juste la

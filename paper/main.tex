@@ -553,7 +553,12 @@ undecided) is unchanged from a pre-correction read of the same comparison
 on the original checkpoints ($\times$3.55 dense, quasi-tie \mfifty{},
 $\times$1.57 \mninetyfive{}) --- the convergence audit changed the exact
 numbers but not the conclusion, which we read as evidence the verdict is
-not an artifact of the correction itself.
+not an artifact of the correction itself. The verdict is also robust to
+the choice of metric: at \mninetyfive{}, \twin{} leads on all six metrics
+we compute (relative RMSE, NSE, CSI at both flood thresholds, the
+scenario-majority median-mask CSI, and final-extent path IoU), while at
+\mfifty{} \emph{no} metric shows a seed-consistent direction --- the
+undecided call at \mfifty{} is not an artifact of reporting relative RMSE.
 \FloatBarrier
 
 \subsection{Structured sensor layouts vs.\ random masks}
