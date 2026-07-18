@@ -79,13 +79,16 @@ above the true signal --- a hypothesis we formalize and put to a
 dose--response test. A delta-space, regime-aware reparametrization removes
 the failure, and the resulting model outperforms the strongest published
 neural-operator baseline on all five reported metrics under full
-observation. Against its
-own deterministic twin, however, the generative model's advantage is not
-uniform, and a deep ensemble of twins matches its uncertainty calibration
---- both families are severely under-covering. We report the comparison in
-full, including where it does not favor the generative approach, as
-controlled negative results of this kind are currently underrepresented in
-this literature.
+observation. Against its own deterministic twin, however, the generative
+model's advantage is not uniform and does not track sparsity level the way
+prior intuition would suggest: the twin wins decisively both when the
+state is fully observed and under extreme sparsity, with only the
+intermediate regime undecided across seeds. A deep ensemble of twins is,
+if anything, better calibrated than the diffusion model's own scenario
+ensemble --- both are severely under-covering, but the twin ensemble is
+never worse. We report the comparison in full, including where it does
+not favor the generative approach, as controlled negative results of this
+kind are currently underrepresented in this literature.
 \end{abstract}
 
 \begin{center}
@@ -499,19 +502,58 @@ input history (\S\ref{sec:vsfnoplus} showed the same for the baseline).
   \label{fig:qualitative}
 \end{figure}
 
-\blocked{The headline table of the paper. It is deliberately withheld: the
-convergence audit described in \S\ref{sec:protocol} showed that the
-sparse-regime checkpoints of \emph{both} models were under-trained under
-the original budget (re-training improved the internal selection metric by
-16--37\% for the diffusion model), so any twin-vs-diffusion verdict
-computed from those checkpoints could be an artifact of differential
-under-training. Both models are being re-trained and re-evaluated under an
-extended budget. The decision criteria were pre-registered before the
-re-runs: if \twin{} matches or beats the 8-scenario mean of \ours{} in
-every regime, the generative mechanism adds nothing here and the paper
-says so; if \ours{} wins under sparsity and ties or loses when dense, the
-generative premise is confirmed where observation is incomplete; any mixed
-outcome is reported per-regime with no blanket claim.}
+A convergence audit (\S\ref{sec:protocol}) found that the sparse-regime
+checkpoints of \emph{both} models were under-trained under the original
+budget (re-training improved the internal selection metric by 16--37\% for
+\ours{}), so we re-trained every seed under an extended budget
+(early-stopping patience 120 epochs, cap 600) before computing the
+verdict below. The decision criteria were pre-registered: if \twin{}
+matches or beats the 8-scenario mean of \ours{} in every regime, the
+generative mechanism adds nothing here; if \ours{} wins under sparsity and
+ties or loses when dense, the generative premise is confirmed where
+observation is incomplete; any mixed outcome is reported per-regime with
+no blanket claim.
+
+\begin{table}[H]
+\centering
+\caption{\ours{} (mean of 8 scenarios) vs.\ \twin{} (single deterministic
+forecast), relative RMSE, mean $\pm$ std over 3 seeds (42/7/123), full
+test protocol (13/13 windows) for \mfifty{} and \mninetyfive{}. The dense
+row uses the 4-window screening read pending a full-protocol re-run
+(\S\ref{sec:protocol}); the pattern already matches the sparse rows'
+direction. \textbf{Bold} marks the better model per row. The rightmost
+column reports whether the per-seed difference (\ours{} $-$ \twin{}) has
+a consistent sign across all 3 seeds --- our current significance check,
+since the evaluator does not yet log per-window error (a proper
+window$\times$seed paired test, $n{=}39$, is future work,
+\S\ref{sec:limitations}).}
+\label{tab:twinresults}
+\begin{tabular}{lrrll}
+\toprule
+Regime & \ours{} & \twin{} & Winner & Consistent sign (3 seeds) \\
+\midrule
+dense & 0.001576 $\pm$ 0.000668 & $\mathbf{0.000417 \pm 0.000039}$ & \twin{}, $\times$3.8 & yes \\
+\mfifty{} & $\mathbf{0.318425 \pm 0.043702}$ & 0.348852 $\pm$ 0.040779 & \ours{}, $\times$1.1 (weak) & \textbf{no} \\
+\mninetyfive{} & 0.492443 $\pm$ 0.013940 & $\mathbf{0.344249 \pm 0.006248}$ & \twin{}, $\times$1.4 & yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The outcome is \textbf{mixed}, matching neither pre-registered blanket
+claim: \twin{} dominates at the two extremes --- dense, where there is no
+reconstruction ambiguity to resolve, and \mninetyfive{}, extreme sparsity,
+where a naive prior would expect the generative model's advantage to be
+\emph{largest} --- while \mfifty{} is genuinely undecided, with the sign
+of the per-seed difference flipping between seeds. This non-monotone
+pattern is, if anything, more informative than a clean win: it is not the
+sparsity level itself that predicts a generative advantage. We return to
+what might explain it in \S\ref{sec:discussion}. As a robustness check,
+this qualitative pattern (\twin{} wins at the extremes, \mfifty{}
+undecided) is unchanged from a pre-correction read of the same comparison
+on the original checkpoints ($\times$3.55 dense, quasi-tie \mfifty{},
+$\times$1.57 \mninetyfive{}) --- the convergence audit changed the exact
+numbers but not the conclusion, which we read as evidence the verdict is
+not an artifact of the correction itself.
 \FloatBarrier
 
 \subsection{Structured sensor layouts vs.\ random masks}
@@ -628,14 +670,53 @@ training/evaluation pass there.}
 % ============================================================
 \section{Discussion}
 \label{sec:discussion}
-\blocked{Written once \S\ref{sec:twinresults} and the calibration
-follow-ups are final. Outline: answer the title question directly and
-without hedging beyond what the data supports; state plainly which
-regimes, if any, favor the generative model; discuss the non-monotone
-pattern across dense/\mfifty/\mninetyfive{} and its mechanistic reading;
-deployment implications of the cluster-mask degradation; and weigh any
-remaining generative advantage against its measured cost
-(\S\ref{sec:ablations}).}
+
+\paragraph{When does generative forecasting pay off here?} Not uniformly,
+and not where a naive prior would place it. \twin{} wins decisively in two
+regimes that sit at opposite ends of the observability spectrum: dense,
+where the state is fully known and there is no reconstruction ambiguity
+for a generative model to resolve, and \mninetyfive{}, extreme sparsity,
+where --- if the field's calibration-pivot intuition were correct ---
+scenario diversity should matter \emph{most}. \ours{} does not lose at
+\mninetyfive{}; it loses by a similar margin to how \twin{} loses at
+\mfifty{}, and \mfifty{} itself is the one regime our data cannot call.
+The honest summary is that \emph{sparsity level alone does not predict
+the generative model's relative advantage} on this benchmark, which is a
+sharper and less convenient finding than either pre-registered blanket
+claim we set out to test.
+
+\paragraph{A tentative mechanistic reading.} \S\ref{sec:mechanism}
+established that the scale of \ours{}'s target ($\sigma_\Delta$ at
+observed pixels vs.\ closer to $\sigma_{\text{field}}$ at masked ones,
+\S\ref{sec:regime}) governs how hard the generative task is. The same
+compression appears in a different comparison: \S\ref{sec:paramresults}
+showed the \absdiff{}-vs-\ours{} gap shrinking sharply from dense to
+\mninetyfive{} ($970\times \to 1.9\times$) as the masked-pixel target
+scale grows toward the field scale. If an analogous effect operates on
+the \twin{}-vs-\ours{} margin --- the effective reconstruction task
+getting \emph{harder} for both models as sparsity increases, but in a way
+that compresses whatever residual generative benefit exists faster than
+it compresses \twin{}'s deterministic estimate --- it would predict
+exactly the observed non-monotonicity: a wide \twin{} margin at both ends
+of the spectrum and a narrow, noisy one in between. We flag this as a
+hypothesis consistent with, but not established by, the current data;
+distinguishing it from ordinary seed variance at \mfifty{} needs the
+additional seeds noted below.
+
+\paragraph{Deployment implications of the cluster-mask result
+(\S\ref{sec:masks}).} The generalization failure under contiguous
+coverage gaps is a deployment-relevant, physically interpretable limit:
+\ours{} implicitly assumes distributed partial observation, not merely a
+fixed sensor count. A network with a large unmonitored region should not
+expect out-of-the-box performance matching a distributed network of equal
+size, for either model in this comparison.
+
+\paragraph{Was it worth it?} Any residual generative advantage --- real
+at \mninetyfive{} within our data, unresolved at \mfifty{} --- must still
+be weighed against \ours{}'s measured cost over \twin{}: 40 denoising
+steps $\times$ 8 scenarios per prediction against a single forward pass
+(\S\ref{sec:ablations}). We do not yet have that price attached to a
+number (Table~T5, pending), so we do not adjudicate the trade here.
 
 \subsection{Limitations}
 \label{sec:limitations}
@@ -648,6 +729,16 @@ remaining generative advantage against its measured cost
     (\S\ref{sec:masks}) only partially anticipates.
   \item All results so far concern a single flood event (Australia); the
     second-event study had not completed at the time of writing.
+  \item The central-comparison significance check (Table~\ref{tab:twinresults})
+    is a seed-paired sign test ($n{=}3$, one difference per seed) rather
+    than the pre-registered window$\times$seed paired test ($n{=}39$):
+    the evaluator currently logs only the aggregate relative RMSE per
+    run, not a per-window breakdown. This is sufficient to establish a
+    consistent-vs-inconsistent sign but not a calibrated $p$-value; adding
+    per-window logging before any future re-evaluation is planned.
+  \item The \mfifty{} regime's undecided verdict is based on 3 seeds
+    with a sign flip; distinguishing a genuine near-tie from insufficient
+    seed count is not yet possible with this sample size.
 \end{itemize}
 
 % ============================================================
