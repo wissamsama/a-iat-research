@@ -1450,8 +1450,36 @@ comme sonde rapide.
 | 5 métriques, dense, Australie in-domain (Table 4) | Oui, V2 bat le chiffre publié sur les 5 | Fait, mais lecture rapide 4/13 fenêtres — **pas encore 13/13, bloquant avant gel** (item 1.3) |
 | 5 métriques, dense, Pakistan in-domain (Table 4, 480m) | **Non couvert** — jamais comparé | **Nouveau gap** : nécessite un modèle V2/jumeau entraîné sur Pakistan in-domain (recoupe WP13, mais 480m ≠ nos 60m habituels — à vérifier si config existe) |
 | Protocole d'évaluation (single-shot vs autorégressif) | **Non résolu** : V2/jumeau = moyenne-8-scénarios en rollout autorégressif, FNO+ = sortie déterministe unique en un forward | Réserve explicite déjà notée (§3), **à trancher avant "bat le SOTA" définitif** |
-| Transfert zero-shot Australie→UK 60m et 30m (Table 5) | **Non couvert, gap découvert aujourd'hui** | **Nouveau, prioritaire et peu coûteux** : éval zero-shot des checkpoints Australie existants sur UK, sans réentraînement — voir action 4 ci-dessous |
-| Transfert zero-shot Pakistan→Mozambique 480m (Table 5) | **Non couvert, gap découvert aujourd'hui** | Nécessite d'abord un modèle Pakistan in-domain (comme ci-dessus), puis éval zero-shot sur Mozambique |
+| Transfert zero-shot Australie→UK 60m (Table 5) | **FAIT 2026-07-19** — jumeau ET V2, 3 seeds chacun, checkpoints Australie existants, sans réentraînement | Voir résultats et réserves ci-dessous |
+| Transfert zero-shot Pakistan→Mozambique 480m (Table 5) | **En cours 2026-07-19** — configs créés (`floodcastbench_det_twin_pakistan_lowfid_480m.yaml`, `..._mozambique_lowfid_480m.yaml`), delta-stats Pakistan calculées, entraînement jumeau Pakistan (seed42, 1 seed d'abord, probe coût-conscient) à lancer après smoke test | Nécessite un entraînement in-domain sur Pakistan d'abord (contrairement à UK, aucun checkpoint Pakistan n'existait) |
+
+**Résultats zero-shot Australie→UK (2026-07-19)** :
+
+| Modèle | Seed | relRMSE zero-shot UK | vs FNO+ Table 5 (0.024771) |
+|---|---|---:|---:|
+| Jumeau (num_scenarios=1, protocole comparable à FNO+) | 42/7/123 | 0.000654 / 0.000651 / 0.000686 | ~×36-38 meilleur |
+| V2 (diffusion, num_scenarios=8) | 42/7/123 | 0.001735 / — / 0.002395 | ~×10-14 meilleur |
+
+**Réserves avant de citer ce chiffre dans le papier (discussion utilisateur
+2026-07-19, "peut-on dire que c'est 36× meilleur ?")** — réponse : pas
+encore, comme résultat ferme. Ce qui est solide : (a) le protocole EST
+comparable pour le jumeau ici (num_scenarios=1 des deux côtés, contrairement
+au cas V2 dense in-domain) ; (b) cohérence inter-seeds forte ; (c) V2
+confirme la même direction, deux modèles indépendants. Ce qui manque : (1)
+**seulement 3 fenêtres de test UK** — un ratio ×36 sur n=3 n'a presque
+aucune robustesse statistique, une seule fenêtre atypique peut le faire
+bouger fortement (limite déjà connue, WP8) ; (2) **pas vérifié que nos 3
+fenêtres de test UK correspondent aux mêmes frames que celles utilisées par
+FNO+ pour produire 0.024771** — notre split (35/4/4, convention WP8) est le
+nôtre, pas confirmé identique à celui des auteurs ; (3) **détail de
+normalisation en transfert inconnu côté FNO+** — le texte dit "poids gelés,
+domaine cible ajusté" mais n'précise pas si leur normalisation est aussi
+gelée (Australie) ou réajustée sur UK ; si ce choix diffère du nôtre (tout
+gelé), ce n'est pas rigoureusement la même expérience. **Traitement retenu**
+: signal fort et encourageant, à garder comme motivation pour pousser
+Pakistan→Mozambique (échantillon bien plus grand, ~20 fenêtres de test) et
+pour la discussion, mais PAS comme chiffre de résultat ferme tant que (1) et
+(2) ne sont pas résolus.
 | Long-horizon au-delà de t20 | FNO+ n'a jamais été évalué au-delà de t20 par ses auteurs | Comparaison h216 = extension propre à ce projet, pas un manque de parité |
 | Sparsité (m50/m95) | FNO+ n'a jamais été entraîné/évalué sous sparsité, ni par ses auteurs ni par nous | **Absence assumée, pas un oubli** — c'est le point du papier. Voir action 3 (optionnelle) |
 
