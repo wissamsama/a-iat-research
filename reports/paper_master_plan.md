@@ -1925,3 +1925,36 @@ Détail complet dans `PROTOCOL.md`.
   directement contre le texte, pas déduite de ce dont on se souvient —
   même discipline R-quelconque que les autres incidents "supposé sans
   vérifier" du projet.
+- 2026-07-19 (d) — **`paper/main_v2.tex` créé : draft restructuré selon
+  l'orientation stratégique** (main.tex conservé intact comme ancien
+  draft ; décision utilisateur "fais un autre papier pour ne pas casser
+  celui-là"). Contrat narratif documenté en tête de fichier :
+  headline POSITIF (jumeau = nouveau SOTA en supprimant la boucle de
+  diffusion, ×9.4 / 1/320e du coût), contribution réelle = attribution
+  (niveau 2), recommandation procédurale = corollaire en FIN de
+  discussion, claims scopés (no-free-lunch explicite). Nouveautés vs
+  main.tex : (i) abstract réécrit — la phrase "negative results
+  underrepresented" supprimée ; (ii) **Introduction rédigée en entier**
+  (était 100% \blocked) : ouverture sur le résultat surprenant,
+  hiérarchie 3 lectures, 5 contributions, box PENDING sur ce que WP12 et
+  Pakistan→Mozambique renforceront ; (iii) **section Evaluation Protocol
+  rédigée** (l'audit de convergence qui la bloquait est terminé), box
+  PENDING restante = logging par-fenêtre/n=39 ; (iv) **nouvelle section
+  6.4 "Cross-regional transfer, zero-shot"** : table UK vs FNO+ Table 5
+  (jumeau 0.000664±0.000019 ≈ ×37, V2 0.001850±0.000498 ≈ ×13 — le
+  chiffre V2 seed7 manquant récupéré du log : 0.001419), les 2 réserves
+  honnêtes (3 fenêtres ; convention de normalisation du papier source non
+  vérifiable), box PENDING Pakistan→Mozambique avec contrat de sortie ;
+  (v) figure f2b (courbe ratio-vs-Δt Phase 1) intégrée comme figure
+  dédiée à côté de f2 ; (vi) Discussion : 3 nouveaux paragraphes —
+  "Where the gains actually come from" (attribution), "Epistemic vs.
+  aleatoric" (lecture large), "Is the twin an FNO replacement? A scoped
+  answer" (no-free-lunch + WP15-A comme prochaine étape décisive) — et
+  "A procedural corollary" déplacé en dernière position ; (vii)
+  Limitations : bullet second-événement mis à jour (zero-shot fait,
+  in-domain pending), bullet capteurs sans bruit ajouté. Toutes les
+  figures de main.tex conservées (jugées toutes pertinentes) + f2b.
+  Référence li2021fno (FNO original, ICLR 2021) ajoutée à refs.bib pour
+  le paragraphe no-free-lunch. Compile proprement (tectonic, 18 pages,
+  1 overfull hbox mineur hérité de la table centrale), pages clés
+  vérifiées visuellement au rendu.
