@@ -1958,3 +1958,22 @@ Détail complet dans `PROTOCOL.md`.
   le paragraphe no-free-lunch. Compile proprement (tectonic, 18 pages,
   1 overfull hbox mineur hérité de la table centrale), pages clés
   vérifiées visuellement au rendu.
+- 2026-07-19 (e) — **Prêt du P7 (2e épisode) + autonomisation complète du
+  Dell**. GPU P7 rendu à l'autre étudiant (entraînement Pakistan déjà mis
+  en pause, cf. (d)). Mission P7 restante : supervision CPU-only du Dell.
+  Actions : (i) configs seed1000/seed2000 créées pour vanilla FNO+ et
+  Mamba+LayerScale + `scripts/run_wpb2_seed_extension.sh` (pattern du
+  sweep WPB1, marqueur `ALL_WPB2_SEED_EXTENSION_DONE`), commit `6d64c56`
+  poussé — sert l'item 2.2 (5 seeds) appliqué au résultat central du
+  Papier 2 ; (ii) **instruction 0012** posée : rend au Dell
+  l'auto-supervision que 0011 avait déplacée côté P7 (le P7 n'est plus
+  fiable comme superviseur puisqu'il peut être éteint) — table de décision
+  complète par tick /loop : relance WPB1 si mort, rapport + lancement WPB2
+  dès WPB1 fini, relance WPB2 si mort, règle P7-down (mode offline
+  obligatoire pour tout nouveau lancement), interdiction de choisir
+  lui-même une mission 0013 ; (iii) moniteur persistant côté P7
+  (staleness watchdog >15 min, lignes DEAD, nouveaux rapports, changements
+  de statut 0012) tant que la session P7 survit ; (iv) `status.md` mis à
+  jour (bandeau prêt-du-P7 + ligne 0012). État WPB1 au moment du prêt :
+  variant 2/8 (bs4) epoch ~89/100, ALIVE, ~11 min/epoch — le sweep a
+  encore plusieurs jours devant lui.
