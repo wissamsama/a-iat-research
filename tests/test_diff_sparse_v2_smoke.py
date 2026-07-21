@@ -7,7 +7,7 @@ import pytest
 import torch
 import yaml
 
-from datasets.floodcastbench_diff_sparse_v2_dataset import apply_dihedral
+from datasets.floodcastbench_diff_sparse_v2_dataset import apply_dihedral, _StridedFrameView
 from models.diff_sparse_v2 import (
     ConsistencyLoss,
     DiffSparseV2Model,
@@ -470,3 +470,39 @@ def test_real_config_builds_model_and_runs_forward() -> None:
     loss, diagnostics = model.training_step_loss(batch)
     assert torch.isfinite(loss)
     assert diagnostics["pred_finite"] == 1.0
+
+
+def test_strided_frame_view_stride_1_is_identity() -> None:
+    # WP12 dose-response (paper master plan): frame_stride=1 must be
+    # byte-identical to V1's original contiguous slicing -- this is the
+    # default for every existing config, so a regression here would be
+    # silent everywhere.
+    frames = list(range(20))
+    view = _StridedFrameView(frames, stride=1)
+    assert view[3:8] == frames[3:8]
+    assert view[0:20] == frames[0:20]
+
+
+def test_strided_frame_view_spaces_frames_by_stride() -> None:
+    # WP12's crossed {Delta t x target} design (Delta t in {300,900,1800,7200}s
+    # at native 300s cadence -> stride in {1,3,6,24}): window_length frames
+    # spaced `stride` apart, starting at the requested window start.
+    frames = list(range(100))
+    view = _StridedFrameView(frames, stride=3)
+    # window_length=6 (e.g. context 4 + prediction 2) starting at raw index 10:
+    # expect frames[10], frames[13], ..., frames[25] (6 frames, spaced by 3).
+    assert view[10:16] == [10, 13, 16, 19, 22, 25]
+    assert len(view[10:16]) == 6
+
+
+def test_strided_frame_view_rejects_non_contiguous_slices() -> None:
+    # V1's frozen __getitem__ only ever requests a step=1 slice
+    # (frames[start:start+window_length]) -- any other access pattern
+    # would mean V1's indexing contract changed underneath this proxy,
+    # and silently returning wrong frames would be far worse than failing
+    # loudly here.
+    view = _StridedFrameView(list(range(20)), stride=3)
+    with pytest.raises(TypeError):
+        view[0:10:2]
+    with pytest.raises(TypeError):
+        view[5]

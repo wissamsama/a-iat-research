@@ -46,18 +46,31 @@ def compute_delta_stats(config: dict) -> dict:
     ranges = split_frame_ranges(len(frames), dataset_config.get("split_counts"))
     train_start, train_end = ranges["train"]
 
+    # WP12 dose-response (paper master plan): delta target scale is
+    # Delta-t-dependent by construction (that's the mechanism under test) --
+    # a delta_stats fit at the native 300s cadence and reused at a coarser
+    # frame_stride would silently mis-normalize the delta arm at every
+    # stride but the native one, confounding the very comparison this
+    # experiment exists to make. frame_stride=1 (default) reproduces the
+    # original consecutive-frame behavior exactly.
+    frame_stride = int(dataset_config.get("frame_stride", 1))
+    if frame_stride < 1:
+        raise ValueError(f"dataset.frame_stride must be >= 1, got {frame_stride}")
+
     total = 0.0
     total_sq = 0.0
     count = 0.0
     abs_max = 0.0
+    num_deltas = 0
     previous = _read_raster(frames[train_start].path).astype(np.float64)
-    for index in range(train_start + 1, train_end):
+    for index in range(train_start + frame_stride, train_end, frame_stride):
         current = _read_raster(frames[index].path).astype(np.float64)
         delta = current - previous
         total += float(delta.sum())
         total_sq += float((delta * delta).sum())
         count += float(delta.size)
         abs_max = max(abs_max, float(np.abs(delta).max()))
+        num_deltas += 1
         previous = current
 
     mean = total / count
@@ -66,7 +79,8 @@ def compute_delta_stats(config: dict) -> dict:
     return {
         "version": "diff_sparse_v2_train_delta_stats",
         "train_frame_range": [train_start, train_end],
-        "num_deltas": int(train_end - train_start - 1),
+        "frame_stride": frame_stride,
+        "num_deltas": num_deltas,
         "delta_mean_physical": mean,
         "delta_std_physical": std,
         "delta_abs_max_physical": abs_max,

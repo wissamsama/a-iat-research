@@ -38,6 +38,11 @@ dataset:
     val: 20
     test: 20
   patch_size: 64
+  cache_frames_in_memory: true  # ~5.8GB for Pakistan's 4033 frames; see
+                                 # datasets/floodcastbench_diff_sparse_v2_dataset.py
+                                 # __init__ docstring -- CPU-bound bottleneck
+                                 # fix, diagnosed 2026-07-21 on the DGX Spark
+                                 # (workers pegged ~100% CPU, GPU idle ~4%)
   include_dem: true
   include_rainfall: true
   include_covariates: true

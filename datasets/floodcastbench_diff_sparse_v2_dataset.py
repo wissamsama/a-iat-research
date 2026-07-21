@@ -52,10 +52,53 @@ from datasets.floodcastbench_diff_sparse_v1_dataset import (
     FloodCastBenchDiffSparseV1Dataset,
     _read_raster,
     split_frame_ranges,
+    window_starts_for_split,
 )
 
 
 _SPATIAL_KEYS = ("context_water_masked", "context_water_true", "sensor_mask", "dem", "rainfall", "target")
+
+
+class _StridedFrameView:
+    """Read-only proxy making V1's frozen ``self.frames[start:start+window_length]``
+    slicing (used verbatim inside its unmodified ``__getitem__``) transparently
+    return frames spaced ``stride`` apart in the underlying list instead of
+    consecutive ones. WP12 dose-response (paper master plan): the crossed
+    {Delta t x target representation} design needs one-step training windows
+    at Delta t > the native 300s cadence, obtained by subsampling the
+    existing frame sequence -- exactly the convention used by
+    tools/build_mechanism_dose_response.py's Phase 1 ratio measurement, kept
+    consistent here. V1 itself is frozen by project convention (see this
+    module's docstring); this proxy lets V2 reuse V1's __getitem__ body
+    unmodified rather than duplicating it with one line changed, which would
+    be a bigger correctness risk for identical effect.
+
+    V1's __getitem__ always requests exactly one contiguous, step=1 slice of
+    length ``window_length`` per call (`frames[start : start + window_length]`)
+    -- this proxy supports exactly that pattern and nothing else, deliberately,
+    so any future change to V1's indexing contract fails loudly here instead
+    of silently returning wrong frames.
+    """
+
+    def __init__(self, frames: list, stride: int) -> None:
+        self._frames = frames
+        self._stride = int(stride)
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice) or key.step not in (None, 1):
+            raise TypeError(
+                "_StridedFrameView only supports the contiguous step=1 slice "
+                "pattern V1's __getitem__ uses (frames[start:start+window_length])"
+            )
+        start = key.start or 0
+        stop = key.stop
+        if stop is None:
+            raise TypeError("_StridedFrameView requires an explicit slice stop")
+        window_length = stop - start
+        return self._frames[start : start + window_length * self._stride : self._stride]
+
+    def __len__(self) -> int:
+        return len(self._frames)
 
 # Manning's n per LULC code (ESRI/Impact-Observatory 10-class scheme).
 # WP5 verification (coordination/reports/0003_lulc_scheme_verification_report.md):
@@ -167,6 +210,47 @@ class FloodCastBenchDiffSparseV2Dataset(FloodCastBenchDiffSparseV1Dataset):
         super().__init__(*args, **kwargs)
         dataset_config = self.config.get("dataset", {})
         masking_config = self.config.get("masking", {})
+
+        # WP12 dose-response (paper master plan): effective time step Delta t
+        # via frame subsampling. frame_stride=1 (default) is exactly V1's
+        # original behavior, byte-identical -- window_starts is untouched.
+        # frame_stride>1 re-derives window_starts because each window now
+        # spans window_length*frame_stride raw frames, not window_length.
+        self.frame_stride = int(dataset_config.get("frame_stride", 1))
+        if self.frame_stride < 1:
+            raise ValueError(f"dataset.frame_stride must be >= 1, got {self.frame_stride}")
+        if self.frame_stride != 1:
+            self.window_starts = window_starts_for_split(
+                self.frame_range, self.window_length * self.frame_stride, self.stride
+            )
+            if not self.window_starts:
+                raise ValueError(
+                    f"No {self.split} windows fit frame range {self.frame_range} with "
+                    f"window_length={self.window_length}, frame_stride={self.frame_stride}, "
+                    f"stride={self.stride}"
+                )
+
+        # Opt-in in-memory frame cache (default off -- byte-identical output,
+        # but a new code path, so existing configs keep their exact original
+        # behavior unless they explicitly ask for this). V1's frozen
+        # _read_water_patch re-opens and re-decodes the raster file from
+        # disk on every __getitem__ call, for every one of window_length
+        # frames, every sample, every epoch -- no caching across samples.
+        # Diagnosed as the actual bottleneck on large low-fidelity events
+        # (e.g. Pakistan, 810x441): profiling showed the DataLoader workers
+        # pegged at ~100% CPU while the GPU sat at ~4% utilization, and
+        # raising num_workers made things WORSE (already CPU-saturated, not
+        # under-parallelized) -- the fix is doing less redundant decode work
+        # per sample, not spreading the same work over more workers. A
+        # whole event's water-depth frames fit comfortably in memory (e.g.
+        # Pakistan: 4033 frames * 810*441*4 bytes ~= 5.8 GB) on any machine
+        # with tens of GB of RAM, let alone this project's typical
+        # workstations. Deliberately unbounded (no LRU eviction) -- fine at
+        # this dataset scale; would need bounding before reuse on a much
+        # larger event.
+        self.cache_frames_in_memory = bool(dataset_config.get("cache_frames_in_memory", False))
+        self._water_frame_cache: dict[Path, np.ndarray] = {}
+
         self.augmentation = bool(dataset_config.get("augmentation", False)) and self.patch_mode == "random"
         rate_range = masking_config.get("missing_rate_range")
         if rate_range is not None and self.patch_mode == "random":
@@ -270,11 +354,41 @@ class FloodCastBenchDiffSparseV2Dataset(FloodCastBenchDiffSparseV1Dataset):
 
     # ---------------------------------------------------------------- samples
 
+    def _read_water_patch(self, path: Path, y0: int, x0: int, height: int, width: int) -> np.ndarray:
+        # Overrides V1's frozen version (which windowed-reads straight from
+        # disk every call) when dataset.cache_frames_in_memory is set --
+        # see the flag's docstring in __init__. Decodes each distinct frame
+        # exactly once per worker process, then slices the patch from the
+        # in-memory array; numerically identical to V1's windowed read (same
+        # source pixels), just without repeating the disk decode.
+        if not self.cache_frames_in_memory:
+            return super()._read_water_patch(path, y0, x0, height, width)
+        cached = self._water_frame_cache.get(path)
+        if cached is None:
+            cached = _read_raster(path)
+            self._water_frame_cache[path] = cached
+        if height == self.height and width == self.width:
+            return cached
+        return cached[y0 : y0 + height, x0 : x0 + width]
+
     def __getitem__(self, index: int) -> dict[str, Any]:
         if self.missing_rate_range is not None:
             low, high = self.missing_rate_range
             self.missing_rate = low + (high - low) * float(torch.rand(1).item())
-        sample = super().__getitem__(index)
+        if self.frame_stride != 1:
+            # See _StridedFrameView docstring: temporarily swap self.frames
+            # for the duration of V1's (frozen, unmodified) __getitem__ call
+            # so its internal `self.frames[start:start+window_length]` slice
+            # transparently returns frame_stride-spaced frames instead of
+            # consecutive ones. Restored in `finally` regardless of outcome.
+            original_frames = self.frames
+            self.frames = _StridedFrameView(original_frames, self.frame_stride)
+            try:
+                sample = super().__getitem__(index)
+            finally:
+                self.frames = original_frames
+        else:
+            sample = super().__getitem__(index)
         if self.include_manning:
             y0, x0 = sample["meta"]["patch_origin"]
             ph, pw = sample["meta"]["patch_size"]
