@@ -602,6 +602,16 @@ def main() -> int:
         else None
     )
     map_files: list[str] = []
+    # Per-window metric log (paper master plan / limitations): the pooled
+    # official_overall_accumulator above gives one relative RMSE for the
+    # whole test split, which is all the pre-registered window x seed
+    # paired significance test (n=39, Wilcoxon signed-rank / bootstrap)
+    # needs to stay a seed-paired sign test (n=3) instead. A fresh,
+    # single-window MetricAccumulator per window computes exactly the same
+    # metrics the pooled one does, just scoped to one window instead of
+    # accumulated across all of them -- purely additive, does not touch
+    # official_overall_accumulator or any pooled result already relied on.
+    per_window_metrics: list[dict[str, Any]] = []
 
     for window_index in range(windows):
         sample = dataset[window_index]
@@ -641,6 +651,9 @@ def main() -> int:
             median_forecast_physical = median_forecast_physical.clamp(min=0.0)
         target_physical = to_physical(target, water_stats)
         official_overall_accumulator.update(mean_forecast_physical, target_physical)
+        window_metric_accumulator = OfficialMetricAccumulator(gammas=OFFICIAL_GAMMAS)
+        window_metric_accumulator.update(mean_forecast_physical, target_physical)
+        per_window_metrics.append({"window_index": window_index, **window_metric_accumulator.compute()})
         for step in range(prediction_length):
             official_step_accumulators[step].update(mean_forecast_physical[step], target_physical[step])
             official_step_accumulators_median[step].update(median_forecast_physical[step], target_physical[step])
@@ -793,6 +806,7 @@ def main() -> int:
         "rmse_improvement_percent_vs_persistence": improvement,
         "eval_metrics_per_step_csv": str(metrics_path),
         "eval_metrics_official_per_step_csv": str(official_metrics_path),
+        "eval_per_window_metrics_json": str(output_dir / "eval_per_window_metrics.json"),
         "map_files": map_files,
         "output_directory": str(output_dir),
         "metric_definitions": {
@@ -821,6 +835,7 @@ def main() -> int:
         summary["calibration"] = {
             "skipped": "num_scenarios < 2 (deterministic forecast)" if num_scenarios < 2 else "--no-calibration"
         }
+    save_json(per_window_metrics, output_dir / "eval_per_window_metrics.json")
     save_json(summary, output_dir / "eval_summary.json")
     print("=== DIFF-SPARSE V2 ROLLOUT EVAL ===")
     print(json.dumps(summary, indent=2))
