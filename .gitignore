@@ -41,3 +41,8 @@ logs/
 outputs/*
 !outputs/floodcastbench_normalization/
 !outputs/floodcastbench_normalization/*.json
+
+# Machine-local config copies with a patched paths: block (see
+# scripts/make_spark_local_config.py) -- contain an absolute path specific
+# to whichever machine generated them, never portable, never committed.
+local_spark_configs/
