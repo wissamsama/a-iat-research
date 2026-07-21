@@ -169,12 +169,26 @@ def load_or_compute_stats(config: dict[str, Any], stats_json: Path | None) -> di
 
 def build_loader(dataset, config: dict[str, Any], shuffle: bool, num_workers: int | None = None) -> DataLoader:
     loader_config = config.get("loader", {})
+    resolved_num_workers = int(loader_config.get("num_workers", 0)) if num_workers is None else num_workers
+    # Opt-in (loader.persistent_workers, default False -- every existing
+    # config keeps PyTorch's own default, byte-identical behavior). With
+    # workers >0 and this unset, DataLoader tears down and respawns worker
+    # processes every epoch, discarding any in-process state (e.g.
+    # datasets/floodcastbench_diff_sparse_v2_dataset.py's
+    # cache_frames_in_memory) they built up -- diagnosed on the DGX Spark
+    # after cache_frames_in_memory alone showed no epoch-to-epoch speedup:
+    # the cache was being silently thrown away and rebuilt from scratch
+    # every single epoch. persistent_workers=True keeps the worker
+    # processes (and their caches) alive across epochs; only meaningful
+    # when num_workers > 0, per PyTorch's own constraint.
+    persistent_workers = bool(loader_config.get("persistent_workers", False)) and resolved_num_workers > 0
     return DataLoader(
         dataset,
         batch_size=int(loader_config.get("batch_size", 32)),
         shuffle=shuffle,
-        num_workers=int(loader_config.get("num_workers", 0)) if num_workers is None else num_workers,
+        num_workers=resolved_num_workers,
         pin_memory=bool(loader_config.get("pin_memory", False)),
+        persistent_workers=persistent_workers,
     )
 
 

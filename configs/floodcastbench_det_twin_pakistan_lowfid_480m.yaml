@@ -97,6 +97,10 @@ loader:
   batch_size: 32
   num_workers: 4
   pin_memory: true
+  persistent_workers: true  # required for cache_frames_in_memory above to
+                             # actually persist across epochs -- otherwise
+                             # DataLoader respawns workers (and their
+                             # caches) every epoch, silently defeating it
 
 training:
   epochs: 300
