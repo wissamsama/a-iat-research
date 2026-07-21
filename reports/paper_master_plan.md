@@ -1977,3 +1977,15 @@ Détail complet dans `PROTOCOL.md`.
   jour (bandeau prêt-du-P7 + ligne 0012). État WPB1 au moment du prêt :
   variant 2/8 (bs4) epoch ~89/100, ALIVE, ~11 min/epoch — le sweep a
   encore plusieurs jours devant lui.
+- 2026-07-21 (nuit, DGX Spark) — **Fix de performance Pakistan CONFIRMÉ** :
+  cache mémoire (`dataset.cache_frames_in_memory`) + `persistent_workers`
+  (sans lequel le cache était silencieusement vidé à chaque epoch — bug
+  trouvé et corrigé le même soir) donnent un gain mesuré de **~26×**
+  (epoch 1 "remplissage" 1505s → epochs suivants ~50-57s en moyenne).
+  Pakistan (jumeau, seed42, probe zero-shot→Mozambique) tourne maintenant
+  à un rythme qui permet la convergence en heures plutôt qu'en jours.
+  Root cause complet : V1 (gelé) rouvre/redécode le raster à chaque
+  `__getitem__` sans cache ; `build_loader` (partagé V1/V2) ne passait
+  jamais `persistent_workers=True`, donc même avec le cache ajouté, les
+  workers DataLoader étaient recréés (et leur cache vidé) à chaque epoch.
+  Deux commits : cache (`c2cb52a`), persistent_workers (`2205120`).
