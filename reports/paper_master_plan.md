@@ -1989,3 +1989,35 @@ Détail complet dans `PROTOCOL.md`.
   jamais `persistent_workers=True`, donc même avec le cache ajouté, les
   workers DataLoader étaient recréés (et leur cache vidé) à chaque epoch.
   Deux commits : cache (`c2cb52a`), persistent_workers (`2205120`).
+- 2026-07-22 (nuit, DGX Spark) — **Nuit productive, 3 fronts avancent en
+  parallèle sans contention bloquante** :
+  1. **Pakistan (jumeau, seed42, dense) terminé proprement** — 300/300
+     epochs (plafond, pas d'early-stop ; rollout_val_rmse plateau ~0.00028
+     depuis ~50 epochs). Éval in-domain + zero-shot Mozambique lancés en
+     enchaînement (checkpoint `21-07-2026_18-26-29_fcb_det_twin_pakistan_lowfid_480m`).
+  2. **WP12 Phase 2 + 2b : courbe dose-réponse complète à 8 points**,
+     monotonie **stricte** confirmée sur toute la plage testée (300s→7200s) :
+     | Δt (s) | ratio absolu/delta |
+     |---|---:|
+     | 300 | 2165 |
+     | 600 | 1128 |
+     | 900 | 792 |
+     | 1200 | 613 |
+     | 1800 | 415 |
+     | 2400 | 306 |
+     | 4800 | 157 |
+     | 7200 | 61 |
+     **§3.2 du papier passe de "hypothèse" à "mécanisme démontré"** —
+     critère pré-enregistré rempli sans ambiguïté (8/8 points respectent
+     la décroissance, pas juste les 4 pré-enregistrés). Reste à noter : le
+     bras delta devient pire que la persistence à partir d'un certain Δt
+     (déjà repéré à dt=7200 avec les 4 premiers points), à documenter dans
+     la discussion.
+  3. **Item 1.5 (UK full protocol) en cours, 12/18 runs faits** (jumeau
+     complet 3seeds×3sparsités + Δ-Diff seed42×3sparsités) ; restent
+     Δ-Diff seed7 et seed123 (6 runs, les plus longs). A démarré seul
+     (attente automatique de la fin de WP12 intégrée au script) sans
+     intervention.
+  Aucune contention bloquante observée cette nuit malgré 2-3 jobs
+  simultanés par moments (GPU 85-95%, load CPU 5-11/20 cœurs) — la
+  mémoire unifiée du GB10 absorbe le tout sans OOM.
