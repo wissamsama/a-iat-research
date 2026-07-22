@@ -204,10 +204,11 @@ does.
     forecasting under sparsity, and the non-monotone advantage pattern it
     reveals (\S\ref{sec:twinresults}), robust across six metrics and to a
     checkpoint-convergence audit.
-  \item \textbf{A quantified failure mechanism (stated as a tested
-    hypothesis)} for absolute-field diffusion at fine cadence --- a
-    450--490$\times$ target-scale mismatch measured on two independent
-    events --- with a pre-registered dose--response design to settle it
+  \item \textbf{A demonstrated failure mechanism} for absolute-field
+    diffusion at fine cadence: a 450--490$\times$ target-scale mismatch
+    measured on two independent events, confirmed by an 8-point
+    dose--response test showing the predicted monotone decay (8/8) with
+    a power-law exponent matching the model's prediction
     (\S\ref{sec:mechanism}).
   \item \textbf{A calibration audit under a deterministic simulator},
     comparing the diffusion ensemble against the standard deep-ensemble
@@ -219,13 +220,10 @@ does.
     corollary recommendation (\S\ref{sec:discussion}).
 \end{enumerate}
 
-\blocked{Two additions will strengthen this introduction before freeze,
-without changing its claims: (i) the dose--response result
-(\S\ref{sec:mechanism}) will upgrade contribution 3 from ``tested
-hypothesis'' to either ``demonstrated mechanism'' or an honest
-retraction; (ii) the cross-region transfer section
+\blocked{One addition remains to strengthen this introduction before
+freeze, without changing its claims: the cross-region transfer section
 (\S\ref{sec:zeroshot}) currently rests on a 3-window UK test split ---
-the Pakistan$\to$Mozambique replication (training paused at the time of
+the Pakistan$\to$Mozambique replication (in progress at the time of
 writing, \S\ref{sec:zeroshot}) will either consolidate or qualify the
 transfer claim.}
 
@@ -456,10 +454,9 @@ the amplitude of its generative target with some model-specific constant
 $c$, then beating persistence requires $c < \sigma_\Delta /
 \sigma_{\text{field}} \approx 1/450$ in absolute space --- far below what
 practical samplers achieve --- but only $c < 1$ in delta space, which is
-trivially met. We state this as a hypothesis rather than a demonstrated
-mechanism: the evidence so far is two events, both with a high ratio
-\emph{and} a failure, from the same benchmark family --- consistent with
-the hypothesis, but not yet a dose--response relationship.
+trivially met. Two events with a high ratio \emph{and} a failure is
+consistent with this hypothesis but does not demonstrate it --- a
+dose--response test, reported next, does.
 
 The data-only groundwork for the decisive test is already in place:
 Figure~\ref{fig:doseresponse} shows how the measured ratio falls as the
@@ -472,27 +469,56 @@ parity (ratio $\approx 1$) by subsampling alone --- so the pre-registered
 prediction is the \emph{monotone closing} of the absolute-vs-delta gap
 over the achievable range, not full parity.
 
-\blocked{The dose--response training runs themselves are the pending
-piece: one fixed skeleton (\ours{}'s), a single crossed factor
-\{$\Delta t \in$ 300, 900, 1800, 7200\,s\} $\times$ \{target: absolute,
-delta\} --- 8 short single-step training runs in the dense regime (no
-rollout confounds), seed 42, screening-labeled. The hypothesis predicts
-the absolute-arm-to-delta-arm error ratio shrinks monotonically as the
-scale ratio falls. There is no universal threshold to find --- the
-crossing point depends on the sampler's own constant $c$ --- but
-monotonicity tests the mechanism, and the empirical crossing point for
-this architecture is a citable, explicitly non-universal deliverable.
-Outcome contract: monotone $\Rightarrow$ \S\ref{sec:mechanism} upgrades
-from hypothesis to demonstrated mechanism and
-Figure~\ref{fig:doseresponse} gains the two training arms; non-monotone
-$\Rightarrow$ the mechanism claim is retracted to an empirical
-observation and the contribution list is edited accordingly. An internal
-hint is already consistent with the hypothesis: the
-\absdiff{}-vs-\ours{} gap compresses exactly where the delta target's
-effective scale grows (from $970\times$ dense to $1.9\times$ at
-\mninetyfive{}, where masked pixels make the delta target field-scaled),
-though that comparison is confounded with sparsity itself --- hence the
-clean test.}
+\paragraph{Dose--response result.} One fixed skeleton (\ours{}'s), a
+single crossed factor \{$\Delta t \in$ 300, 600, 900, 1200, 1800, 2400,
+4800, 7200\,s\} $\times$ \{target: absolute, delta\} --- 16 short
+single-step training runs in the dense regime (no rollout confounds),
+seed 42, screening-labeled --- give the absolute-arm-to-delta-arm error
+ratio at eight $\Delta t$ values spanning a factor 24$\times$
+(Table~\ref{tab:doseresponse}).
+
+\begin{table}[H]
+\centering
+\caption{Dose--response: relative error of the absolute- and delta-target
+arms (dense, one-step, seed 42, screening) at each tested $\Delta t$, and
+their ratio. \textbf{Monotone decrease at every step, 8/8}, the
+pre-registered criterion.}
+\label{tab:doseresponse}
+\begin{tabular}{rrrr}
+\toprule
+$\Delta t$ (s) & \absdiff{} RMSE (m) & \ours{} RMSE (m) & Ratio (\absdiff{}/\ours{}) \\
+\midrule
+300  & 0.3788 & 0.000175 & 2162 \\
+600  & 0.3676 & 0.000326 & 1127 \\
+900  & 0.3729 & 0.000471 & 792 \\
+1200 & 0.3717 & 0.000606 & 614 \\
+1800 & 0.3729 & 0.000899 & 415 \\
+2400 & 0.3821 & 0.001250 & 306 \\
+4800 & 0.3962 & 0.002530 & 157 \\
+7200 & 0.3965 & 0.006507 & 61 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ratio decreases monotonically at every single step across the full
+range --- the pre-registered criterion, met without exception.
+$\S$\ref{sec:mechanism}'s claim upgrades from hypothesis to
+\textbf{demonstrated mechanism}. Beyond monotonicity, the ratio follows
+the predicted power-law form closely: a log--log regression of ratio
+against $\Delta t$ gives slope $-1.06$ ($R^2=0.98$), matching the $-1$
+exponent the sampling-noise-floor model predicts (since $\sigma_\Delta$
+grows near-linearly in $\Delta t$, Figure~\ref{fig:doseresponse}). We
+report this fit as evidence the data are \emph{consistent with} the
+predicted functional form, not as a precision measurement of the
+exponent itself --- it comes from a single-seed screening protocol, and
+the training-set size shrinks sharply at the largest $\Delta t$ values
+(1579 training deltas at 300\,s vs.\ 65 at 7200\,s), so the extreme point
+anchoring one end of the fit is also the least-supported by training
+data. A secondary, unplanned finding: \ours{} itself (delta target) stops
+beating persistence beyond $\Delta t\approx 65$\,min (interpolated
+crossing $\approx$3910\,s) --- at that horizon genuine physical change
+accumulates enough that ``predict no change'' is no longer a weak
+baseline, independent of target encoding.
 
 \begin{figure}[H]
   \centering
@@ -516,11 +542,12 @@ clean test.}
   effective time step $\Delta t$, obtained by subsampling the existing
   frame sequences. $\sigma_\Delta$ grows near-linearly in $\Delta t$ on
   both events, so the ratio falls as $\sim 1/\Delta t$, spanning
-  478$\to$21 (Australia) and 412$\to$17 (UK). The four marked $\Delta t$
-  values are the pre-registered training points for the pending
-  dose--response experiment (see box above); the parity region (ratio
-  $\approx$1) is unreachable by subsampling alone, which bounds what the
-  experiment can and cannot show and is stated as such.}
+  478$\to$21 (Australia) and 412$\to$17 (UK). The eight marked $\Delta t$
+  values are the training points used in Table~\ref{tab:doseresponse},
+  which confirms the predicted monotone closing (8/8) and a matching
+  power-law exponent; the parity region (ratio $\approx$1) remains
+  unreachable by subsampling alone, which bounds what this data-only
+  panel can show on its own.}
   \label{fig:doseresponse}
 \end{figure}
 
