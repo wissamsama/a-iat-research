@@ -2158,3 +2158,23 @@ Détail complet dans `PROTOCOL.md`.
   mise à jour de la table centrale UK à faire (voir todo). Chaîne
   Pakistan seed7/123 démarrée automatiquement dès la fin d'UK (verrou
   d'attente déclenché comme prévu).
+- 2026-07-22 (suite) — **UK full protocol : résultat complet extrait,
+  18/18 runs**. Motif plus net qu'Australie :
+
+  | Régime | Jumeau (3 seeds) | Δ-Diff (3 seeds) | Gagnant | Signe cohérent |
+  |---|---:|---:|---|---|
+  | dense | 0.005674±0.000416 | 0.006018±0.000590 | jumeau ×1.06 | oui (3/3) |
+  | m50 | 0.156572±0.004881 | 0.174123±0.011544 | jumeau ×1.11 | oui (3/3) |
+  | m95 | 0.194904±0.008246 | 0.223112±0.008981 | jumeau ×1.14 | oui (3/3) |
+
+  **Le jumeau gagne dans les 3 régimes avec signe cohérent 3/3 seeds** —
+  contrairement à l'Australie où m50 était indécis (signe qui s'inverse
+  entre seeds). Motif UK plus simple : jamais d'avantage net pour la
+  diffusion, nulle part sur cet événement. À intégrer dans `main_v2.tex`
+  (nouvelle section UK in-domain, actuellement absente — seul le
+  zero-shot UK y figure). Marges plus modestes qu'Australie (×1.06-1.14
+  vs ×1.4-3.7) — cohérent avec le fait que l'écart absolu/persistence est
+  lui-même bien plus resserré sur UK (grille plus petite, moins de
+  dynamique de crue). Reste : test de significativité par-fenêtre (n=39)
+  maintenant possible grâce au logging ajouté ce matin, pas encore
+  calculé.
