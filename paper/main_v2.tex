@@ -204,12 +204,13 @@ does.
     forecasting under sparsity, and the non-monotone advantage pattern it
     reveals (\S\ref{sec:twinresults}), robust across six metrics and to a
     checkpoint-convergence audit.
-  \item \textbf{A demonstrated failure mechanism} for absolute-field
+  \item \textbf{A quantified failure pattern} for absolute-field
     diffusion at fine cadence: a 450--490$\times$ target-scale mismatch
-    measured on two independent events, confirmed by an 8-point
-    dose--response test showing the predicted monotone decay (8/8) with
-    a power-law exponent matching the model's prediction
-    (\S\ref{sec:mechanism}).
+    measured on two independent events, with an 8-point dose--response
+    test confirming the predicted monotone decay (8/8) and a matching
+    power-law exponent --- pending one control (\S\ref{sec:mechanism})
+    to determine whether this is diffusion-specific or a more general
+    parametrization effect.
   \item \textbf{A calibration audit under a deterministic simulator},
     comparing the diffusion ensemble against the standard deep-ensemble
     baseline it should be, but is not, compared against in this
@@ -503,24 +504,46 @@ $\Delta t$ (s) & \absdiff{} RMSE (m) & \ours{} RMSE (m) & Ratio (\absdiff{}/\our
 \end{table}
 
 The ratio decreases monotonically at every single step across the full
-range --- the pre-registered criterion, met without exception.
-$\S$\ref{sec:mechanism}'s claim upgrades from hypothesis to
-\textbf{demonstrated mechanism}. Beyond monotonicity, the ratio follows
-the predicted power-law form closely: a log--log regression of ratio
-against $\Delta t$ gives slope $-1.06$ ($R^2=0.98$), matching the $-1$
-exponent the sampling-noise-floor model predicts (since $\sigma_\Delta$
-grows near-linearly in $\Delta t$, Figure~\ref{fig:doseresponse}). We
-report this fit as evidence the data are \emph{consistent with} the
-predicted functional form, not as a precision measurement of the
-exponent itself --- it comes from a single-seed screening protocol, and
-the training-set size shrinks sharply at the largest $\Delta t$ values
-(1579 training deltas at 300\,s vs.\ 65 at 7200\,s), so the extreme point
-anchoring one end of the fit is also the least-supported by training
-data. A secondary, unplanned finding: \ours{} itself (delta target) stops
-beating persistence beyond $\Delta t\approx 65$\,min (interpolated
-crossing $\approx$3910\,s) --- at that horizon genuine physical change
-accumulates enough that ``predict no change'' is no longer a weak
-baseline, independent of target encoding.
+range --- the pre-registered criterion, met without exception. Beyond
+monotonicity, the ratio follows the predicted power-law form closely: a
+log--log regression of ratio against $\Delta t$ gives slope $-1.06$
+($R^2=0.98$), matching the $-1$ exponent the sampling-noise-floor model
+predicts (since $\sigma_\Delta$ grows near-linearly in $\Delta t$,
+Figure~\ref{fig:doseresponse}).
+
+\blocked{An important caveat surfaced after this fit was obtained, before
+upgrading $\S$\ref{sec:mechanism}'s claim to ``demonstrated mechanism'':
+the $-1$ slope may be a mechanical consequence of two facts unrelated to
+diffusion sampling specifically, rather than evidence for the
+diffusion-specific sampling-noise-floor model as stated. (i) \absdiff{}'s
+RMSE is nearly \emph{constant} across the entire $\Delta t$ range
+(0.368--0.397\,m, $\sim$8\% variation) --- it does not visibly respond to
+$\Delta t$ at all. (ii) \ours{}'s RMSE divided by the independently
+measured $\sigma_\Delta(\Delta t)$ (Figure~\ref{fig:doseresponse}) is
+itself nearly constant ($\approx$0.22--0.25 across 4 of 5 directly
+comparable points) --- i.e., the delta-arm's error simply tracks the
+target's own scale, a generic regression property with nothing specific
+to diffusion. If \absdiff{}'s error is $\Delta t$-invariant and
+\ours{}'s error is proportional to $\sigma_\Delta(\Delta t)$, the ratio
+$\propto 1/\sigma_\Delta(\Delta t)$ falls out mechanically from the
+already-measured $\sigma_\Delta(\Delta t)\propto\Delta t$ scaling, without
+requiring anything diffusion-specific. \textbf{Decisive control (running
+at the time of writing):} the identical 8-point $\{\Delta t \times
+\text{target}\}$ design on \twin{} (no diffusion sampling at all). If
+\twin{} reproduces the same power law, the mechanism is a
+\emph{parametrization} effect --- consistent with, and supporting, this
+paper's central attribution thesis, but requiring $\S$\ref{sec:mechanism}
+and this section to be reframed accordingly rather than left as a
+diffusion-specific claim.} A secondary, unplanned finding regardless of
+this caveat's resolution: \ours{} itself (delta target) stops beating
+persistence beyond $\Delta t\approx 65$\,min (interpolated crossing
+$\approx$3910\,s) --- at that horizon genuine physical change accumulates
+enough that ``predict no change'' is no longer a weak baseline,
+independent of target encoding. We also flag that this fit comes from a
+single-seed screening protocol whose training-set size shrinks sharply at
+the largest $\Delta t$ values (1579 training deltas at 300\,s vs.\ 65 at
+7200\,s), so the extreme point anchoring one end of the fit is also the
+least-supported by training data.
 
 \begin{figure}[H]
   \centering
