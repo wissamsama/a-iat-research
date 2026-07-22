@@ -409,7 +409,13 @@ wet-pixel depths, we measure directly from the raw data of two events
 \end{equation}
 (Figure~\ref{fig:mechanism}): the true per-step signal is more than two
 orders of magnitude smaller than the field a model in absolute space must
-reproduce.
+reproduce. Concretely: if a model's residual error scales with the
+amplitude of whatever target it is fit to, at some model-specific
+constant $c$, beating persistence requires $c < \sigma_\Delta /
+\sigma_{\text{field}} \approx 1/450$ in absolute space, against the far
+looser $c < 1$ in delta space --- the representation choice alone moves
+the bar by more than two orders of magnitude, before any modeling
+decision is made.
 
 \paragraph{Dose--response test.} Subsampling the existing frames to
 larger effective time steps mechanically lowers this ratio
