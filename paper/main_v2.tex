@@ -220,12 +220,13 @@ does.
     corollary recommendation (\S\ref{sec:discussion}).
 \end{enumerate}
 
-\blocked{One addition remains to strengthen this introduction before
-freeze, without changing its claims: the cross-region transfer section
-(\S\ref{sec:zeroshot}) currently rests on a 3-window UK test split ---
-the Pakistan$\to$Mozambique replication (in progress at the time of
-writing, \S\ref{sec:zeroshot}) will either consolidate or qualify the
-transfer claim.}
+\blocked{The cross-region transfer section (\S\ref{sec:zeroshot}) now
+has two independent transfer pairs (Australia$\to$UK, 3 seeds;
+Pakistan$\to$Mozambique, 1 seed), both favoring the twin by two orders of
+magnitude over the published FNO+ numbers. What remains before freeze is
+the 3-seed replication of the Pakistan$\to$Mozambique pair, to bring it
+to the same statistical footing as the UK one rather than changing this
+introduction's claims.}
 
 % ============================================================
 \section{Related Work}
@@ -820,20 +821,23 @@ publication does not specify whether its normalization statistics were
 also frozen from the source domain as ours are; if that choice differed,
 the comparison is between closely related but not identical protocols.
 
-\blocked{The consolidation experiment is the same probe on the
-benchmark's \emph{other} published transfer pair, Pakistan $\to$
-Mozambique (480\,m, low-fidelity; published FNO+ transfer relRMSE
-0.078633), whose test split supports $\sim$20 evaluation windows ---
-enough to retire the small-sample caveat. It requires first training the
-twin in-domain on Pakistan (no Pakistan checkpoint previously existed);
-that training was launched, ran cleanly to epoch $\sim$24 of 300
-($\sim$26\,min/epoch on the $810\times441$ grid), and is currently
-\textbf{paused} --- the shared GPU was reclaimed --- to be resumed when
-compute frees. Outcome contract: if the Pakistan$\to$Mozambique ordering
-matches Table~\ref{tab:zeroshot}, the transfer section graduates to a
-headline claim with the UK result as supporting evidence; if it
-contradicts it, both results are reported and the section is reframed
-around when transfer holds.}
+\paragraph{Second transfer pair: Pakistan $\to$ Mozambique.} The
+benchmark's \emph{other} published transfer pair (480\,m, low-fidelity;
+published FNO+ transfer relRMSE 0.078633) gives an independent check.
+Training the twin in-domain on Pakistan (no Pakistan checkpoint
+previously existed; single seed, dense) and evaluating it zero-shot
+(frozen weights and normalization) on Mozambique gives relRMSE
+\textbf{0.000374} over the 7 eligible test windows --- $\sim$\textbf{210$\times$
+better} than the published FNO+ transfer number, the same direction as
+Table~\ref{tab:zeroshot} and, if anything, a larger margin. This is a
+single-seed result (the Pakistan in-domain training this depends on has
+not yet been replicated at 3 seeds, unlike the UK table above) on a
+7-window test split --- smaller than we originally expected from this
+split's frame count, so the same small-sample caveat applies, now to
+both transfer pairs rather than being retired. Both published transfer
+pairs now point the same direction, with the twin ahead in each; we
+report this as convergent evidence across two independent regions rather
+than a settled headline number, pending the 3-seed replication.
 
 \subsection{Structured sensor layouts vs.\ random masks}
 \label{sec:masks}
@@ -1023,8 +1027,9 @@ expect out-of-the-box performance matching a distributed network of equal
 size, for either model in this comparison.
 
 \paragraph{Is the twin an FNO replacement? A scoped answer.} The twin
-beats FNO+ in-domain ($\sim$9.4$\times$) and in zero-shot transfer
-($\sim$37$\times$, with the caveats of \S\ref{sec:zeroshot}) --- it is
+beats FNO+ in-domain ($\sim$9.4$\times$) and in zero-shot transfer on
+both published transfer pairs ($\sim$37$\times$ and $\sim$210$\times$,
+with the caveats of \S\ref{sec:zeroshot}) --- it is
 natural to ask whether it should simply replace Fourier neural operators
 for this problem class. We answer deliberately narrowly. The inductive
 bias that favors the twin here --- local multi-scale convolution and
@@ -1081,12 +1086,15 @@ beyond this benchmark, and we make no such claim
     \citet{spatiallyawarediffusion2024} identify as maximally favorable
     to deterministic models; an observation-noise axis is a natural
     extension we have deliberately not priced into this paper's claims.
-  \item All in-domain results concern a single flood event (Australia).
-    The zero-shot transfer study (\S\ref{sec:zeroshot}) is evidence of
-    cross-event robustness but rests on a 3-window UK test split and one
-    unverifiable protocol detail (whether the published transfer numbers
-    froze source-domain normalization as ours do); the in-domain UK study
-    and the Pakistan$\to$Mozambique probe are both pending.
+  \item All in-domain headline results in \S\ref{sec:twinresults} concern
+    a single flood event (Australia); the in-domain UK replication is
+    in progress at the time of writing. The zero-shot transfer study
+    (\S\ref{sec:zeroshot}) is evidence of cross-event robustness on two
+    independent transfer pairs but rests on small test splits (3 and 7
+    windows) and one unverifiable protocol detail (whether the published
+    transfer numbers froze source-domain normalization as ours do); the
+    Pakistan$\to$Mozambique pair is single-seed pending 3-seed
+    replication.
   \item The central-comparison significance check (Table~\ref{tab:twinresults})
     is a seed-paired sign test ($n{=}3$, one difference per seed) rather
     than the pre-registered window$\times$seed paired test ($n{=}39$):
