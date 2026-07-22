@@ -221,12 +221,13 @@ does.
 \end{enumerate}
 
 \blocked{The cross-region transfer section (\S\ref{sec:zeroshot}) now
-has two independent transfer pairs (Australia$\to$UK, 3 seeds;
-Pakistan$\to$Mozambique, 1 seed), both favoring the twin by two orders of
-magnitude over the published FNO+ numbers. What remains before freeze is
-the 3-seed replication of the Pakistan$\to$Mozambique pair, to bring it
-to the same statistical footing as the UK one rather than changing this
-introduction's claims.}
+has two independent transfer pairs, evaluated on each target event's full
+frame sequence (Australia$\to$UK, 3 seeds, $\sim$8.6$\times$;
+Pakistan$\to$Mozambique, 1 seed, $\sim$21$\times$), both favoring the
+twin by a wide margin over the published FNO+ numbers. What remains
+before freeze is the 3-seed replication of the Pakistan$\to$Mozambique
+pair, to bring it to the same statistical footing as the UK one rather
+than changing this introduction's claims.}
 
 % ============================================================
 \section{Related Work}
@@ -785,59 +786,60 @@ FloodCastBench's authors also evaluate FNO+ under zero-shot cross-regional
 transfer: weights trained on one event, frozen, and evaluated on another.
 We replicate this protocol exactly --- Australia-trained checkpoints,
 frozen weights \emph{and} frozen normalization, evaluated on the UK 2015
-event --- for both models and all three seeds
-(Table~\ref{tab:zeroshot}).
+event.
+
+\paragraph{A small-sample pitfall we caught before trusting the first
+number.} Our initial transfer evaluations reused this paper's usual
+20\%-held-out test split of the target event: 3 windows for UK, 7 for
+Mozambique. Because a zero-shot checkpoint was never trained on \emph{any}
+frame of the target event, restricting evaluation to that held-out
+fraction is unnecessary and, on these two small target events, misleading
+--- both slices happened to land on unrepresentatively calm portions of
+the record. Re-evaluating on the target event's \emph{entire} frame
+sequence (42 windows for UK, 85 for Mozambique) revealed the initial
+ratios were substantially inflated: $\sim$37$\times$ dropped to
+$\sim$9$\times$ for UK, $\sim$210$\times$ dropped to $\sim$21$\times$ for
+Mozambique. We report only the full-event numbers below and flag the
+small-sample pitfall explicitly, since a reader re-deriving our result on
+the committed test-split configs would reproduce the inflated numbers, not
+these.
 
 \begin{table}[H]
 \centering
-\caption{Zero-shot cross-regional transfer (Australia $\to$ UK, 60\,m,
-dense observation), relative RMSE against the benchmark's published FNO+
-transfer result under the same frozen-weights protocol. \twin{} is
-single-pass deterministic output, matching FNO+'s output type; \ours{} is
-its 8-scenario mean. Mean $\pm$ std over the same 3 Australia-trained
-seeds as everywhere else in this paper.}
+\caption{Zero-shot cross-regional transfer, relative RMSE against the
+benchmark's published FNO+ transfer result under the same frozen-weights
+protocol, evaluated on each target event's \emph{full} frame sequence
+(not the usual held-out test split --- see text). \twin{} is single-pass
+deterministic output, matching FNO+'s output type.}
 \label{tab:zeroshot}
-\begin{tabular}{lrr}
+\begin{tabular}{llrr}
 \toprule
-Model & relRMSE (zero-shot UK) $\downarrow$ & vs.\ FNO+ published \\
+Transfer pair & Model & relRMSE $\downarrow$ & vs.\ FNO+ published \\
 \midrule
-FNO+ \citep{floodcastbench2025} & 0.024771 & --- \\
-\ours{} (3 seeds)  & 0.001850 $\pm$ 0.000498 & $\sim$13$\times$ better \\
-\twin{} (3 seeds)  & $\mathbf{0.000664 \pm 0.000019}$ & $\sim$\textbf{37$\times$ better} \\
+Australia$\to$UK (42 windows) & FNO+ \citep{floodcastbench2025} & 0.024771 & --- \\
+ & \twin{} (3 seeds) & $\mathbf{0.002874 \pm 0.000177}$ & $\sim$\textbf{8.6$\times$ better} \\
+\midrule
+Pakistan$\to$Mozambique (85 windows) & FNO+ \citep{floodcastbench2025} & 0.078633 & --- \\
+ & \twin{} (1 seed) & $\mathbf{0.003748}$ & $\sim$\textbf{21.0$\times$ better} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Both models transfer dramatically better than the published baseline, the
-twin ahead of the diffusion model --- the in-domain ordering survives the
-domain shift untouched, with remarkably low seed variance for the twin.
-Two honest qualifications keep this from being a headline claim yet.
-First, the UK test split supports only \textbf{3 evaluation windows} ---
-the direction is consistent across seeds and across both models, but a
-ratio computed on 3 windows is a strong signal, not a settled number.
-Second, we have verified our transfer protocol matches the published
-description (frozen weights, adjusted target domain), but the
-publication does not specify whether its normalization statistics were
-also frozen from the source domain as ours are; if that choice differed,
-the comparison is between closely related but not identical protocols.
-
-\paragraph{Second transfer pair: Pakistan $\to$ Mozambique.} The
-benchmark's \emph{other} published transfer pair (480\,m, low-fidelity;
-published FNO+ transfer relRMSE 0.078633) gives an independent check.
-Training the twin in-domain on Pakistan (no Pakistan checkpoint
-previously existed; single seed, dense) and evaluating it zero-shot
-(frozen weights and normalization) on Mozambique gives relRMSE
-\textbf{0.000374} over the 7 eligible test windows --- $\sim$\textbf{210$\times$
-better} than the published FNO+ transfer number, the same direction as
-Table~\ref{tab:zeroshot} and, if anything, a larger margin. This is a
-single-seed result (the Pakistan in-domain training this depends on has
-not yet been replicated at 3 seeds, unlike the UK table above) on a
-7-window test split --- smaller than we originally expected from this
-split's frame count, so the same small-sample caveat applies, now to
-both transfer pairs rather than being retired. Both published transfer
-pairs now point the same direction, with the twin ahead in each; we
-report this as convergent evidence across two independent regions rather
-than a settled headline number, pending the 3-seed replication.
+Both published transfer pairs point the same direction, with a much
+larger and more representative evaluation sample than our first pass:
+the twin transfers dramatically better than the published FNO+ baseline
+on both independent regions. Two qualifications remain. First, the
+Pakistan$\to$Mozambique row is still a \textbf{single seed}
+(Australia$\to$UK is 3, with low seed variance: std $\approx$6\% of the
+mean); the Pakistan in-domain training this depends on has not yet been
+replicated at 3 seeds, in progress at the time of writing. Second, we
+have verified our transfer protocol matches the published description
+(frozen weights, adjusted target domain), but the publication does not
+specify whether its normalization statistics were also frozen from the
+source domain as ours are; if that choice differed, the comparison is
+between closely related but not identical protocols. \blocked{\ours{}'s
+own full-event zero-shot numbers (both pairs) and the Pakistan seed7/123
+replication are running at the time of writing.}
 
 \subsection{Structured sensor layouts vs.\ random masks}
 \label{sec:masks}
@@ -1028,7 +1030,7 @@ size, for either model in this comparison.
 
 \paragraph{Is the twin an FNO replacement? A scoped answer.} The twin
 beats FNO+ in-domain ($\sim$9.4$\times$) and in zero-shot transfer on
-both published transfer pairs ($\sim$37$\times$ and $\sim$210$\times$,
+both published transfer pairs ($\sim$8.6$\times$ and $\sim$21$\times$,
 with the caveats of \S\ref{sec:zeroshot}) --- it is
 natural to ask whether it should simply replace Fourier neural operators
 for this problem class. We answer deliberately narrowly. The inductive
@@ -1090,9 +1092,11 @@ beyond this benchmark, and we make no such claim
     a single flood event (Australia); the in-domain UK replication is
     in progress at the time of writing. The zero-shot transfer study
     (\S\ref{sec:zeroshot}) is evidence of cross-event robustness on two
-    independent transfer pairs but rests on small test splits (3 and 7
-    windows) and one unverifiable protocol detail (whether the published
-    transfer numbers froze source-domain normalization as ours do); the
+    independent transfer pairs, evaluated on each target event's full
+    frame sequence after an initial small-test-split pass gave inflated
+    ratios (\S\ref{sec:zeroshot} states this pitfall explicitly); one
+    protocol detail remains unverifiable (whether the published transfer
+    numbers froze source-domain normalization as ours do), and the
     Pakistan$\to$Mozambique pair is single-seed pending 3-seed
     replication.
   \item The central-comparison significance check (Table~\ref{tab:twinresults})
