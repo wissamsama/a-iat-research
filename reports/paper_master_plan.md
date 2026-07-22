@@ -2152,3 +2152,9 @@ Détail complet dans `PROTOCOL.md`.
   jumeau NE réplique PAS (comportement différent) : la framing diffusion-
   spécifique originale serait alors partiellement justifiée après tout —
   à ne pas présumer dans un sens ou l'autre avant les résultats réels.
+- 2026-07-22 (suite) — **Item 1.5 (UK full protocol) TERMINÉ, 18/18
+  runs**, sans intervention manuelle (attente automatique intégrée au
+  script, déclenchée après WP12 Phase 2b). Extraction des résultats et
+  mise à jour de la table centrale UK à faire (voir todo). Chaîne
+  Pakistan seed7/123 démarrée automatiquement dès la fin d'UK (verrou
+  d'attente déclenché comme prévu).
