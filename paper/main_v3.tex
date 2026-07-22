@@ -198,9 +198,10 @@ twins quantifies at least as well (\S\ref{sec:calibration}).
 \end{enumerate}
 
 \blocked{Remaining before freeze: the Pakistan$\to$Mozambique transfer
-pair at 3 seeds (currently 1; training in progress), the WP12 twin
-control's final $\Delta t$ point (7 of 8 complete), the context ablation
-at 3 seeds, and the ablation/cost study of \S\ref{sec:ablations}.}
+pair at 3 seeds (currently 1; training in progress), the context
+ablation at 3 seeds, and the ablation/cost study of
+\S\ref{sec:ablations}. The WP12 twin control is now complete (8 of 8
+points).}
 
 % ============================================================
 \section{Related Work}
@@ -459,10 +460,9 @@ range (0.368--0.397\,m), and the delta arm's error closely tracks the
 independently measured $\sigma_\Delta(\Delta t)$
 (Appendix~\ref{app:doseresponse}). We therefore ran the decisive control:
 the identical 16-run design on \twin{}, with no diffusion sampling
-anywhere. The twin reproduces the same power law --- slope $-0.91$,
-$R^2=0.98$ over the 7 of 8 $\Delta t$ points complete at the time of
-writing. \blocked{The final twin-control point ($\Delta t=7200$\,s) is
-training; the fitted slope will be updated when it lands.} The
+anywhere. The twin reproduces the same power law --- slope $-0.916$,
+$R^2=0.987$, all 8 of 8 $\Delta t$ points, closely matching the diffusion
+arm's $-1.06$/$0.98$. The
 conclusion is sharper than the hypothesis we set out to test: what is
 demonstrated is a \textbf{target-scale mechanism} --- regression error
 tracks the scale of the chosen target, so a fine-cadence absolute-field
@@ -1013,8 +1013,8 @@ measured $\sigma_\Delta(\Delta t)$ is itself nearly constant
 (ii) hold, the ratio $\propto 1/\sigma_\Delta(\Delta t)$ follows
 mechanically from the measured near-linear $\sigma_\Delta(\Delta t)$
 scaling, for any model family. The twin control confirms this: slope
-$-0.91$, $R^2=0.98$ (7 of 8 points at the time of writing) vs.\ the
-diffusion arm's $-1.06$, $R^2=0.98$.
+$-0.916$, $R^2=0.987$ (all 8 of 8 points) vs.\ the diffusion arm's
+$-1.06$, $R^2=0.98$.
 
 \paragraph{Training-sample sizes.} Frame subsampling shrinks the
 training set sharply with $\Delta t$: 1579 training deltas at 300\,s,
