@@ -2078,3 +2078,27 @@ Détail complet dans `PROTOCOL.md`.
   "consolidation en attente" (1 seule paire, 3 fenêtres) à un vrai
   résultat à 2 paires indépendantes, cohérent dans les deux cas. À
   intégrer dans `main_v2.tex` (actuellement §6.4 ne couvre qu'UK).
+- 2026-07-22 (audit conformité, demandé par l'utilisateur) — **Correction
+  importante : les chiffres zero-shot initiaux (×37 UK, ×210 Mozambique)
+  étaient gonflés par le petit échantillon de test.** En évaluant sur
+  l'événement COMPLET (légitime en transfert zero-shot : aucune frame
+  cible n'a jamais servi à l'entraînement, donc rien n'empêche d'évaluer
+  sur tout l'événement au lieu de notre split test habituel) :
+
+  | Transfert | Petit échantillon (avant) | **Full-event (corrigé)** |
+  |---|---:|---:|
+  | Australie→UK (jumeau, 3 seeds) | 0.000664 (3 fenêtres), ×37 | **0.002874 ± 0.000177 (42 fenêtres), ×8.6** |
+  | Pakistan→Mozambique (jumeau, seed42) | 0.000374 (7 fenêtres), ×210 | **0.003748 (85 fenêtres), ×21.0** |
+
+  **Root cause probable** : les petits splits de test (fin d'événement,
+  eaux calmes/peu de variation) n'étaient pas représentatifs de la
+  difficulté moyenne de l'événement. Les chiffres full-event, sur un
+  échantillon 14-28× plus grand, sont la version défendable — **±8.6× et
+  ×21×, toujours nettement en faveur du jumeau, mais des chiffres qu'on
+  peut publier sans réserve sur la taille d'échantillon.**
+  Configs eval-only créées (`*_fullevent_eval.yaml`, split_counts
+  train:0/val:0), commit `2d7ecf9`. **À faire** : mettre à jour
+  `main_v2.tex` §6.4 (Table zeroshot) avec ces chiffres corrigés comme
+  résultat principal, garder l'ancien comme note historique si utile.
+  Éval V2 (Δ-Diff) full-event UK en cours (8 scénarios, 3 seeds) pour
+  compléter le tableau ; Pakistan seed7/123 en file après UK.
