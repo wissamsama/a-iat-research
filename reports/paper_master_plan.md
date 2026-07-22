@@ -2021,3 +2021,47 @@ Détail complet dans `PROTOCOL.md`.
   Aucune contention bloquante observée cette nuit malgré 2-3 jobs
   simultanés par moments (GPU 85-95%, load CPU 5-11/20 cœurs) — la
   mémoire unifiée du GB10 absorbe le tout sans OOM.
+- 2026-07-22 (suite) — **WP12 : blindage méthodologique avant d'écrire
+  "mécanisme démontré" dans le papier**. Analyse quantitative poussée
+  au-delà de la simple monotonie : régression log-log du ratio
+  absolu/delta contre Δt donne une **pente de -1.061 (R²=0.978)** sur les
+  8 points — quasi-exactement le -1 attendu si le mécanisme "plancher de
+  bruit d'échantillonnage" est correct (σ_Δ croît linéairement avec Δt,
+  Phase 1). Point de croisement calculé (delta cesse de battre la
+  persistence) : **Δt ≈ 3910s (~65 min)**, chiffre citable et
+  explicitement non-universel.
+
+  **Réserves à écrire explicitement dans le papier, pas à laisser
+  découvrir** (attaque anticipée : "protocole trop léger pour un chiffre
+  aussi précis") :
+  1. **Seed unique (42)** sur les 8 points — c'est un screening, pas le
+     protocole 3-seeds des résultats headline. La *direction* (monotonie)
+     est le critère pré-enregistré et solide ; l'*exposant précis*
+     (-1.061) ne doit PAS être cité comme un chiffre figé sans
+     confirmation multi-seed — le présenter comme "cohérent avec une loi
+     de puissance ≈ 1/Δt", pas comme "exposant mesuré à -1.061 ± rien".
+  2. **Effondrement de la taille d'échantillon d'entraînement aux grands
+     Δt** : nombre de deltas d'entraînement par run — 300s:1579,
+     600s:789, 900s:526, 1200s:394, 1800s:263, 2400s:197, 4800s:98,
+     **7200s:65 seulement**. Le point le plus extrême (celui qui ancre le
+     bas de la courbe et contribue le plus au calcul de pente) est aussi
+     le moins bien alimenté en données d'entraînement — à signaler comme
+     limite, pas comme un problème caché.
+  3. **Budget d'epochs court** (60 max, patience 15) vs 300/60 pour les
+     résultats headline — cohérent avec le label "screening", mais les
+     modèles ne sont peut-être pas tous à convergence complète,
+     particulièrement aux grands Δt où moins de deltas = signal
+     d'entraînement plus faible par epoch.
+  4. **Résultat secondaire nouveau à documenter** : le bras delta lui-même
+     devient pire que la persistence au-delà de ~65 min (4800s: ×1.08
+     pire ; 7200s: ×2.13 pire) — parce qu'à cette échelle "ne rien
+     prédire" cesse d'être un baseline faible. Distinct du test principal
+     de mécanisme, mais à mentionner en discussion pour ne pas laisser
+     un lecteur croire que le mode delta est universellement supérieur.
+
+  **Traitement retenu** : le critère pré-enregistré (monotonie) est
+  rempli sans ambiguïté sur 8/8 points malgré ces réserves — c'est ce qui
+  justifie "mécanisme démontré" dans le papier. La régression log-log est
+  un *support quantitatif fort* à la monotonie, présentée comme telle
+  (cohérence avec la forme prédite), pas comme un exposant de précision
+  publiable en soi.
