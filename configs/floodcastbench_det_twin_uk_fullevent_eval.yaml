@@ -1,0 +1,126 @@
+# EVAL-ONLY config for FULL-EVENT zero-shot transfer evaluation
+# (UK full-event (865 frames -> ~42 windows)). split_counts train:0/val:0 makes the test frame range
+# cover the whole event -- legitimate ONLY for zero-shot transfer
+# (no target-domain frame was ever used to train the evaluated
+# checkpoint), where restricting to our usual test split would
+# throw away most of the available evaluation data for no reason.
+# NEVER use this config for training or for in-domain evaluation.
+
+experiment:
+  name: fcb_det_twin_uk_highfid_60m_fullevent_eval
+  seed: 42
+paths:
+  dataset_root: /home/wissam/utem-workspace/data/FloodCastBench
+  experiment_root: /home/wissam/utem-workspace/experiments/FloodCastBench
+  checkpoint_root: /home/wissam/utem-workspace/checkpoints/FloodCastBench
+  log_root: /home/wissam/utem-workspace/logs/FloodCastBench
+dataset:
+  name: floodcastbench
+  task: diff_sparse_v2_autoregressive
+  fidelity: high
+  event: uk
+  resolution: 60m
+  context_length: 24
+  prediction_length: 12
+  train_stride: 1
+  eval_stride: 20
+  split_counts:
+    train: 0
+    val: 0
+    test: 1
+  patch_size: 64
+  include_dem: true
+  include_rainfall: true
+  include_covariates: true
+  covariate_time_scale: 864000.0
+  augmentation: true
+masking:
+  missing_rate: 0.0
+  missing_rate_range: null
+  mask_mode: noise
+  eval_mask_bank_size: 10
+  eval_mask_seed: 1234
+normalization:
+  fit_split: train
+  method: standardization
+  min_std: 1.0e-06
+prediction:
+  target: delta
+  delta_stats_json: outputs/floodcastbench_normalization/diff_sparse_v2_uk_delta_stats.json
+  wet_threshold_m: 0.001
+model:
+  name: deterministic_twin
+  context_conv_channels:
+  - 16
+  - 32
+  - 64
+  context_embedding_dim: 64
+  context_groupnorm_groups: 8
+  spatial_context_channels: 16
+  spatial_context_hidden_channels: 32
+  include_target_rainfall: true
+  include_context_deltas: true
+  unet_channels:
+  - 32
+  - 64
+  - 64
+  - 128
+  resnet_layers_per_block: 2
+  cross_attention_blocks: 2
+  groupnorm_groups: 16
+  dropout: 0.0
+diffusion:
+  steps: 40
+  beta_schedule: linear
+  beta_start: 0.0001
+  beta_end: 1.0
+  prediction_type: x0
+loss:
+  change_weight: 3.0
+  snr_gamma: null
+  snr_weight_floor: 0.05
+loader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+training:
+  epochs: 300
+  learning_rate: 0.001
+  lr_policy: reduce_on_plateau
+  lr_patience: 15
+  lr_factor: 0.5
+  weight_decay: 0.0
+  grad_clip_norm: 1.0
+  amp: bf16
+  ema_decay: 0.999
+  selection_metric: rollout_val_rmse
+  rollout_val_every: 5
+  rollout_val_windows: 2
+  rollout_val_tiles_per_window: 4
+  early_stop_patience: 60
+  pushforward_fraction: 0.25
+  pushforward_warmup_epochs: 10
+  consistency_loss_weight: 0.0
+  val_seed: 1234
+  device: auto
+  seed: 42
+evaluation:
+  num_scenarios_val: 1
+  num_scenarios_test: 1
+  rollout_remask: false
+  clip_x0_physical: true
+  use_ema: true
+  metrics:
+  - nrmse
+  - nacrps
+  - rmse
+  - mae
+  - path_iou
+  - propagation_path_iou
+scientific:
+  status: deterministic_twin_floodcastbench
+  does_not_claim:
+  - official FloodCastBench benchmark performance
+  - official DIFF-SPARSE TideWatch reproduction
+  - superiority over persistence, FNO+, or DIFF-SPARSE v1 until evaluated
+  - uncertainty calibration
