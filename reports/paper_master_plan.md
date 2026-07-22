@@ -2065,3 +2065,16 @@ Détail complet dans `PROTOCOL.md`.
   un *support quantitatif fort* à la monotonie, présentée comme telle
   (cohérence avec la forme prédite), pas comme un exposant de précision
   publiable en soi.
+- 2026-07-22 (suite) — **Pakistan→Mozambique zero-shot TERMINÉ, complète
+  les deux paires de transfert de la Table 5 FNO+**. In-domain Pakistan
+  (jumeau, seed42) : relRMSE 0.000202 (20/20 fenêtres test). Zero-shot
+  Mozambique (poids gelés, sans réentraînement) : **relRMSE 0.000374
+  (7/7 fenêtres) vs FNO+ publié 0.078633 → ~×210 meilleur**. Encore plus
+  extrême que Australie→UK (~×37). Mêmes réserves qu'UK à écrire
+  explicitement (échantillon 7 fenêtres, convention de normalisation
+  FNO+ en transfert non vérifiable depuis le papier). **Les deux paires
+  de transfert publiées par FNO+ sont maintenant couvertes** — la
+  section zero-shot du papier (§6.4/`sec:zeroshot`) peut passer du statut
+  "consolidation en attente" (1 seule paire, 3 fenêtres) à un vrai
+  résultat à 2 paires indépendantes, cohérent dans les deux cas. À
+  intégrer dans `main_v2.tex` (actuellement §6.4 ne couvre qu'UK).
