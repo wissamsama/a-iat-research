@@ -2102,3 +2102,53 @@ Détail complet dans `PROTOCOL.md`.
   résultat principal, garder l'ancien comme note historique si utile.
   Éval V2 (Δ-Diff) full-event UK en cours (8 scénarios, 3 seeds) pour
   compléter le tableau ; Pakistan seed7/123 en file après UK.
+- 2026-07-22 (CRITIQUE, question utilisateur) — **La confirmation WP12
+  ("mécanisme démontré") pourrait être un artefact mécanique, pas une
+  vraie découverte diffusion-spécifique — à vérifier avant de la garder
+  dans le papier telle quelle.**
+
+  **Le problème** : deux faits génériques suffisent à reproduire la pente
+  -1 sans rien dire du "plancher de bruit d'échantillonnage" propre à la
+  diffusion :
+  1. Le RMSE du bras absolu est **quasi constant** sur toute la plage Δt
+     (0.368-0.397, ~8% de variation) — il ne "réagit" pas à Δt.
+  2. Le ratio RMSE_delta / σ_Δ(Δt) (mesuré indépendamment en Phase 1) est
+     **quasi constant (~0.22-0.25)** sur 4/5 points comparables — l'erreur
+     du bras delta suit simplement l'amplitude naturelle de la cible, un
+     comportement générique de régression, pas un fait diffusif.
+
+     | Δt | σ_Δ (Phase 1) | RMSE delta | ratio delta/σ_Δ | RMSE absolu |
+     |---|---:|---:|---:|---:|
+     | 300 | 0.000699 | 0.000175 | 0.251 | 0.3788 |
+     | 600 | 0.001396 | 0.000326 | 0.234 | 0.3676 |
+     | 900 | 0.002080 | 0.000471 | 0.226 | 0.3729 |
+     | 1800 | 0.004093 | 0.000899 | 0.220 | 0.3729 |
+     | 7200 | 0.015845 | 0.006507 | 0.411 | 0.3965 |
+
+     (le point 7200s dévie du plateau ~0.22-0.25 — possiblement un vrai
+     signal de dégradation, possiblement l'échantillon d'entraînement
+     famélique à 65 deltas ; à regarder séparément)
+
+  Si RMSE_absolu≈constante et RMSE_delta≈k·σ_Δ(Δt), alors le ratio
+  absolu/delta ∝ 1/σ_Δ(Δt) **tombe mécaniquement** de la scaling
+  σ_Δ(Δt)∝Δt déjà connue depuis la Phase 1 (17/07) — sans rien
+  démontrer de nouveau sur la diffusion spécifiquement.
+
+  **Test décisif lancé** : les mêmes 16 configs (8 Δt × {absolu,delta})
+  rejouées sur le **jumeau déterministe** (`configs/floodcastbench_wp12_twin_dt*.yaml`,
+  commit `e56d8b6`) — si le jumeau reproduit la même loi de puissance,
+  ce n'est PAS un phénomène de bruit d'échantillonnage diffusif, c'est un
+  effet de paramétrisation générique. **Bonne nouvelle pour la thèse
+  centrale du papier** (attribution : les gains viennent de la
+  paramétrisation, transférable au déterministe) mais **mauvaise
+  nouvelle pour le cadrage actuel de §3.2** ("plancher de bruit
+  d'échantillonnage" implique quelque chose de spécifique à la diffusion
+  qu'on n'aurait pas isolé).
+
+  **GEL** : ne pas présenter §3.2 comme "mécanisme démontré" tant que ce
+  contrôle n'est pas revenu. Si le jumeau réplique le motif : reformuler
+  en "effet de paramétrisation démontré, généralisable au-delà de la
+  diffusion" (toujours un résultat solide, cadrage différent). Si le
+  jumeau NE réplique PAS (comportement différent) : la framing diffusion-
+  spécifique originale serait alors partiellement justifiée après tout —
+  à ne pas présumer dans un sens ou l'autre avant les résultats réels.
