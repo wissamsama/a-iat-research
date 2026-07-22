@@ -2178,3 +2178,28 @@ Détail complet dans `PROTOCOL.md`.
   dynamique de crue). Reste : test de significativité par-fenêtre (n=39)
   maintenant possible grâce au logging ajouté ce matin, pas encore
   calculé.
+- 2026-07-22 (suite) — **`paper/main_v3.tex` créé** (v2 conservée
+  intacte) : applique les 8 points de la relecture éditoriale validée
+  par l'utilisateur + intègre tous les résultats du jour. Corps
+  7 333→~5 000 mots, abstract 273→207, annexe créée (4 sections :
+  pièges attrapés / pitfall transfert détaillé / dose-réponse étendue /
+  tables par-seed). **Nouveaux contenus** : (i) section 6.4 "Second
+  event, in-domain" — UK 18 runs, jumeau gagne les 3 régimes signe
+  cohérent 3/3, synthèse deux-événements "le mécanisme génératif ne
+  montre jamais d'avantage seed-cohérent nulle part" ; (ii) §3.2
+  réécrit autour du contrôle jumeau (7/8 points : pente -0.91 R²=0.98
+  vs diffusion -1.06 R²=0.98) — mécanisme requalifié TARGET-SCALE,
+  explicitement sampler-agnostic, ce qui RENFORCE la thèse
+  d'attribution ; (iii) chiffres transfert full-event (×8.6/×21) comme
+  résultats principaux, pitfall détaillé en annexe B ; (iv) Pakistan
+  in-domain vs FNO+ Table 4 basse-fidélité (×10, 5/5 métriques) ajouté
+  en §6.1 + annexe D ; (v) table récapitulative des 4 événements
+  (grilles/frames/splits) ; (vi) décomposition honnête du ×21 Mozambique
+  (jumeau ~×8.4 vs persistence ; le reste = FNO+ pire que persistence
+  en transfert) écrite dans §6.5 ; (vii) catalogue "Verification
+  practices" (5 pièges attrapés) en annexe A, référencé depuis la
+  Reproducibility Statement — la voix "carnet de labo" regroupée en un
+  argument méthodologique assumé au lieu de hedging dispersé. 7 boxes
+  PENDING restants (dernier point twin-control, Pakistan 3 seeds,
+  ablation contexte, CRPS/m95-random, grille ablation+coût, URL repo,
+  V2 full-event transfert).
