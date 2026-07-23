@@ -49,7 +49,12 @@ Chaîne de wait-gates (chaque script attend le marqueur du précédent) :
 [ATTENTE]  WP16 protocole complet  (run_wp16_full_protocol.sh)
               │  marqueur: ALL_WP16_DONE
               │  Pakistan 15 runs + Mozambique 18 runs + cross-région
-              │  UK→AUS et MOZ→PAK. Plusieurs jours à ~1 semaine (évals Δ-Diff).
+              │  UK→AUS et MOZ→PAK.
+              │  DÉCISION 2026-07-23 : évals Δ-Diff (8 scén.) plafonnées à
+              │  --max-windows 4 (SCREENING) — full protocol coûtait ~9j.
+              │  Évals Twin (ns=1) restent complètes. Full-protocol Δ-Diff
+              │  à re-lancer plus tard uniquement sur les cellules
+              │  décisives. Queue ainsi ramenée de ~9j à ~2j.
 ```
 
 Logs : `logs/FloodCastBench/background_jobs/{overnight_stage3_*, twin_m50_retrain_*, wp16_full_protocol_*}.log`.
