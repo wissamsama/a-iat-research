@@ -19,6 +19,22 @@ Vérité pour « qu'est-ce qui tourne / dans quel ordre ». Voir
 Malaisie (UTC+8). **Toujours convertir les heures en heure Malaisie dans les
 messages** (UTC + 8h), jamais d'UTC brut.
 
+## Coût des évals = nombre de tuiles × scénarios × étapes (vérifié 2026-07-23)
+Le coût d'une éval Δ-Diff est dominé par le **nombre de tuiles** de la grille
+(patch 64, stride 32), PAS par un bug ni par la machine :
+| Événement | Grille | Tuiles | Vitesse éval 8-scén |
+|---|---|---|---|
+| UK | 137×85 | 8 | ~1,5 min/fenêtre |
+| Mozambique | 138×151 | 16 | ~3 min/fenêtre (extrap.) |
+| Australie | 536×536 | 256 | ~44 min/fenêtre |
+| Pakistan | 441×810 | 325 | ~55-60 min/fenêtre (extrap.) |
+Ratio tuiles Australie/UK = 32× → éval 29× plus lente : mécanique, cohérent.
+L'éval m95 de 9h28 (23-07) n'était PAS anormale (256 tuiles × 8 scén × 40 pas
+× 13 fenêtres). Corollaire : les évals Twin (ns=1) coûtent 1/8 des évals
+Δ-Diff (ns=8) ; le screening WP16 (--max-windows 4 pour Δ-Diff) est le bon
+levier sur les grosses grilles. **ENTRAÎNEMENTS : aucune anomalie, Spark plus
+rapide que P7 (Twin AUS 35,6 vs 62,6 s/epoch).**
+
 ## Leçons de supervision (coûteuses, à ne pas répéter)
 1. **Les lignes de log ne prouvent PAS la progression.** L'évaluateur
    `evaluate_floodcastbench_diff_sparse_v2.py` n'écrit ses fichiers qu'à la
