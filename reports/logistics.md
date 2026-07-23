@@ -19,6 +19,29 @@ Vérité pour « qu'est-ce qui tourne / dans quel ordre ». Voir
 Malaisie (UTC+8). **Toujours convertir les heures en heure Malaisie dans les
 messages** (UTC + 8h), jamais d'UTC brut.
 
+## Pilotage autonome (instauré 2026-07-24, instruction utilisateur explicite)
+Supervision double active tant que la chaîne GPU n'est pas terminée :
+- **Monitor persistant** (tail -F des 3 logs orchestrateurs, alerte sur
+  `Traceback|CUDA error|OOM|NaN|Inf|Killed|===|ALL_*_DONE`) — réactif,
+  immédiat.
+- **ScheduleWakeup** toutes les 10 min — ré-analyse globale périodique,
+  décide et enchaîne la suite. Doit être réarmé À CHAQUE tour sans
+  exception (règle qui a cassé la cadence 2× avant d'être corrigée).
+
+**Frontière décisionnelle (instruction utilisateur explicite) :**
+- **Autonome, sans validation** : relancer un job interrompu depuis un
+  checkpoint valide, corriger un chemin/commande évidemment cassé,
+  interrompre un job manifestement défaillant, lancer une éval déjà
+  prévue au protocole, enchaîner l'étape suivante déjà décidée.
+- **JAMAIS seul, arrêt + demande d'intervention** : suppression de
+  données/checkpoints, modification profonde du modèle, changement
+  majeur de protocole (nb de seeds, régimes, cibles), abandon d'une
+  expérience importante, écrasement de résultats, opération à coût/
+  conséquences incertains.
+
+Toute décision prise en autonomie (relance, correction) doit être
+consignée ici ou dans `results_log.md` selon sa nature.
+
 ## Coût des évals = nombre de tuiles × scénarios × étapes (vérifié 2026-07-23)
 Le coût d'une éval Δ-Diff est dominé par le **nombre de tuiles** de la grille
 (patch 64, stride 32), PAS par un bug ni par la machine :
