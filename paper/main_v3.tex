@@ -890,10 +890,24 @@ effect is not detectable at screening resolution --- consistent with its
 design intent (a boundary-sharpening reweighting) mattering more for
 sharper, harder-to-measure boundary metrics than for pooled RMSE/CSI.
 
-\blocked{Remaining: four further levers of the component ablation
-(target-step rainfall, spatial encoder, rollout-aware training,
-diffusion steps) --- training in progress, 2 of 6 configurations
-complete.}
+\paragraph{Third lever: rollout-aware (pushforward) training.} Removing
+the exposure-bias curriculum (single-seed screening, dense, 4 windows)
+gives relative RMSE $0.000865$ --- numerically \emph{better} than
+\ours{} ($0.001558\pm0.000836$), not worse. We do not read this as
+evidence that pushforward training hurts: \ours{}'s own dense-regime
+seed standard deviation is more than half its mean, so a single
+screening seed landing below the 3-seed mean is well within the noise
+this technique already shows at full protocol (\S\ref{sec:vsfnoplus}).
+Unlike the delta parametrization (a $\sim$199$\times$ effect, far
+outside any plausible noise band), this lever's direction cannot be
+called from one seed; it is reported as inconclusive pending the
+3-seed confirmation already planned for the full ablation grid.
+
+\blocked{Remaining: three further levers of the component ablation
+(target-step rainfall, spatial encoder, diffusion steps) --- training
+in progress, 3 of 6 configurations complete. A 3-seed confirmation of
+the pushforward lever specifically is warranted given its single-seed
+result falls outside the pattern of the other two completed levers.}
 
 % ============================================================
 \section{Discussion}

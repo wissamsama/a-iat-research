@@ -108,7 +108,20 @@ seulement** — dans le bruit d'1 écart-type. Interprétation : contrairement
 (affûtage des frontières humide/sec) qui devrait se voir sur des
 métriques de frontière plus fines (path IoU) plutôt que RMSE/CSI globaux.
 
-4 restantes en queue (nopushforward, nospatial, notargetrain, steps20),
+**abl_nopushforward — FINI 2026-07-24** (retrait curriculum pushforward ;
+dense, screening 4/13, seed42, 8 scénarios) : relRMSE 0.000865, NSE
+0.999999, r 0.9999996, CSI@0.001 0.984960, CSI@0.01 0.998908. Ratio vs
+Δ-Diff complet : **×0,555 — NUMÉRIQUEMENT MEILLEUR**, pas pire.
+Interprétation prudente : PAS lu comme preuve que pushforward nuit —
+l'écart-type inter-seed de Δ-Diff dense (±0,000836) dépasse la moitié
+de sa moyenne (0,001558), donc un seed unique en-dessous de la moyenne
+à 3 seeds est dans le bruit normal. Contrairement à la paramétrisation
+delta (×199, largement hors bruit), la direction de cet effet est
+indécidable sur 1 seed. Marqué comme nécessitant une confirmation
+3-seeds spécifique dans le papier (au lieu des 4 leviers restants
+génériques).
+
+3 restantes en queue (nospatial, notargetrain, steps20),
 évals à --max-windows 4 (screening assumé).
 
 ### ctx12 (ablation contexte) — décision d'audit (action 4)
