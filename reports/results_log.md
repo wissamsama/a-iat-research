@@ -98,8 +98,18 @@ du papier : la cible delta domine largement (×199), l'architecture V2
 contribue peu (abl_absolute nettement meilleur que Abs-Diff/V1 ~560×
 pire que persistance). Screening — pas encore 3 seeds/protocole complet.
 
-5 restantes en queue (abl_nochangeweight, nopushforward, nospatial,
-notargetrain, steps20), évals à --max-windows 4 (screening assumé).
+**abl_nochangeweight — FINI 2026-07-24** (retrait de la pondération
+wet/dry ; dense, screening 4/13, seed42, 8 scénarios) : relRMSE
+0.001811, NSE 0.999996, r 0.999999, CSI@0.001 0.984760, CSI@0.01
+0.999217. Ratio vs Δ-Diff complet (0.001558±0.000836) : **×1.16
+seulement** — dans le bruit d'1 écart-type. Interprétation : contrairement
+à la paramétrisation delta (×199), ce levier n'a pas d'effet détectable
+à cette résolution de screening ; cohérent avec son rôle attendu
+(affûtage des frontières humide/sec) qui devrait se voir sur des
+métriques de frontière plus fines (path IoU) plutôt que RMSE/CSI globaux.
+
+4 restantes en queue (nopushforward, nospatial, notargetrain, steps20),
+évals à --max-windows 4 (screening assumé).
 
 ### ctx12 (ablation contexte) — décision d'audit (action 4)
 Chiffres du papier (970×/3.9×/1.9×, étiquetés screening) : provenance =

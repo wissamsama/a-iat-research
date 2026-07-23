@@ -880,10 +880,20 @@ score is already far better than \absdiff{}'s reference-parametrization
 result, \S\ref{sec:mechanism}, despite sharing \absdiff{}'s absolute
 target).
 
-\blocked{Remaining: five further levers of the component ablation
-(target-step rainfall, spatial encoder, change-weighted loss,
-rollout-aware training, diffusion steps) --- training in progress,
-1 of 6 configurations complete.}
+\paragraph{Second lever: change-weighted loss.} Removing the wet/dry
+boundary loss weighting (single-seed screening, dense, 4 windows) gives
+relative RMSE $0.001811$ --- only $\sim$1.16$\times$ worse than \ours{}
+($0.001558\pm0.000836$), within one seed standard deviation, and its
+CSI@0.001 ($0.984760$) is statistically indistinguishable from \ours{}'s
+($0.985861\pm0.003884$). Unlike the delta parametrization, this lever's
+effect is not detectable at screening resolution --- consistent with its
+design intent (a boundary-sharpening reweighting) mattering more for
+sharper, harder-to-measure boundary metrics than for pooled RMSE/CSI.
+
+\blocked{Remaining: four further levers of the component ablation
+(target-step rainfall, spatial encoder, rollout-aware training,
+diffusion steps) --- training in progress, 2 of 6 configurations
+complete.}
 
 % ============================================================
 \section{Discussion}
