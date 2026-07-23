@@ -1,8 +1,27 @@
 # Master Plan — Papier "Prévision de champs de crue sous observation éparse"
 
-**Document de référence unique du projet jusqu'à la soumission.** Toute nouvelle
-tâche, tout changement de scope, toute décision doit être reflétée ici (voir
-§10 Gouvernance). Dernière mise à jour : 2026-07-10.
+**Document de STRATÉGIE et de WP actifs.** Dernière mise à jour : 2026-07-23.
+
+> ## Index des documents de pilotage (restructuration 2026-07-23, audit action 3)
+> Le pilotage du projet est réparti sur trois fichiers pour arrêter
+> l'éparpillement (ce fichier avait dépassé 2300 lignes en mêlant stratégie,
+> journal de résultats et logistique machines) :
+>
+> | Fichier | Rôle | Nature |
+> |---|---|---|
+> | **`paper_master_plan.md`** (ce fichier) | Thèse, positionnement, threat model, WP (work packages) actifs, décisions de scope | Vérité pour « quoi/pourquoi » |
+> | **`results_log.md`** | État canonique des résultats + journal append-only | Vérité pour « quels chiffres, d'où » |
+> | **`logistics.md`** | Machines, queues GPU, scripts en vol, séquencement | Vérité pour « qu'est-ce qui tourne » |
+>
+> **Règle du commit unique (instaurée après le doublon d'éval du 22→23-07) :**
+> tout résultat qui débloque/périme un encadré `\blocked{}` du papier met à
+> jour le papier **dans le même commit** que l'entrée `results_log.md`
+> correspondante. Voir `results_log.md` pour le détail.
+>
+> Le contenu historique (journal de résultats mêlé, corrections datées) reste
+> ci-dessous **inchangé** pour préserver l'audit trail — mais `results_log.md`
+> fait désormais foi pour l'état courant, et la logistique a migré vers
+> `logistics.md`.
 
 ---
 
@@ -564,6 +583,20 @@ WP0 en cours. Chaque WP a des critères de décision AVANT lancement (pré-enreg
   ça ne l'est.
 
 ### WP2 — Ablation contexte (tuer le confondant ctx24/ctx12)
+
+> **DÉCISION D'AUDIT 2026-07-23 (action 4).** Les ratios ci-dessous
+> (970×/3.9×/1.9×) proviennent d'une lecture rapide 4/13 fenêtres seed42
+> consignée ici le 16-07 ; **aucun artefact d'éval sur disque** n'a été
+> retrouvé (les checkpoints ctx12 existent, `15-07-2026_18-38-2*`, mais
+> sans dossier `eval_rollout_test_*`). Le papier étiquette déjà ces
+> chiffres « single-seed screening », donc pas de faute — mais la
+> traçabilité est faible. Décision : **ne PAS régénérer une éval séparée
+> juste pour ce screening** ; la génération d'artefacts complets est
+> fusionnée dans l'item déjà `\blocked{}` du papier « context ablation at
+> 3 seeds » (§4.3 architecture summary), qui produira 3 seeds sous
+> protocole intégral avec artefacts sur disque quand il tournera. Voir
+> `results_log.md` §ctx12.
+
 - **Runs** : V2 @ `context_length: 12`, seed 42, × 3 sparsités (3 runs).
   Option si résultats serrés : +2 seeds sur m50.
 - **Comparaisons** : V2@12 vs V1@12 (gain d'architecture pur) ; V2@12 vs
