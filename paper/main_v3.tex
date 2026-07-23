@@ -856,9 +856,22 @@ Peak GPU memory (MB) & 152 & $\mathbf{92}$ \\
 \end{tabular}
 \end{table}
 
-\blocked{Remaining: the component ablation of \ours{} (delta
-parametrization, target-step rainfall, spatial encoder, change-weighted
-loss, rollout-aware training, diffusion steps) --- training in progress,
+\paragraph{Component ablation, first lever: delta parametrization alone.}
+Holding \ours{}'s architecture fixed and swapping only the target back to
+\emph{absolute} (single-seed screening, dense, 4 test windows) gives
+relative RMSE $0.309516$ --- $\mathbf{\sim199\times}$ worse than \ours{}
+($0.001558$ on the full protocol). This isolates the delta
+parametrization's own contribution from the architectural changes
+(\S\ref{sec:mechanism}, \S\ref{sec:paramresults}): it dominates the
+$\sim$3-order-of-magnitude gap over \absdiff{}, with the widened
+architecture contributing comparatively little (this ablation's absolute
+score is already far better than \absdiff{}'s reference-parametrization
+result, \S\ref{sec:mechanism}, despite sharing \absdiff{}'s absolute
+target).
+
+\blocked{Remaining: five further levers of the component ablation
+(target-step rainfall, spatial encoder, change-weighted loss,
+rollout-aware training, diffusion steps) --- training in progress,
 1 of 6 configurations complete.}
 
 % ============================================================

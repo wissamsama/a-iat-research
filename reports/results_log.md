@@ -77,7 +77,17 @@ reproduit indépendamment le 23-07 à 4 décimales près (9h28 GPU).
 Reste : intégration coverage corrigée dans la figure f6 + CRPS.
 
 ### Ablations composants (§6.8) — EN COURS
-abl_absolute : entraîné (125 ep., early-stop), éval 4-fenêtres en cours.
+
+**abl_absolute — FINI 2026-07-23** (V2 archi complète + cible ABSOLUE au
+lieu de delta ; dense, screening 4/13 fenêtres, seed42, 8 scénarios) :
+relRMSE 0.309516, NSE 0.868941, r 0.935669, CSI@0.001 0.703782,
+CSI@0.01 0.800702. Isole la contribution de la paramétrisation delta
+seule (architecture V2 tenue fixe des deux côtés) : Δ-Diff/abl_absolute
+= 0.001558/0.309516 ≈ **×199**. Décompose le saut ~3 ordres de grandeur
+du papier : la cible delta domine largement (×199), l'architecture V2
+contribue peu (abl_absolute nettement meilleur que Abs-Diff/V1 ~560×
+pire que persistance). Screening — pas encore 3 seeds/protocole complet.
+
 5 restantes en queue (abl_nochangeweight, nopushforward, nospatial,
 notargetrain, steps20), évals à --max-windows 4 (screening assumé).
 
