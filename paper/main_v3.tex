@@ -100,8 +100,9 @@ model beats the strongest published neural-operator baseline (FNO+) on
 all five reported metrics. We then \emph{delete its diffusion loop}: the
 resulting parameter-matched deterministic twin --- identical weights and
 training, one forward pass in place of 320 network evaluations --- is
-better still, $\sim$9.4$\times$ below the published state of the art at
-$\sim$1/320th the inference cost. Across two flood events, three sparsity
+better still, $\sim$9.4$\times$ below the published state of the art with
+320$\times$ fewer network evaluations (measured wall-clock speedup
+$\sim$58$\times$). Across two flood events, three sparsity
 regimes, and both of the benchmark's published cross-regional transfer
 pairs, the generative mechanism never shows a seed-consistent advantage;
 a deep ensemble of twins is never worse calibrated than the diffusion
@@ -145,9 +146,10 @@ weight-for-weight, evaluated once with the noise input and diffusion time
 index fixed to zero instead of sampled over 40 denoising steps $\times$ 8
 scenarios --- is the best model we measure on the benchmark:
 $\sim$9.4$\times$ below the published state-of-the-art relative RMSE
-under full observation, at $\sim$1/320th the diffusion model's inference
-cost, and never behind it with consistent sign in any regime we test
-(\S\ref{sec:twinresults}, \S\ref{sec:ukresults}).
+under full observation, with 320$\times$ fewer network evaluations than
+the diffusion model (measured wall-clock speedup $\sim$58$\times$,
+\S\ref{sec:ablations}), and never behind it with consistent sign in any
+regime we test (\S\ref{sec:twinresults}, \S\ref{sec:ukresults}).
 
 Two aspects of the outcome are not what either pre-registered expectation
 predicted. First, the pattern is not a uniform sweep: on the primary
@@ -179,7 +181,7 @@ twins quantifies at least as well (\S\ref{sec:calibration}).
 \begin{enumerate}
   \item \textbf{A new state of the art on FloodCastBench}: \ours{} beats
     published FNO+ on all five metrics; its deterministic twin improves a
-    further $\sim$3.7$\times$ at $\sim$1/320th the cost
+    further $\sim$3.7$\times$ with 320$\times$ fewer network evaluations
     (\S\ref{sec:vsfnoplus}).
   \item \textbf{The first parameter-matched deterministic--generative
     control} for this task family, across two events, three sparsity
@@ -197,11 +199,11 @@ twins quantifies at least as well (\S\ref{sec:calibration}).
     Appendix~\ref{app:verification}.
 \end{enumerate}
 
-\blocked{Remaining before freeze: the Pakistan$\to$Mozambique transfer
-pair at 3 seeds (currently 1; training in progress), the context
-ablation at 3 seeds, and the ablation/cost study of
-\S\ref{sec:ablations}. The WP12 twin control is now complete (8 of 8
-points).}
+\blocked{Remaining before freeze: the context ablation at 3 seeds, the
+component-ablation study of \S\ref{sec:ablations} (its cost table is now
+measured and final), and the Twin \mfifty{} retraining noted in
+Appendix~\ref{app:verification}. The Pakistan$\to$Mozambique pair is now
+at 3 seeds and the WP12 twin control is complete (8 of 8 points).}
 
 % ============================================================
 \section{Related Work}
@@ -587,8 +589,9 @@ relative RMSE of $0.000417 \pm 0.000039$
 published state of the art}, from a single forward pass where \ours{}
 spends 40 denoising steps $\times$ 8 scenarios. The same holds on the
 benchmark's low-fidelity task: trained on Pakistan (480\,m), \twin{}
-reaches relative RMSE 0.000202 vs.\ published FNO+ 0.002107
-($\sim$10$\times$, ahead on all five metrics; single seed,
+reaches relative RMSE $0.000317 \pm 0.000172$ vs.\ published FNO+
+0.002107 ($\sim$6.6$\times$, ahead on all five metrics with 3 seeds;
+per-seed values and a convergence caveat on one seed in
 Appendix~\ref{app:perseed}). Protocol differences are stated once:
 published FNO+ numbers are single-shot 19-step predictions, ours are
 autoregressive 12-step rollouts (compounding errors, but a shorter
@@ -722,24 +725,25 @@ Australia$\to$UK (42 windows) & FNO+ \citep{floodcastbench2025} & 0.024771 & ---
  & \twin{} (3 seeds) & $\mathbf{0.002874 \pm 0.000177}$ & $\sim$\textbf{8.6$\times$} \\
 \midrule
 Pakistan$\to$Mozambique (85 windows) & FNO+ \citep{floodcastbench2025} & 0.078633 & --- \\
- & \twin{} (1 seed) & $\mathbf{0.003748}$ & $\sim$\textbf{21$\times$} \\
+ & \twin{} (3 seeds) & $\mathbf{0.006249 \pm 0.003625}$ & $\sim$\textbf{12.6$\times$} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Both pairs point the same direction. The margin decomposes informatively:
 on Mozambique the twin beats trivial persistence by only
-$\sim$8$\times$ --- most of the $\sim$21$\times$ comes from FNO+
+$\sim$8$\times$ --- most of the $\sim$12.6$\times$ comes from FNO+
 transferring far \emph{worse} than persistence. This is the target-scale
 mechanism again: an absolute-field model must reproduce the target
 domain's absolute depth distribution, which shifts across regions, while
 a delta-parametrized model needs only the per-step change distribution,
-which barely does. Caveats: the Pakistan$\to$Mozambique row is single-seed
-(3-seed replication in progress; the UK row's seed variance is
-$\approx$6\% of its mean), and the publication does not specify whether
-its transfer numbers froze source-domain normalization as ours do.
-\blocked{\ours{}'s full-event transfer numbers and the Pakistan seed
-replication are running at the time of writing.}
+which barely does. The Pakistan$\to$Mozambique spread is dominated by one
+seed with a training-convergence failure (Appendix~\ref{app:perseed});
+the two healthy seeds sit at 0.00363--0.00375 ($\sim$21$\times$). \ours{}
+evaluated on the same full-event protocol is consistently behind the twin
+(Appendix~\ref{app:transferpitfall}). Remaining caveat: the publication
+does not specify whether its transfer numbers froze source-domain
+normalization as ours do.
 
 \subsection{Structured sensor layouts vs.\ random masks}
 \label{sec:masks}
@@ -810,23 +814,52 @@ compared against.
   (a) observed/nominal coverage --- all conditions under-covered, twin
   ensemble never worse; (b) rank histograms at \mfifty{} --- both
   U-shaped, \ours{} more strongly. At \mninetyfive{} \ours{} uses
-  structured masks (no random-mask run at that sparsity), which
-  \S\ref{sec:masks} suggests understates rather than overstates its
-  calibration.}
+  structured masks, which \S\ref{sec:masks} suggests understates rather
+  than overstates its calibration; a matched random-mask evaluation at
+  \mninetyfive{} (relRMSE 0.508, statistically indistinguishable from the
+  regime mean) confirms the reading is not mask-structure-driven.}
   \label{fig:calibcomp}
 \end{figure}
 
-\blocked{Remaining: a matched random-mask \ours{} evaluation at
-\mninetyfive{}, and a sharpness-aware score (CRPS) to complement
-coverage.}
+\blocked{Remaining: integrating the random-mask \mninetyfive{}
+evaluation's finite-ensemble-corrected coverage into
+Figure~\ref{fig:calibcomp} (raw evaluation complete, twice ---
+independently reproduced to 4 decimal places), and a sharpness-aware
+score (CRPS) to complement coverage.}
 
 \subsection{Ablations and cost}
 \label{sec:ablations}
-\blocked{Two studies planned: (i) a component ablation of \ours{} (delta
+
+\paragraph{Measured cost.} Table~\ref{tab:cost} prices the diffusion loop
+directly: both models load their trained checkpoints and predict one real
+$64\times64$ tile on the same GPU (\ours{}: 40 denoising steps $\times$ 8
+scenarios, batched; \twin{}: one forward pass). The parameter match is
+exact by construction and verified at load time. The wall-clock gap
+($\sim$58$\times$) is smaller than the 320$\times$ network-evaluation
+count because batching amortizes per-call overhead --- we report both
+rather than let the larger number stand alone.
+
+\begin{table}[H]
+\centering
+\caption{Measured inference cost, one $64\times64$ tile prediction,
+mean of 5 repetitions on the same device.}
+\label{tab:cost}
+\begin{tabular}{lrr}
+\toprule
+ & \ours{} & \twin{} \\
+\midrule
+Parameters & 5{,}538{,}546 & 5{,}538{,}546 \\
+Network evaluations / prediction & 320 & 1 \\
+Latency (s) & 0.792 & $\mathbf{0.0137}$ \\
+Peak GPU memory (MB) & 152 & $\mathbf{92}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\blocked{Remaining: the component ablation of \ours{} (delta
 parametrization, target-step rainfall, spatial encoder, change-weighted
-loss, rollout-aware training, diffusion steps); (ii) a measured cost
-table (parameters, latency, memory, wall-clock) pricing \ours{}'s 40
-steps $\times$ 8 scenarios against the twin's single pass.}
+loss, rollout-aware training, diffusion steps) --- training in progress,
+1 of 6 configurations complete.}
 
 % ============================================================
 \section{Discussion}
@@ -869,9 +902,9 @@ observations carry noise --- our benchmark's synthetic sensors do not, a
 scope condition we state rather than hide.
 
 \paragraph{Is the twin an FNO replacement? A scoped answer.} The twin
-beats FNO+ in-domain ($\sim$9.4$\times$ and $\sim$10$\times$ on two
+beats FNO+ in-domain ($\sim$9.4$\times$ and $\sim$6.6$\times$ on two
 events) and on both published zero-shot transfer pairs
-($\sim$8.6$\times$, $\sim$21$\times$). We answer deliberately narrowly.
+($\sim$8.6$\times$, $\sim$12.6$\times$). We answer deliberately narrowly.
 The inductive bias that favors it here --- local multi-scale convolution
 and attention, suited to sharp, localized wetting fronts under sparse
 observation --- is the same bias that predicts it should \emph{lose} on
@@ -908,11 +941,12 @@ such generalization (\S\ref{sec:limitations}).
     sensors are noise-free --- the regime
     \citet{spatiallyawarediffusion2024} identify as maximally favorable
     to deterministic models; an observation-noise axis is future work.
-  \item In-domain results cover two events of one benchmark; zero-shot
-    transfer covers its two published pairs, with the
-    Pakistan$\to$Mozambique row single-seed (replication in progress)
-    and one unverifiable protocol detail (whether published transfer
-    numbers froze source normalization as ours do).
+  \item In-domain results cover two events of one benchmark (a third,
+    Pakistan, at reduced protocol); zero-shot transfer covers its two
+    published pairs at 3 seeds each, with one seed a documented
+    convergence outlier (Appendix~\ref{app:perseed}) and one
+    unverifiable protocol detail (whether published transfer numbers
+    froze source normalization as ours do).
   \item Significance rests on seed-paired sign tests ($n{=}3$);
     evaluation windows overlap and are not independent, so window-level
     tests are supporting evidence only. The \mfifty{} verdict on
@@ -958,14 +992,21 @@ view, as instructive as the results.
     mathematically favoring the deterministic model. Caught during
     development; all decision-relevant comparisons now score the
     8-scenario mean. Codified as a permanent project rule.
-  \item \textbf{Convergence audit.} Sparse-regime checkpoints of
-    \emph{both} models were under-trained under the original budget
-    (retraining improved \ours{}'s internal selection metric by
-    16--37\%). Every sparse number was re-derived on retrained
-    checkpoints; the central verdict was unchanged
-    ($\times$3.55/quasi-tie/$\times$1.57 before vs.\
+  \item \textbf{Convergence audit --- with one asymmetry caught by a
+    second audit.} Sparse-regime checkpoints were under-trained under the
+    original budget (retraining improved \ours{}'s internal selection
+    metric by 16--37\%). \mninetyfive{} checkpoints of both models and
+    \ours{}'s \mfifty{} checkpoints were retrained under an extended
+    budget and all their numbers re-derived; the central verdict was
+    unchanged ($\times$3.55/quasi-tie/$\times$1.57 before vs.\
     $\times$3.7/undecided/$\times$1.4 after), which we read as evidence
-    the verdict is not an artifact of the correction.
+    the verdict is not an artifact of the correction. A later run-level
+    audit (2026-07-23) found that \twin{}'s \mfifty{} numbers still trace
+    to original-budget checkpoints --- an asymmetry favoring \ours{} in
+    the one regime reported as undecided. A matched \twin{} \mfifty{}
+    retraining is queued; since the asymmetry can only \emph{understate}
+    the twin, the current ``undecided'' label is the conservative
+    reading.
   \item \textbf{Regime-scale instability.} A single global delta
     normalization diverged (non-finite losses) under sparsity, directly
     motivating the per-regime scale of \S\ref{sec:regime}; fixed and
@@ -989,15 +1030,18 @@ gave \twin{} relRMSE $0.000664\pm0.000019$ on UK ($\sim$37$\times$ better
 than published FNO+) and $0.000374$ on Mozambique ($\sim$210$\times$).
 Both slices fall late in their events, on unrepresentatively calm water:
 re-evaluating on the full frame sequences (42 and 85 windows) gives
-$0.002874\pm0.000177$ ($\sim$8.6$\times$) and $0.003748$
-($\sim$21$\times$) --- the numbers reported in
+$0.002874\pm0.000177$ ($\sim$8.6$\times$) and, at 3 seeds,
+$0.006249\pm0.003625$ ($\sim$12.6$\times$) --- the numbers reported in
 Table~\ref{tab:zeroshot}. The full-event evaluation is the correct one
 for zero-shot transfer (no target frame was ever trained on), and the
 $4$--$10\times$ gap between the two readings is a concrete measure of
 how much a small, unrepresentative evaluation slice can flatter a
-transfer claim. \ours{} on the same initial UK slice scored
-$0.001850\pm0.000498$ ($\sim$13$\times$), consistently behind \twin{};
-its full-event numbers were still running at the time of writing.
+transfer claim. \ours{} shows the same pattern: $0.001850\pm0.000498$
+($\sim$13$\times$) on the initial small slice vs.\
+$0.005232\pm0.000820$ ($\sim$4.7$\times$) on the full event (3 seeds) ---
+and in both readings it sits consistently behind \twin{}, so the
+zero-shot ranking between the two models is robust to the pitfall even
+though the headline ratios were not.
 
 \section{Dose--response: extended data}
 \label{app:doseresponse}
@@ -1055,19 +1099,27 @@ dense & 0.006013 & 0.005799 & 0.005209 & 0.006570 & 0.006087 & 0.005397 \\
 \end{tabular}
 \end{table}
 
-\paragraph{Pakistan in-domain (single seed, screening)} --- \twin{}
-trained on Pakistan (480\,m, dense), full test protocol (20 windows),
-vs.\ published low-fidelity FNO+ \citep{floodcastbench2025}: relative
-RMSE $0.000202$ vs.\ $0.002107$; NSE $0.9999999$ vs.\ $0.999994$;
-Pearson $r$ $0.9999999$ vs.\ $0.999997$; CSI@0.001 $0.9914$ vs.\
-$0.976716$; CSI@0.01 $0.9986$ vs.\ $0.993993$ --- ahead on all five.
+\paragraph{Pakistan in-domain (3 seeds, full test protocol, 20 windows)}
+--- \twin{} trained on Pakistan (480\,m, dense) vs.\ published
+low-fidelity FNO+ \citep{floodcastbench2025}: relative RMSE
+$0.000317\pm0.000172$ vs.\ $0.002107$; NSE $0.9999998$ vs.\ $0.999994$;
+Pearson $r$ $0.9999999$ vs.\ $0.999997$; CSI@0.001 $0.9873\pm0.0065$
+vs.\ $0.976716$; CSI@0.01 $0.9974\pm0.0018$ vs.\ $0.993993$ --- ahead on
+all five at 3 seeds. Per-seed relRMSE: 0.000202 (s42), 0.000189 (s7),
+0.000560 (s123). Seed 123 is a genuine training-convergence outlier, not
+an evaluation artifact: its final training loss plateaued $\sim$50$\times$
+higher than the other seeds' while its learning rate collapsed to the
+reduce-on-plateau floor ($1.5\times10^{-8}$); we report it as drawn
+rather than rerunning it.
 
-\paragraph{Mozambique zero-shot (full event, 85 windows, single seed)}
---- NSE $0.999984$, CSI@0.001 $0.9792$, alongside the relative RMSE of
-Table~\ref{tab:zeroshot}; the twin beats oracle persistence by
-$\sim$8.4$\times$ on normalized RMSE, so most of the $\sim$21$\times$
-margin over FNO+ reflects FNO+ transferring worse than persistence
-rather than headroom above it.
+\paragraph{Mozambique zero-shot (full event, 85 windows, 3 seeds)} ---
+per-seed relRMSE: 0.003748 (s42), 0.003625 (s7), 0.011376 (s123 --- the
+same convergence outlier as above, transferred). NSE
+$0.999942\pm0.000060$, CSI@0.001 $0.9692\pm0.0166$, alongside the
+relative RMSE of Table~\ref{tab:zeroshot}; the healthy seeds beat oracle
+persistence by $\sim$8$\times$ on normalized RMSE, so most of the margin
+over FNO+ reflects FNO+ transferring worse than persistence rather than
+headroom above it.
 
 % ============================================================
 \bibliographystyle{plainnat}

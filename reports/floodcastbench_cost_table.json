@@ -1,0 +1,24 @@
+{
+  "patch_size": 64,
+  "num_scenarios_diff_diff": 8,
+  "diffusion_steps": 40,
+  "network_evals_per_prediction": {
+    "diff_diff": 320,
+    "twin": 1
+  },
+  "params": {
+    "diff_diff": 5538546,
+    "twin": 5538546,
+    "match": true
+  },
+  "latency_seconds_per_tile_prediction": {
+    "diff_diff": 0.7915430699940771,
+    "twin": 0.013749330793507398
+  },
+  "speedup_twin_over_diff": 57.56957061269145,
+  "peak_gpu_memory_mb": {
+    "diff_diff": 152.095744,
+    "twin": 91.513344
+  },
+  "device": "cuda"
+}
