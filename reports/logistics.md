@@ -42,6 +42,41 @@ Supervision double active tant que la chaîne GPU n'est pas terminée :
 Toute décision prise en autonomie (relance, correction) doit être
 consignée ici ou dans `results_log.md` selon sa nature.
 
+### Journal de pilotage autonome (résultat → interprétation → décision → expérience)
+
+**2026-07-24, 01h15** — *Observé* : audit du plan a confirmé 5
+`\blocked{}` restants dans le papier, dont 2 (context ablation 3 seeds,
+ligne 202+522) ne sont couverts par AUCUN orchestrateur actif (stage3,
+twin_m50_retrain, wp16 ne les mentionnent pas). *Interprétation* :
+trou réel entre le plan et l'exécution, pas juste une tâche en attente
+— exactement le risque signalé par l'utilisateur (« les orchestrateurs
+sont des moyens d'exécution, pas la limite du mandat »). Checkpoint
+seed42 ctx12 (3 régimes) déjà entraîné le 15-07 mais ZÉRO artefact
+d'éval sur disque (audit du 23-07). *Décision* : construire
+`run_ctx12_completion.sh` (seed7+123 nouveaux, seed42 réutilisé sans
+réentraînement — vérifié via `config.yaml` de chaque dossier, pas
+d'ambiguïté comme le cas UK), éval screening 4 fenêtres (même logique
+coût que WP16). Re-gaté **avant** WP16 (moins cher, ferme 2 items
+bloquants directement) plutôt qu'en parallèle (contention GPU) ou après
+(WP16 = plusieurs jours, retarderait inutilement un gain moins cher).
+*Expérience lancée* : `ctx12_completion` (attend twin_m50_retrain),
+WP16 re-gaté pour attendre ctx12_completion en plus. *Résultat
+attendu* : confirmation à 3 seeds que l'écart V2@12 vs V1 reste
+massif (déjà 970×/3.9×/1.9× en screening single-seed) — effet
+attendu trop large pour qu'un screening à 3 seeds ne suffise pas à
+le confirmer.
+
+**2026-07-24, 01h10** — *Observé* : `nacrps` (score CRPS normalisé)
+déjà présent dans tous les `eval_summary.json` existants, jamais
+exploité. *Interprétation* : le `\blocked{}` "CRPS manquant" du papier
+(ligne 824) était en partie faux — la donnée existait, seule
+l'exploitation manquait. *Décision* : extraction immédiate (zéro coût
+GPU), insertion dans le papier (§6.7, nouveau paragraphe Sharpness),
+au lieu de laisser un item bloqué qui n'en était pas vraiment un.
+*Résultat* : m50 nacrps 0.1599±0.0257, m95 0.3488±0.0077 (3 seeds
+chacun) — cohérent avec la sous-couverture déjà documentée (ensemble
+trop étroit ET pas particulièrement resserré).
+
 ## Coût des évals = nombre de tuiles × scénarios × étapes (vérifié 2026-07-23)
 Le coût d'une éval Δ-Diff est dominé par le **nombre de tuiles** de la grille
 (patch 64, stride 32), PAS par un bug ni par la machine :

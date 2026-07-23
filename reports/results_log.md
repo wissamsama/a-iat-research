@@ -74,7 +74,17 @@ Latence/tuile : 0.792s vs 0.0137s (×57.6). Mémoire pic : 152 vs 92 MB.
 relRMSE 0.5084 — existait depuis le 18-07
 (`16-07-2026_09-37-43_.../eval_rollout_test_18-07-2026_11-05-40`),
 reproduit indépendamment le 23-07 à 4 décimales près (9h28 GPU).
-Reste : intégration coverage corrigée dans la figure f6 + CRPS.
+Reste : intégration coverage corrigée dans la figure f6.
+
+**CRPS (nacrps) — FAIT 2026-07-24, zéro coût GPU.** Résultat : déjà
+calculé et stocké dans TOUS les eval_summary.json existants (clé
+`model.overall.nacrps`), jamais remonté au papier. Interprétation :
+pas une expérience manquante, un oubli d'exploitation de données déjà
+produites. Décision : extraction immédiate (3 seeds, mr=0.5/0.95,
+masques aléatoires) plutôt que relancer quoi que ce soit.
+m50 : 0.1599 ± 0.0257 (seeds 0.1533/0.1322/0.1941).
+m95 : 0.3488 ± 0.0077 (seeds 0.3385/0.3510/0.3569).
+Inséré dans §6.7 du papier (nouveau paragraphe "Sharpness").
 
 ### Ablations composants (§6.8) — EN COURS
 

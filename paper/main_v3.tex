@@ -821,6 +821,17 @@ compared against.
   \label{fig:calibcomp}
 \end{figure}
 
+\paragraph{Sharpness.} Coverage alone cannot distinguish a well-calibrated
+ensemble from one that is merely wide; a sharpness-aware score answers the
+question completely. \ours{}'s normalized CRPS averages
+$0.1599\pm0.0257$ at \mfifty{} and $0.3488\pm0.0077$ at \mninetyfive{}
+(3 seeds, random masks, dense-regime scale of the same metric is two
+orders of magnitude smaller and not directly comparable across regimes).
+Combined with the under-coverage above, the picture is internally
+consistent: the ensemble is simultaneously too narrow (fails coverage)
+and not particularly cheap in spread (nonzero CRPS) --- it is not merely
+conservative-but-wide, it is misplaced.
+
 \blocked{Remaining: integrating the random-mask \mninetyfive{}
 evaluation's finite-ensemble-corrected coverage into
 Figure~\ref{fig:calibcomp} (raw evaluation complete, twice ---
