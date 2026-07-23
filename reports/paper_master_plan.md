@@ -292,6 +292,55 @@ actuel se limite à l'affirmation scopée (portée = classe de problèmes à
 observations éparses + fronts nets) et énonce explicitement l'argument
 no-free-lunch plutôt que de laisser la question ouverte sans réponse.
 
+**Scoping "palier 3 borné" (ajouté 2026-07-23, discussion utilisateur : "densifier
+le projet dans un second scope")** — reprise concrète de la version bornée
+proposée ci-dessus (UN dataset indépendant + variante Mamba), pas une
+nouvelle idée : confirme la décision PALIER 3, ne la contredit pas.
+
+*Volet architecture* : couvert par WP14-B (Mamba, ligne 1287+), déjà bien
+scopé (emplacements multiples, LayerScale obligatoire dès le départ, jumeau
+apparié par emplacement, critères pré-enregistrés). Rien à changer au
+design. Séquencement : à ouvrir seulement après le gel de v3 (ne pas faire
+compétir un 3e front architectural avec les derniers PENDING de v3 —
+réplication Pakistan 3 seeds, ablation contexte 3 seeds, étude
+ablation/coût — actuellement en cours).
+
+*Volet dataset non-simulé* : recherche faite (web, 2026-07-23) — aucun
+dataset public aujourd'hui ne correspond à la définition actuelle de la
+tâche (champ de profondeur dense et continu, cadence fine sub-journalière,
+DEM+pluie appariés). Ce n'est pas un trou de recherche comblable
+facilement, c'est structurel : un champ dense continu à cadence fine
+n'existe QUE via un simulateur hydraulique (raison pour laquelle
+FloodCastBench et DIFF-SPARSE en utilisent un). Options réelles recensées :
+- **Extension d'inondation SAR** (Sentinel-1, jeu global 10 ans,
+  [Mapping global floods with 10 years of satellite radar data, Nat.
+  Commun. 2025](https://www.nature.com/articles/s41467-025-60973-1),
+  [PMC12216028](https://pmc.ncbi.nlm.nih.gov/articles/PMC12216028/)) :
+  revisite 6-12 jours, cible **binaire** (pas de profondeur), **aucun
+  forçage** (pluie/DEM) livré. Incompatible tel quel avec la cadence 300s
+  au cœur du mécanisme d'échelle démontré (§4.2) — nécessiterait de
+  reformuler la tâche, pas juste changer le fichier de données.
+- **Jauges fluviales réelles** (USGS et équivalents nationaux) : cadence
+  fine réelle (15min-1h) mais 1D ponctuel, pas un champ 2D dense — déjà
+  couvert conceptuellement par SF2Bench (cité, Related Work).
+- **Capteurs urbains/CCTV/citoyens** (littérature 2025) : irrégulier, non
+  grillé, classification de niveau plutôt que profondeur continue.
+
+Deux chemins honnêtes si repris : **(a) reformulation réaliste** —
+prévision d'extension binaire à cadence SAR ; intéressant car ça devient un
+test *indépendant* de la loi dose-réponse du §4.2/Annexe C (à cadence de
+plusieurs jours, le mécanisme d'échelle prédit que l'avantage delta doit
+s'être quasiment effondré au-delà du croisement ≈65min déjà mesuré — une
+extrapolation testable de ce qui est déjà démontré, pas une nouvelle
+hypothèse) ; **(b) forçage réel + dynamique simulée** — simulateur alimenté
+par pluie/débit historiques réels au lieu de synthétique ; ne satisfait pas
+littéralement "pas un simulateur", à ne pas présenter comme tel si retenu.
+
+**Décision** : toujours NE PAS engager dans le scope de v3. Noté ici comme
+prochaine étape concrète d'un futur palier 3/2e papier sur ce thème, à
+distinguer de "Papier 2" (`fno_plus_beat_paper_plan.md`, FNO+/FNO+Mamba
+dense, projet indépendant sans lien avec cette question).
+
 ---
 
 ## 2. Paysage littérature (vérifié 2026-07-10, refaire une passe avant soumission)
@@ -1380,6 +1429,75 @@ universelle. La section discussion/limitations doit énoncer explicitement
 l'argument no-free-lunch (pourquoi on ne teste pas "en toute condition"
 et pourquoi ce serait le mauvais test à faire ici) — ça préempte l'
 objection plutôt que de laisser un reviewer la découvrir seul.
+
+### WP16 — Protocole complet étendu aux 4 événements + transfert
+cross-région bidirectionnel (ajouté 2026-07-23, DÉCISION UTILISATEUR : à
+faire, séquencé après la queue d'ablation en cours)
+
+**Motivation** : le protocole complet (2 modèles × 3 seeds × 3 régimes de
+sparsité = 18 runs, sign test apparié par seed) n'existe aujourd'hui que
+pour Australie et UK. Pakistan et Mozambique sont restés au stade "sonde
+jumeau seule, dense uniquement" — décision WP15, délibérément
+coût-consciente (voir tableau §10 ci-dessus). Pour une comparaison
+homogène sur les 4 événements du benchmark et pour compléter la matrice
+de transfert cross-région dans les deux sens, le protocole complet est
+étendu.
+
+**Portée décidée (2026-07-23, discussion utilisateur)** :
+1. **Pakistan (480m, basse-fidélité)** : étendre de Twin×3 seeds×dense (3
+   runs déjà faits) à Twin×3 seeds×{dense,m50,m95} + Δ-Diff×3 seeds×
+   {dense,m50,m95} = 18 runs (15 nouveaux). Nécessite de créer les
+   premières configs Δ-Diff Pakistan (n'existaient pas — Pakistan n'a
+   jamais eu de variante diffusion, seulement le jumeau).
+2. **Mozambique (480m, basse-fidélité)** : jusqu'ici uniquement cible de
+   transfert zero-shot (poids Pakistan gelés, jamais entraîné en
+   in-domain). Devient un 5e "slot in-domain" à part entière : Twin×3
+   seeds×{dense,m50,m95} + Δ-Diff×3 seeds×{dense,m50,m95} = 18 runs, tous
+   nouveaux. Split retenu : 1400/160/169 frames train/val/test (déjà
+   publié dans `tab:datasets` du papier — pas une nouvelle convention).
+3. **Transfert cross-région complété dans les deux sens, intra-fidélité
+   seulement** (décision utilisateur 2026-07-23 : pas de cross-fidélité
+   60m↔480m — résolution, patch_size et statistiques de normalisation
+   incompatibles sans un retraitement lourd, jugé hors scope) :
+   - Australie→UK : fait (table zero-shot actuelle du papier).
+   - **UK→Australie** : nouveau — réutilise les checkpoints UK
+     full-protocol déjà entraînés (zéro entraînement supplémentaire),
+     éval zero-shot poids gelés sur Australie, 3 seeds.
+   - Pakistan→Mozambique : fait (table zero-shot actuelle du papier).
+   - **Mozambique→Pakistan** : nouveau — nécessite d'abord les
+     checkpoints Mozambique in-domain (point 2), puis éval zero-shot
+     poids gelés sur Pakistan, 3 seeds.
+
+**Coût estimé (RÉVISÉ 2026-07-23 après la mesure réelle de l'éval m95
+Australie cette nuit — 9h28 pour 13 fenêtres/8 scénarios, presque
+insensible au tile-chunking)** : 33 nouveaux runs d'entraînement (15
+Pakistan + 18 Mozambique, rapides : ~25-45s/epoch post-fix cache) +
+évaluations complètes associées. Règle déjà actée ("Durcissements
+protocole pour viser Q1" ci-dessous) : tout chiffre headline repasse en
+protocole test intégral, pas de raccourci `--max-windows` — donc les
+évals Δ-Diff (8 scénarios) restent au format complet ici. Pakistan (grille
+810×441, **plus de pixels qu'Australie** 536×536 ; 20 fenêtres de test
+vs 13) et Mozambique (151×138, plus petit, ~7-8 fenêtres) sont chacun
+évalués à 3 seeds × 3 régimes = 9 évals Δ-Diff par événement. Extrapolation
+prudente à partir du seul point mesuré : **plusieurs jours à potentiellement
+plus d'une semaine de calcul GPU dédié rien que pour les évals Δ-Diff**,
+les entraînements et les évals Twin (num_scenarios=1, rapides) étant
+marginaux en comparaison. Cette estimation sera recalibrée sur le premier
+run Pakistan réel plutôt que d'être prise pour acquise (cf. l'erreur de
+sous-estimation déjà commise ce soir sur l'éval m95). À traiter en file
+après la queue d'ablation en cours (fin §6.8) pour éviter la contention
+déjà rencontrée cette nuit.
+
+**Séquencement** : configs et scripts préparés dès maintenant pour
+enchaîner sans latence à la fin de la queue d'ablation ; wait-gate sur le
+marqueur `ALL_OVERNIGHT_QUEUE_DONE` du même modèle que
+`run_uk_full_protocol.sh`/`run_pakistan_seeds_chain.sh`.
+
+**Sortie papier** : étend `tab:datasets` (déjà 4 événements listés) avec
+un protocole homogène sur les 4 ; nouvelle table cross-région complète (4
+paires au lieu de 2, les 2 sens de chaque paire intra-fidélité) ; renforce
+directement WP13 (généralisation multi-événements) en fermant le dernier
+écart de couverture entre événements.
 
 ### Durcissements protocole pour viser Q1 (ajouté 2026-07-16)
 - **Tout chiffre headline du papier repasse en protocole test COMPLET
