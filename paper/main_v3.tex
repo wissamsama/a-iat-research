@@ -914,11 +914,21 @@ barely moves aggregate error but substantially degrades wet/dry
 boundary detection specifically, consistent with the pathway's role
 (terrain and forcing are boundary-relevant, not magnitude-relevant).
 
-\blocked{Remaining: two further levers of the component ablation
-(target-step rainfall, diffusion steps) --- training in progress, 4 of
-6 configurations complete. 3-seed confirmations warranted for the
-pushforward lever (single-seed result outside the pattern of the
-others) and optionally the spatial-encoder CSI drop.}
+\paragraph{Fifth lever: target-step rainfall.} Removing the target
+step's rainfall conditioning (single-seed screening, dense, 4 windows)
+gives relative RMSE $0.001292$ ($\sim$0.83$\times$ \ours{}, inside the
+noise band) but CSI@0.001 drops to $0.964493$ --- $\sim$5.5
+seed-standard-deviations below \ours{}'s $0.985861\pm0.003884{}$, a
+real but smaller effect than the spatial encoder's. The same
+dissociation recurs: the exogenous causal driver of new flooding
+matters more for where the boundary moves than for aggregate
+magnitude, consistent with target-step rainfall's role (\S\ref{sec:mechanism}).
+
+\blocked{Remaining: one further lever (diffusion steps, 40$\to$20) ---
+training in progress, 5 of 6 configurations complete. 3-seed
+confirmations warranted for the pushforward lever (single-seed result
+outside the pattern of the others) and optionally the two CSI@0.001
+drops (spatial encoder, target-step rainfall).}
 
 % ============================================================
 \section{Discussion}

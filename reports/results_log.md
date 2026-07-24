@@ -131,8 +131,18 @@ l'erreur agrégée mais dégrade nettement la détection de frontière
 humide/sec, cohérent avec son rôle (terrain/forçage pertinents pour la
 frontière, pas pour la magnitude).
 
-2 restantes en queue (notargetrain, steps20),
-évals à --max-windows 4 (screening assumé).
+**abl_notargetrain — FINI 2026-07-24** (retrait pluie au pas cible ;
+dense, screening 4/13, seed42, 8 scénarios) : relRMSE 0.001292 (×0.83,
+dans le bruit), NSE 0.999998, r 0.999999, **CSI@0.001 0.964493
+(~5.5σ sous Δ-Diff 0.985861±0.003884 — réel mais plus modeste que
+nospatial)**, CSI@0.01 0.998599. Interprétation : même dissociation
+que l'encodeur spatial — la pluie au pas cible (forçage causal exogène
+des nouvelles inondations) compte pour la localisation de frontière,
+pas la magnitude agrégée. Effet plus faible que l'encodeur spatial
+complet (~22σ), cohérent avec un rôle plus ciblé.
+
+1 restante en queue (steps20 : 40→20 pas de diffusion),
+éval à --max-windows 4 (screening assumé). **5/6 leviers faits.**
 
 ### ctx12 (ablation contexte) — décision d'audit (action 4)
 Chiffres du papier (970×/3.9×/1.9×, étiquetés screening) : provenance =
