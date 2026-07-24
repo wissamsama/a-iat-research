@@ -31,6 +31,18 @@ et Δ-Diff m50. Asymétrie divulguée dans le papier (Annexe A item 2),
 retrain ×3 seeds en queue (`run_twin_m50_retrain.sh`, budget epochs=600/
 patience=120 identique aux retrains m95).
 
+**Retrain seed42 — FAIT 2026-07-24** (epochs=600/patience=120, early-stop
+epoch 160, best epoch 40) : relRMSE 0.386525 (13/13 fenêtres, protocole
+complet). Comparaison correcte = **au seed42 ORIGINAL spécifique**
+(0.380690, `10-07-2026_17-14-40_.../eval_rollout_test_18-07-2026_07-42-11`),
+PAS à la moyenne 3-seeds (0.348852) qui aurait donné une fausse
+impression de dégradation — seed42 était déjà le plus élevé des 3
+seeds originaux. Écart retrain vs original pour CE seed : ~1.5%,
+quasi identique (best epoch 40 seulement → ce seed plafonne tôt,
+cohérent avec l'ancien et le nouveau résultat proches). **1/3 seeds
+seulement — PAS de conclusion sur le verdict "indécis" tant que
+seed7+123 ne sont pas réévalués.** Papier non touché. seed7 en cours.
+
 **UK (60m)** — complet 18/18, 3 fenêtres de test (petit domaine) :
 | Régime | Δ-Diff | Twin | Verdict |
 |---|---|---|---|
