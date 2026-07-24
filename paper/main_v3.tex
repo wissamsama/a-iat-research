@@ -924,11 +924,59 @@ dissociation recurs: the exogenous causal driver of new flooding
 matters more for where the boundary moves than for aggregate
 magnitude, consistent with target-step rainfall's role (\S\ref{sec:mechanism}).
 
-\blocked{Remaining: one further lever (diffusion steps, 40$\to$20) ---
-training in progress, 5 of 6 configurations complete. 3-seed
-confirmations warranted for the pushforward lever (single-seed result
-outside the pattern of the others) and optionally the two CSI@0.001
-drops (spatial encoder, target-step rainfall).}
+\paragraph{Sixth lever: diffusion steps.} Halving the reverse-process
+budget (40$\to$20 steps; single-seed screening, dense, 4 windows) gives
+relative RMSE $0.000769$ ($\sim$0.49$\times$ \ours{}, inside the noise
+band) and CSI@0.001 $0.991716$, statistically indistinguishable from
+\ours{}'s $0.985861\pm0.003884$. At this screening resolution, halving
+the sampling budget shows no detectable cost in either metric ---
+consistent with (not proof of) headroom to reduce \ours{}'s inference
+cost further without a measured quality loss, pending 3-seed
+confirmation.
+
+\paragraph{Summary across all six levers.} One lever dominates: the
+delta parametrization alone accounts for $\sim$199$\times$ of the gap
+over \absdiff{}, an order of magnitude beyond every other lever's
+effect and beyond any plausible noise reading --- direct, quantitative
+support for the paper's central attribution claim
+(\S\ref{sec:paramresults}). None of the remaining five levers moves
+relative RMSE outside its seed-noise band. Two (spatial encoder,
+target-step rainfall) show a real, boundary-specific cost in CSI@0.001
+($\sim$22 and $\sim$5.5 seed-standard-deviations respectively) despite
+an unchanged aggregate error --- both encode spatial/causal context
+relevant to \emph{where} flooding occurs, not its magnitude. Two
+(pushforward curriculum, diffusion-step count) give single-seed
+readings numerically better than \ours{}, which we read as noise, not
+evidence either lever hurts or is free --- both are flagged for 3-seed
+confirmation before any claim beyond \S\ref{sec:vsfnoplus}'s existing
+screening label. One (change-weighted loss) is flatly undetectable at
+this resolution. Table~\ref{tab:ablation-summary} collects all six.
+
+\begin{table}[H]
+\centering
+\caption{Component ablation summary (single-seed screening, dense
+regime, 4 test windows; \ours{} full-protocol reference:
+relRMSE $0.001558\pm0.000836$, CSI@0.001 $0.985861\pm0.003884$).
+$\dagger$ = effect outside the noise band on that metric.}
+\label{tab:ablation-summary}
+\begin{tabular}{lrrl}
+\toprule
+Lever removed & relRMSE (ratio) & CSI@0.001 & Read \\
+\midrule
+Delta parametrization & $0.309516$ ($199\times$)$\dagger$ & $0.703782\dagger$ & Dominant, real \\
+Change-weighted loss & $0.001811$ ($1.16\times$) & $0.984760$ & Undetectable \\
+Pushforward curriculum & $0.000865$ ($0.56\times$) & $0.984960$ & Inconclusive (noise) \\
+Spatial encoder & $0.001903$ ($1.22\times$) & $0.900702\dagger$ & RMSE noise, CSI real \\
+Target-step rainfall & $0.001292$ ($0.83\times$) & $0.964493\dagger$ & RMSE noise, CSI real \\
+Diffusion steps 40$\to$20 & $0.000769$ ($0.49\times$) & $0.991716$ & Inconclusive (noise) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\blocked{Remaining: 3-seed confirmation of the pushforward and
+diffusion-step levers (both read as inconclusive, not free), and of
+the two CSI@0.001 drops, before any of these six readings support a
+claim beyond screening.}
 
 % ============================================================
 \section{Discussion}

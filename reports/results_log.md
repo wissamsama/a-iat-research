@@ -141,8 +141,33 @@ des nouvelles inondations) compte pour la localisation de frontière,
 pas la magnitude agrégée. Effet plus faible que l'encodeur spatial
 complet (~22σ), cohérent avec un rôle plus ciblé.
 
-1 restante en queue (steps20 : 40→20 pas de diffusion),
-éval à --max-windows 4 (screening assumé). **5/6 leviers faits.**
+**abl_steps20 — FINI 2026-07-24** (40→20 pas de diffusion ; dense,
+screening 4/13, seed42, 8 scénarios) : relRMSE 0.000769 (×0.49, dans
+le bruit), NSE 0.999999, r 0.9999997, CSI@0.001 0.991716 (proche de
+Δ-Diff, pas d'effet réel), CSI@0.01 0.999463. Aucun coût détecté à
+diviser par 2 le budget de sampling — piste de réduction de coût
+d'inférence à confirmer sur 3 seeds.
+
+**LES 6 LEVIERS SONT COMPLETS (ALL_OVERNIGHT_QUEUE_DONE, 2026-07-24
+07h50 UTC).** Synthèse :
+| Levier retiré | relRMSE (ratio) | CSI@0.001 | Lecture |
+|---|---:|---:|---|
+| Paramétrisation delta | 0.309516 (×199) | 0.703782 | **Dominant, réel** |
+| Perte pondérée wet/dry | 0.001811 (×1.16) | 0.984760 | Indétectable |
+| Curriculum pushforward | 0.000865 (×0.56) | 0.984960 | Indécidable (bruit) |
+| Encodeur spatial | 0.001903 (×1.22) | 0.900702 | RMSE bruit, **CSI réel** (-22σ) |
+| Pluie pas cible | 0.001292 (×0.83) | 0.964493 | RMSE bruit, **CSI réel** (-5.5σ) |
+| Pas de diffusion 40→20 | 0.000769 (×0.49) | 0.991716 | Indécidable (bruit) |
+
+Un seul levier domine (delta, ×199, hors de tout bruit plausible) —
+support quantitatif direct de l'attribution centrale du papier. Aucun
+autre ne sort du bruit sur relRMSE. Deux montrent un coût réel mais
+spécifique à la frontière (CSI@0.001) malgré une erreur agrégée
+inchangée — cohérent avec leur rôle (contexte spatial/causal pertinent
+pour OÙ l'inondation se produit, pas sa magnitude). Deux sont
+numériquement meilleurs sur 1 seed (lu comme bruit, pas comme preuve
+d'un gain ou d'une gratuité) — signalés pour confirmation 3-seeds.
+Inséré dans le papier comme table de synthèse (tab:ablation-summary).
 
 ### ctx12 (ablation contexte) — décision d'audit (action 4)
 Chiffres du papier (970×/3.9×/1.9×, étiquetés screening) : provenance =
