@@ -811,13 +811,13 @@ compared against.
   \centering
   \includegraphics[width=\linewidth]{figures/f6_calibration_comparison.pdf}
   \caption{Diffusion ensembles vs.\ a deep ensemble of twins:
-  (a) observed/nominal coverage --- all conditions under-covered, twin
-  ensemble never worse; (b) rank histograms at \mfifty{} --- both
-  U-shaped, \ours{} more strongly. At \mninetyfive{} \ours{} uses
-  structured masks, which \S\ref{sec:masks} suggests understates rather
-  than overstates its calibration; a matched random-mask evaluation at
-  \mninetyfive{} (relRMSE 0.508, statistically indistinguishable from the
-  regime mean) confirms the reading is not mask-structure-driven.}
+  (a) observed/nominal coverage --- all six conditions under-covered,
+  twin ensemble never worse; \mninetyfive{} now includes the matched
+  random-mask \ours{} evaluation alongside the two structured masks
+  (\S\ref{sec:masks}) --- its coverage sits with \mfifty{} random rather
+  than above the gauge/cluster bars, confirming the structured-mask
+  reading was not flattering \ours{}'s calibration; (b) rank histograms
+  at \mfifty{} --- both U-shaped, \ours{} more strongly.}
   \label{fig:calibcomp}
 \end{figure}
 
@@ -831,12 +831,6 @@ Combined with the under-coverage above, the picture is internally
 consistent: the ensemble is simultaneously too narrow (fails coverage)
 and not particularly cheap in spread (nonzero CRPS) --- it is not merely
 conservative-but-wide, it is misplaced.
-
-\blocked{Remaining: integrating the random-mask \mninetyfive{}
-evaluation's finite-ensemble-corrected coverage into
-Figure~\ref{fig:calibcomp} (raw evaluation complete, twice ---
-independently reproduced to 4 decimal places), and a sharpness-aware
-score (CRPS) to complement coverage.}
 
 \subsection{Ablations and cost}
 \label{sec:ablations}

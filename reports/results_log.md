@@ -74,7 +74,18 @@ Latence/tuile : 0.792s vs 0.0137s (×57.6). Mémoire pic : 152 vs 92 MB.
 relRMSE 0.5084 — existait depuis le 18-07
 (`16-07-2026_09-37-43_.../eval_rollout_test_18-07-2026_11-05-40`),
 reproduit indépendamment le 23-07 à 4 décimales près (9h28 GPU).
-Reste : intégration coverage corrigée dans la figure f6.
+
+**Intégration figure f6 — FAIT 2026-07-24, zéro coût GPU.** Ajout d'une
+6e barre "Δ-Diff M95 random" dans `make_figures.py::fig_calibration_comparison`
+(coverage 50%=0.393, 90%=0.446 — proche du niveau M50 random, PAS du
+niveau gauge/cluster). Interprétation : confirme visuellement que la
+lecture structurée (gauge/cluster, seule dispo jusqu'ici pour M95)
+n'enjolivait pas la calibration réelle — le random-mask M95 est même
+légèrement en-dessous. `WORKSPACE` du script rendu portable
+(`FCB_WORKSPACE` env var, défaut inchangé) plutôt que patché en dur.
+Figure régénérée, vérifiée visuellement (6 barres lisibles, pas de
+chevauchement), les 2 encadrés `\blocked{}` liés à la calibration sont
+maintenant fermés.
 
 **CRPS (nacrps) — FAIT 2026-07-24, zéro coût GPU.** Résultat : déjà
 calculé et stocké dans TOUS les eval_summary.json existants (clé

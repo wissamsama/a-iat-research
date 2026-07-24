@@ -15,6 +15,7 @@ text, no chartjunk, direct labels where possible.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import matplotlib
@@ -24,7 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-WORKSPACE = Path("/home/wissam/utem-workspace")
+WORKSPACE = Path(os.environ.get("FCB_WORKSPACE", "/home/wissam/utem-workspace"))
 
 # Okabe-Ito
 C_V1 = "#E69F00"      # orange
@@ -122,14 +123,16 @@ def fig_calibration_comparison() -> None:
          e / "wp9_det_twin_ensemble/v2_m50_random_seed42_wp6ckpt/eval_calibration.json"),
         ("Twin ens.\n(M=3) M95\nrandom", C_ENS,
          e / "wp9_det_twin_ensemble/eval_test_m3_17-07-2026_17-28-04/eval_calibration.json"),
+        (f"{DD} M95\nrandom", C_V2,
+         e / "16-07-2026_09-37-43_fcb_diff_sparse_v2_highfid_60m/eval_rollout_test_23-07-2026_00-19-22/eval_calibration.json"),
         (f"{DD} M95\ngauge", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_gauge/eval_calibration.json"),
         (f"{DD} M95\ncluster", C_V2,
          e / "wp7_structured_masks_eval/seed42_m0.95_cluster/eval_calibration.json"),
     ]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 2.7),
-                                   gridspec_kw={"width_ratios": [1.35, 1.0]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8.2, 2.7),
+                                   gridspec_kw={"width_ratios": [1.55, 1.0]})
 
     # (a) ratio observed / finite-ensemble-nominal for the 90% interval
     names, ratios50, ratios90, colors = [], [], [], []
@@ -149,7 +152,7 @@ def fig_calibration_comparison() -> None:
             edgecolor="white", linewidth=0.4)
     ax1.axhline(1.0, color=C_NOM, lw=1.0, ls="--")
     ax1.text(len(names) - 0.45, 1.03, "perfect", color=C_NOM, fontsize=7.5, ha="right")
-    ax1.set_xticks(xx, names, fontsize=7.6)
+    ax1.set_xticks(xx, names, fontsize=7.0)
     ax1.set_ylabel("Observed / nominal coverage")
     ax1.set_ylim(0, 1.15)
     from matplotlib.patches import Patch
