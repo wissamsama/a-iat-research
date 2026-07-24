@@ -903,11 +903,22 @@ outside any plausible noise band), this lever's direction cannot be
 called from one seed; it is reported as inconclusive pending the
 3-seed confirmation already planned for the full ablation grid.
 
-\blocked{Remaining: three further levers of the component ablation
-(target-step rainfall, spatial encoder, diffusion steps) --- training
-in progress, 3 of 6 configurations complete. A 3-seed confirmation of
-the pushforward lever specifically is warranted given its single-seed
-result falls outside the pattern of the other two completed levers.}
+\paragraph{Fourth lever: pixel-aligned spatial encoder.} Removing the
+spatial conditioning pathway (DEM, rainfall, sensor mask; single-seed
+screening, dense, 4 windows) gives relative RMSE $0.001903$
+($\sim$1.22$\times$ \ours{}, still inside the noise band above) but
+CSI@0.001 drops to $0.900702$ --- $\sim$22 seed-standard-deviations
+below \ours{}'s $0.985861\pm0.003884$, far outside any plausible noise
+reading. The dissociation is informative: removing spatial context
+barely moves aggregate error but substantially degrades wet/dry
+boundary detection specifically, consistent with the pathway's role
+(terrain and forcing are boundary-relevant, not magnitude-relevant).
+
+\blocked{Remaining: two further levers of the component ablation
+(target-step rainfall, diffusion steps) --- training in progress, 4 of
+6 configurations complete. 3-seed confirmations warranted for the
+pushforward lever (single-seed result outside the pattern of the
+others) and optionally the spatial-encoder CSI drop.}
 
 % ============================================================
 \section{Discussion}

@@ -121,7 +121,17 @@ indécidable sur 1 seed. Marqué comme nécessitant une confirmation
 3-seeds spécifique dans le papier (au lieu des 4 leviers restants
 génériques).
 
-3 restantes en queue (nospatial, notargetrain, steps20),
+**abl_nospatial — FINI 2026-07-24** (retrait encodeur spatial DEM+pluie
++masque ; dense, screening 4/13, seed42, 8 scénarios) : relRMSE
+0.001903 (×1.22, dans le bruit), NSE 0.999995, r 0.999998,
+**CSI@0.001 0.900702 (chute nette, ~22 écarts-types sous Δ-Diff
+0.985861±0.003884)**, CSI@0.01 0.997938. Interprétation : dissociation
+informative — le retrait de l'encodeur spatial ne bouge presque pas
+l'erreur agrégée mais dégrade nettement la détection de frontière
+humide/sec, cohérent avec son rôle (terrain/forçage pertinents pour la
+frontière, pas pour la magnitude).
+
+2 restantes en queue (notargetrain, steps20),
 évals à --max-windows 4 (screening assumé).
 
 ### ctx12 (ablation contexte) — décision d'audit (action 4)
