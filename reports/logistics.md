@@ -44,6 +44,18 @@ consignée ici ou dans `results_log.md` selon sa nature.
 
 ### Journal de pilotage autonome (résultat → interprétation → décision → expérience)
 
+**2026-07-24, 15h55** — *Observé* : les 6 leviers d'ablation §6.8 sont
+finis (ALL_OVERNIGHT_QUEUE_DONE, 07h50 UTC). En relisant les
+`\blocked{}` restants, 2 leviers (pushforward, steps20) + 2 effets CSI
+(nospatial, notargetrain) nécessitent une confirmation 3-seeds —
+**aucun orchestrateur actif ne couvre ça**. *Interprétation* : nouveau
+trou plan/exécution, même nature que ctx12. *Décision* : PAS lancé
+immédiatement (coût : 4 leviers × 2 seeds × ~1h train + ~3h éval ≈
+32h, need réévaluer priorité vs WP16 une fois ctx12/WP16 avancés) —
+noté ici pour action future plutôt que lancé sous pression. En
+attendant, gain zéro-coût trouvé et exécuté : intégration figure f6
+(calibration m95 random déjà calculée, jamais mise dans la figure).
+
 **2026-07-24, 01h15** — *Observé* : audit du plan a confirmé 5
 `\blocked{}` restants dans le papier, dont 2 (context ablation 3 seeds,
 ligne 202+522) ne sont couverts par AUCUN orchestrateur actif (stage3,
