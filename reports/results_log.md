@@ -41,7 +41,14 @@ seeds originaux. Écart retrain vs original pour CE seed : ~1.5%,
 quasi identique (best epoch 40 seulement → ce seed plafonne tôt,
 cohérent avec l'ancien et le nouveau résultat proches). **1/3 seeds
 seulement — PAS de conclusion sur le verdict "indécis" tant que
-seed7+123 ne sont pas réévalués.** Papier non touché. seed7 en cours.
+seed7+123 ne sont pas réévalués.** Papier non touché.
+
+**Retrain seed7 — FAIT 2026-07-24** (early-stop epoch 190, best epoch
+70) : relRMSE 0.326489 (13/13 fenêtres) vs original seed7 spécifique
+0.291290 (`11-07-2026_00-45-18_.../eval_rollout_test_18-07-2026_07-44-28`)
+— écart ~12%, plus net que seed42 (~1.5%). **2/3 seeds. Papier toujours
+NON touché** — attendre seed123 (en cours) avant tout calcul de
+moyenne/std ou sign test.
 
 **UK (60m)** — complet 18/18, 3 fenêtres de test (petit domaine) :
 | Régime | Δ-Diff | Twin | Verdict |
